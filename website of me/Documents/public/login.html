@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Login | Gamers Arena</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Oxanium:wght@400;600;700&family=Manrope:wght@400;500;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/styles.css">
+</head>
+<body data-page="login">
+  <div class="shell">
+    <nav class="topbar">
+      <a class="brand" href="/"><span class="brand-mark">GA</span><span><strong data-site-title>Gamers Arena</strong><br><small class="muted">login</small></span></a>
+      <div class="nav-links">
+        <a class="nav-link" href="/">Home</a>
+        <a class="nav-link" href="/cart.html">Cart</a>
+        <a class="nav-link" href="/chat.html">Support</a>
+      </div>
+      <div class="nav-actions">
+        <span class="muted" data-user-label>Guest</span>
+        <button class="btn btn-secondary" type="button" data-auth-action>Login</button>
+      </div>
+    </nav>
+
+    <main class="two-col">
+      <section class="auth-card">
+        <p class="eyebrow">user signup</p>
+        <h1 class="auth-title">Create Account</h1>
+        <p class="hero-copy">Create a simple user account to keep your buying flow smoother across cart, checkout, and support.</p>
+        <form id="userSignupForm" class="stack">
+          <input id="signupName" class="input" placeholder="Full name">
+          <input id="signupContact" class="input" placeholder="Email or 10-digit mobile">
+          <input id="signupPassword" class="input" type="password" placeholder="Password">
+          <button class="btn btn-primary" type="submit">Signup</button>
+        </form>
+      </section>
+
+      <section class="auth-card">
+        <p class="eyebrow">login</p>
+        <h1 class="auth-title">User Login</h1>
+        <p class="hero-copy">Users can login here with email or mobile. Admin access is separate and now opens from the small header icon with two passwords.</p>
+        <form id="userLoginForm" class="stack" style="margin-bottom:18px;">
+          <input id="loginContact" class="input" placeholder="Email or mobile">
+          <input id="loginPassword" class="input" type="password" placeholder="Password">
+          <button class="btn btn-primary" type="submit">User Login</button>
+        </form>
+        <div class="card">
+          <p class="eyebrow">admin</p>
+          <h2 class="card-title">Separate Admin Login</h2>
+          <p class="hero-copy">Use the small `AD` icon in the header to login as admin. After the main password, you will also need the second admin password.</p>
+        </div>
+        <a class="btn btn-secondary" data-telegram-general href="https://t.me/gamersarena_shop" target="_blank" rel="noreferrer">Need Help On Telegram?</a>
+        <p id="loginStatus" class="status"></p>
+      </section>
+    </main>
+  </div>
+  <script src="/app.js"></script>
+</body>
+</html>

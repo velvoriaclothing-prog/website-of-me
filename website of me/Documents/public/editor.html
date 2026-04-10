@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Page Builder | Gamers Arena</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Oxanium:wght@400;600;700&family=Manrope:wght@400;500;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/styles.css">
+</head>
+<body data-page="editor">
+  <div class="shell">
+    <nav class="topbar">
+      <a class="brand" href="/"><span class="brand-mark">GA</span><span><strong data-site-title>Gamers Arena</strong><br><small class="muted">page builder</small></span></a>
+      <div class="nav-links">
+        <a class="nav-link" href="/">Home</a>
+        <a class="nav-link" href="/admin.html">Admin</a>
+        <a class="nav-link" href="/chat.html">Support</a>
+        <a class="nav-link active" data-nav-link="editor" href="/editor.html">Editor</a>
+      </div>
+      <div class="nav-actions">
+        <span class="muted" data-user-label>Guest</span>
+        <button class="btn btn-secondary" type="button" data-auth-action>Login</button>
+      </div>
+    </nav>
+
+    <main>
+      <section id="editorGate" class="panel hidden">
+        <p class="eyebrow">admin only</p>
+        <h1 class="section-title">Admin Login Required</h1>
+        <p class="hero-copy">Login as admin first to edit homepage blocks.</p>
+        <button id="editorLoginRedirect" class="btn btn-primary" type="button">Go To Login</button>
+      </section>
+
+      <section id="editorApp" class="panel hidden">
+        <div class="section-head">
+          <div>
+            <p class="eyebrow">builder</p>
+            <h1 class="section-title">Simple Page Builder</h1>
+          </div>
+        </div>
+        <p class="hero-copy">Add text, image, or video blocks and arrange them vertically to control the homepage without touching code.</p>
+        <div class="editor-actions">
+          <button id="addTextBlock" class="btn btn-secondary" type="button">Add Text Block</button>
+          <button id="addImageBlock" class="btn btn-secondary" type="button">Add Image Block</button>
+          <button id="addVideoBlock" class="btn btn-secondary" type="button">Add Video Block</button>
+        </div>
+        <form id="editorSaveForm" class="stack" style="margin-top:16px;">
+          <div id="editorBlocks" class="list"></div>
+          <button class="btn btn-primary" type="submit">Save Homepage Layout</button>
+          <p id="editorStatus" class="status"></p>
+        </form>
+      </section>
+    </main>
+  </div>
+  <script src="/app.js"></script>
+</body>
+</html>

@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Wishlist | Gamers Arena</title>
+  <meta name="description" content="Save games and bundles for later on Gamers Arena, then come back and add them to cart when you are ready.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Oxanium:wght@400;600;700&family=Manrope:wght@400;500;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/styles.css">
+</head>
+<body data-page="wishlist">
+  <div class="shell">
+    <nav class="topbar">
+      <a class="brand" href="/"><span class="brand-mark">GA</span><span><strong data-site-title>Gamers Arena</strong><br><small class="muted">wishlist</small></span></a>
+      <div class="nav-links">
+        <a class="nav-link" href="/">Home</a>
+        <a class="nav-link" href="/cart.html">Cart</a>
+        <a class="nav-link" href="/bundles.html">Bundles</a>
+      </div>
+      <div class="nav-actions">
+        <span class="muted" data-user-label>Guest</span>
+        <button class="btn btn-secondary" type="button" data-auth-action>Login</button>
+      </div>
+    </nav>
+
+    <main class="panel">
+      <div class="section-head">
+        <div>
+          <p class="eyebrow">saved for later</p>
+          <h1 class="section-title">Wishlist</h1>
+        </div>
+        <div class="chip-row">
+          <span class="chip">Games</span>
+          <span class="chip">Bundles</span>
+          <span class="chip">Browser saved</span>
+        </div>
+      </div>
+      <p class="hero-copy">Use this space to keep game or bundle ideas for later. Saved items stay in your browser until you remove them.</p>
+      <p id="wishlistStatus" class="status"></p>
+      <div id="wishlistList" class="bundle-grid"></div>
+    </main>
+  </div>
+  <script src="/app.js"></script>
+</body>
+</html>

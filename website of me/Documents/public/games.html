@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>All Games | Gamers Arena</title>
+  <meta name="description" content="Browse game accounts, bundles, QR checkout, and private support tickets on Gamers Arena.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Oxanium:wght@400;600;700&family=Manrope:wght@400;500;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/styles.css">
+</head>
+<body data-page="games">
+  <div class="bg-grid"></div>
+  <div class="site-shell">
+    <nav class="topbar">
+      <a class="brand" href="/"><span class="brand-mark">GA</span><span><strong>Gamers Arena</strong><small>game accounts</small></span></a>
+      <div class="nav-links">
+        <div class="nav-item"><span class="menu-label">Games</span><div class="dropdown"><a href="/games.html">All Games</a><a href="/games.html?category=Shooter">Shooter</a><a href="/games.html?category=Low-end%20PC">Low-end PC</a></div></div>
+        <div class="nav-item"><span class="menu-label">Support</span><div class="dropdown"><a href="#cartPanel">Cart</a><a href="#ticketSupport">Private Ticket Chat</a></div></div>
+        <div class="nav-item"><a href="/admin.html">Admin Panel</a></div>
+        <div class="nav-item"><span class="menu-label">Blog</span><div class="dropdown"><a href="/blog.html">Blog</a></div></div>
+        <div class="nav-item"><span class="menu-label">News</span><div class="dropdown"><a href="/news.html">News</a></div></div>
+        <div class="nav-item"><span class="menu-label">PC Builder</span><div class="dropdown"><a href="/pc-builder.html">PC Builder</a></div></div>
+        <div class="nav-item"><a id="cartNavLink" href="#cartPanel">Cart (0)</a></div>
+      </div>
+    </nav>
+    <header class="hero compact">
+      <section class="hero-card">
+        <p class="eyebrow">catalog</p>
+        <h1>All Games</h1>
+        <p class="hero-copy">Explore the full Gamers Arena game-account catalog, add games or bundles to cart, pay with QR, and continue in a private ticket thread.</p>
+      </section>
+    </header>
+    <main class="layout-2">
+      <section class="panel">
+        <div class="toolbar">
+          <input id="gamesSearch" type="search" placeholder="Search games">
+          <select id="gamesCategory"><option value="">All categories</option></select>
+        </div>
+        <div id="gamesList" class="card-grid"></div>
+        <section class="panel" style="margin-top:22px;">
+          <div class="section-head"><div><p class="eyebrow">bundles</p><h2>Game bundles</h2></div></div>
+          <div id="bundleList" class="card-grid"></div>
+        </section>
+      </section>
+      <aside class="stack-grid">
+        <section class="panel" id="adminPanel">
+          <div class="section-head"><div><p class="eyebrow">admin</p><h2>Admin Panel</h2></div></div>
+          <div id="adminLoginBox" class="stack-grid">
+            <input id="adminPasswordInput" type="password" placeholder="Admin password">
+            <button id="adminLoginBtn" class="btn btn-primary" type="button">Unlock Admin</button>
+            <button id="forgotPasswordBtn" class="btn btn-secondary" type="button">Forgot Password?</button>
+            <p id="adminLoginStatus" class="status-text"></p>
+            <div id="forgotPasswordPanel" class="stack-grid hidden">
+              <p class="status-text">Hint: it is S and A birthday. Enter both birthdays correctly in any order.</p>
+              <input id="birthdayCheckOne" type="date">
+              <input id="birthdayCheckTwo" type="date">
+              <button id="verifyBirthdaysBtn" class="btn btn-secondary" type="button">Verify Birthdays</button>
+              <p id="forgotPasswordStatus" class="status-text"></p>
+            </div>
+            <div id="changePasswordPanel" class="stack-grid hidden">
+              <input id="newAdminPasswordInput" type="password" placeholder="New admin password">
+              <button id="changeAdminPasswordBtn" class="btn btn-primary" type="button">Change Password</button>
+              <p id="changePasswordStatus" class="status-text"></p>
+            </div>
+          </div>
+          <div id="adminWorkspace" class="stack-grid hidden">
+            <div class="card compact-card">
+              <h4>Website & Checkout Settings</h4>
+              <input id="adminHomeEyebrow" type="text" placeholder="Homepage eyebrow">
+              <input id="adminHomeTitle" type="text" placeholder="Homepage title">
+              <textarea id="adminHomeCopy" rows="3" placeholder="Homepage main text"></textarea>
+              <textarea id="adminSupportPrompt" rows="3" placeholder="Support message"></textarea>
+              <input id="adminQrUpload" type="file" accept="image/*">
+              <button id="adminSaveSettingsBtn" class="btn btn-secondary" type="button">Save Settings</button>
+              <p id="adminSettingsStatus" class="status-text"></p>
+            </div>
+            <div class="card compact-card">
+              <h4>Add Game By Name</h4>
+              <input id="adminNewGameName" type="text" placeholder="Enter game name only">
+              <button id="adminAddGameBtn" class="btn btn-primary" type="button">Add Game</button>
+              <p id="adminAddGameStatus" class="status-text"></p>
+            </div>
+            <div class="card compact-card">
+              <h4>Manage All Games</h4>
+              <div id="adminCatalogEditor" class="stack-grid"></div>
+            </div>
+            <div class="card compact-card">
+              <h4>Ticket Inbox</h4>
+              <div id="adminTicketList" class="stack-grid"></div>
+            </div>
+            <div class="card compact-card">
+              <h4>Reply to Selected Ticket</h4>
+              <textarea id="adminReplyMessage" rows="3" placeholder="Reply to customer"></textarea>
+              <input id="adminReplyImage" type="file" accept="image/*">
+              <button id="adminReplyBtn" class="btn btn-primary" type="button">Send Reply</button>
+              <p id="adminReplyStatus" class="status-text"></p>
+            </div>
+          </div>
+        </section>
+        <section class="panel" id="cartPanel">
+          <div class="section-head"><div><p class="eyebrow">cart</p><h2>Your Cart</h2></div></div>
+          <div id="cartItems" class="stack-grid"></div>
+          <p id="cartSummary" class="status-text">Your cart is empty.</p>
+          <button id="checkoutBtn" class="btn btn-primary" type="button">Buy with QR</button>
+        </section>
+        <section class="panel" id="ticketSupport">
+          <div class="section-head"><div><p class="eyebrow">support</p><h2>Private Ticket Chat</h2></div></div>
+          <p id="supportPromptText" class="status-text">After payment, create a private ticket and keep your order code safe.</p>
+          <form id="ticketCreateForm" class="stack-grid">
+            <input id="ticketCustomerName" type="text" placeholder="Your name">
+            <input id="ticketPaymentRef" type="text" placeholder="Payment note or reference">
+            <textarea id="ticketMessage" rows="4" placeholder="I paid for my cart, please continue my order..."></textarea>
+            <input id="ticketImage" type="file" accept="image/*">
+            <button class="btn btn-secondary" type="submit">Create Private Ticket</button>
+            <p id="ticketCreateStatus" class="status-text"></p>
+          </form>
+          <form id="ticketOpenForm" class="stack-grid">
+            <input id="ticketLookupCode" type="text" placeholder="Ticket code">
+            <input id="ticketLookupName" type="text" placeholder="Your name">
+            <button class="btn btn-secondary" type="submit">Open Existing Ticket</button>
+          </form>
+          <div id="ticketThread" class="stack-grid"></div>
+          <form id="ticketReplyForm" class="stack-grid hidden">
+            <textarea id="ticketReplyMessage" rows="3" placeholder="Send another message"></textarea>
+            <input id="ticketReplyImage" type="file" accept="image/*">
+            <button class="btn btn-primary" type="submit">Send Message</button>
+          </form>
+        </section>
+      </aside>
+    </main>
+  </div>
+  <script src="/site.js"></script>
+</body>
+</html>

@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Admin Dashboard | Gamers Arena</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Oxanium:wght@400;600;700&family=Manrope:wght@400;500;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/styles.css">
+</head>
+<body data-page="admin">
+  <div class="shell">
+    <nav class="topbar">
+      <a class="brand" href="/"><span class="brand-mark">GA</span><span><strong data-site-title>Gamers Arena</strong><br><small class="muted">admin dashboard</small></span></a>
+      <div class="nav-links">
+        <a class="nav-link" href="/">Home</a>
+        <a class="nav-link" href="/cart.html">Cart</a>
+        <a class="nav-link" href="/chat.html">Support</a>
+        <a class="nav-link" href="/blog.html">Blog</a>
+        <a class="nav-link" href="/editor.html">Editor</a>
+      </div>
+      <div class="nav-actions">
+        <span class="muted" data-user-label>Guest</span>
+        <button class="btn btn-secondary" type="button" data-auth-action>Login</button>
+      </div>
+    </nav>
+
+    <main>
+      <section id="adminGate" class="panel hidden">
+        <p class="eyebrow">admin only</p>
+        <h1 class="section-title">Admin Login Required</h1>
+        <p class="hero-copy">Please login with admin credentials to manage games, chat, blogs, and settings.</p>
+        <button id="adminLoginRedirect" class="btn btn-primary" type="button">Go To Login</button>
+      </section>
+
+      <section id="adminApp" class="hidden">
+        <div class="panel">
+          <p class="eyebrow">overview</p>
+          <h1 class="section-title">Main Control</h1>
+          <p class="hero-copy">Manage the full store from one place: games, support settings, QR payment, blog posts, and homepage sections.</p>
+          <div class="toolbar">
+            <div class="card"><strong id="adminGamesCount">0</strong><p class="muted">Games</p></div>
+            <div class="card"><strong id="adminUsersCount">0</strong><p class="muted">Users</p></div>
+            <div class="card"><strong id="adminChatsCount">0</strong><p class="muted">Chats</p></div>
+            <div class="card"><strong id="adminBlogsCount">0</strong><p class="muted">Blogs</p></div>
+            <div class="card"><strong id="adminOrdersCount">0</strong><p class="muted">Orders</p></div>
+          </div>
+        </div>
+
+        <div class="panel">
+          <div class="tab-row">
+            <button class="btn btn-secondary tab-btn active" type="button" data-admin-tab="adminGamesPanel">Games</button>
+            <button class="btn btn-secondary tab-btn" type="button" data-admin-tab="adminBundlesPanel">Bundles</button>
+            <button class="btn btn-secondary tab-btn" type="button" data-admin-tab="adminOrdersPanel">Orders</button>
+            <button class="btn btn-secondary tab-btn" type="button" data-admin-tab="adminChatsPanel">Chats</button>
+            <button class="btn btn-secondary tab-btn" type="button" data-admin-tab="adminBlogsPanel">Blog</button>
+            <button class="btn btn-secondary tab-btn" type="button" data-admin-tab="adminSettingsPanel">Settings</button>
+          </div>
+        </div>
+
+        <section id="adminGamesPanel" data-admin-panel class="panel">
+          <div class="section-head">
+            <div>
+              <p class="eyebrow">games</p>
+              <h2 class="section-title">Add And Edit Games</h2>
+            </div>
+          </div>
+          <div class="toolbar">
+            <input id="gameSearch" class="input" placeholder="Search games to edit">
+            <select id="gameCategory" class="select">
+              <option value="">All categories</option>
+            </select>
+            <button id="clearGameFilters" class="btn btn-secondary" type="button">Clear</button>
+          </div>
+          <p id="resultsMeta" class="muted"></p>
+          <form id="addGameForm" class="two-col">
+            <input id="newGameName" class="input" placeholder="Game name">
+            <select id="newGameCategory" class="select">
+              <option value="Action">Action</option>
+              <option value="Shooter">Shooter</option>
+              <option value="RPG">RPG</option>
+              <option value="Racing">Racing</option>
+              <option value="Low-end PC">Low-end PC</option>
+              <option value="Upcoming">Upcoming</option>
+            </select>
+            <input id="newGamePrice" class="input" type="number" value="45" placeholder="Price">
+            <button class="btn btn-primary" type="submit">Add Game</button>
+          </form>
+          <p id="adminGamesStatus" class="status"></p>
+          <div id="gamesGrid" class="game-grid"></div>
+          <div id="loadMoreWrap" class="load-more-wrap hidden">
+            <button id="loadMoreGames" class="btn btn-secondary" type="button">Load More Games</button>
+          </div>
+        </section>
+
+        <section id="adminBundlesPanel" data-admin-panel class="panel hidden">
+          <div class="section-head">
+            <div>
+              <p class="eyebrow">bundles</p>
+              <h2 class="section-title">Bundle Manager</h2>
+            </div>
+          </div>
+          <form id="addBundleForm" class="stack">
+            <input id="newBundleName" class="input" placeholder="Bundle name">
+            <input id="newBundleCount" class="input" type="number" placeholder="How many games are in this bundle">
+            <input id="newBundlePrice" class="input" type="number" value="45" placeholder="Bundle price">
+            <textarea id="newBundleDescription" class="textarea" placeholder="Bundle description"></textarea>
+            <input id="bundleGameSearch" class="input" placeholder="Search games to add in this bundle">
+            <p id="bundleGameSelectionMeta" class="muted">Select games with the tick boxes below.</p>
+            <div id="bundleGameChecklist" class="bundle-picker"></div>
+            <button class="btn btn-primary" type="submit">Add Bundle</button>
+          </form>
+          <p id="adminBundlesStatus" class="status"></p>
+          <div id="bundleAdminList" class="list"></div>
+        </section>
+
+        <section id="adminOrdersPanel" data-admin-panel class="panel hidden">
+          <div class="section-head">
+            <div>
+              <p class="eyebrow">orders</p>
+              <h2 class="section-title">Customer Orders</h2>
+            </div>
+          </div>
+          <div id="adminOrdersList" class="list"></div>
+        </section>
+
+        <section id="adminChatsPanel" data-admin-panel class="panel hidden">
+          <div class="section-head">
+            <div>
+              <p class="eyebrow">chat</p>
+              <h2 class="section-title">All User Messages</h2>
+            </div>
+          </div>
+          <div class="chat-layout">
+            <div id="adminChatList" class="list"></div>
+            <div class="card">
+              <p id="adminChatMeta" class="muted">Select a user to open the full chat.</p>
+              <div id="adminChatThread" class="chat-thread"></div>
+              <form id="adminReplyForm" class="stack" style="margin-top:12px;">
+                <textarea id="adminReplyMessage" class="textarea" placeholder="Reply as admin"></textarea>
+                <input id="adminReplyFile" class="input" type="file" accept="image/*,video/*">
+                <button class="btn btn-primary" type="submit">Send Reply</button>
+              </form>
+            </div>
+          </div>
+        </section>
+
+        <section id="adminBlogsPanel" data-admin-panel class="panel hidden">
+          <div class="section-head">
+            <div>
+              <p class="eyebrow">blog</p>
+              <h2 class="section-title">Manual Blog System</h2>
+            </div>
+          </div>
+          <p class="hero-copy">Your public blog page now also includes 100 seeded long-form SEO guides. This admin section is only for the manual posts you want to create or edit yourself.</p>
+          <form id="createBlogForm" class="stack" style="margin-bottom:18px;">
+            <input id="newBlogTitle" class="input" placeholder="Blog title">
+            <input id="newBlogCategory" class="input" placeholder="Blog category (Guide, Ranking, Buying, Performance)" value="Manual">
+            <input id="newBlogSummary" class="input" placeholder="Short summary">
+            <input id="newBlogKeywords" class="input" placeholder="SEO keywords separated by comma">
+            <textarea id="newBlogMeta" class="textarea" placeholder="SEO meta description"></textarea>
+            <input id="newBlogImage" class="input" type="file" accept="image/*">
+            <textarea id="newBlogContent" class="textarea" placeholder="Full blog content"></textarea>
+            <button class="btn btn-primary" type="submit">Create Blog Post</button>
+          </form>
+          <p id="adminBlogsStatus" class="status"></p>
+          <div id="blogList" class="blog-grid"></div>
+        </section>
+
+        <section id="adminSettingsPanel" data-admin-panel class="panel hidden">
+          <div class="section-head">
+            <div>
+              <p class="eyebrow">settings</p>
+              <h2 class="section-title">Site Title And QR</h2>
+            </div>
+          </div>
+          <form id="settingsForm" class="stack">
+            <input id="siteTitleInput" class="input" placeholder="Site title">
+            <input id="adminEmailInput" class="input" placeholder="Admin email">
+            <input id="adminPasswordInput" class="input" type="password" placeholder="New admin password (optional)">
+            <input id="qrUrlInput" class="input" placeholder="QR image URL">
+            <input id="qrFile" class="input" type="file" accept="image/*">
+            <img id="qrPreview" class="qr-box" src="" alt="QR preview">
+            <button class="btn btn-primary" type="submit">Save Settings</button>
+          </form>
+          <p id="settingsStatus" class="status"></p>
+        </section>
+      </section>
+    </main>
+  </div>
+  <script src="/socket.io/socket.io.js"></script>
+  <script src="/app.js"></script>
+</body>
+</html>

@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Gaming Products | Gamers Arena</title>
+  <meta name="description" content="Browse keyboards, mice, headsets, CPUs, GPUs, and laptops on Gamers Arena with comparisons and smart search.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Oxanium:wght@400;600;700&family=Manrope:wght@400;500;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/styles.css">
+</head>
+<body data-page="products">
+  <div class="bg-grid"></div>
+  <div class="site-shell">
+    <nav class="topbar">
+      <a class="brand" href="/"><span class="brand-mark">GA</span><span><strong>Gamers Arena</strong><small>marketplace</small></span></a>
+      <div class="nav-links">
+        <div class="nav-item"><span class="menu-label">Products</span><div class="dropdown"><a href="/products.html">All Products</a><a href="/products.html?category=Keyboard">Keyboard</a><a href="/products.html?category=Laptop">Laptop</a></div></div>
+        <div class="nav-item"><a href="/games.html">Games</a></div>
+        <div class="nav-item"><a href="/deals.html">Deals</a></div>
+        <div class="nav-item"><a href="/pc-builder.html">PC Builder</a></div>
+      </div>
+    </nav>
+    <header class="hero compact">
+      <section class="hero-card">
+        <p class="eyebrow">marketplace</p>
+        <h1>Gaming Products</h1>
+        <p class="hero-copy">Search naturally, compare quickly, and jump into product detail pages built for clean buyer intent and affiliate traffic.</p>
+      </section>
+    </header>
+    <main class="panel">
+      <div class="toolbar">
+        <input id="productsSearch" type="search" placeholder="best keyboard under 1000">
+        <button id="productsSearchBtn" class="btn btn-primary" type="button">Search</button>
+        <select id="productsCategory"><option value="">All categories</option><option>Keyboard</option><option>Headset</option><option>CPU</option><option>GPU</option><option>Laptop</option></select>
+      </div>
+      <p id="productsStatus" class="status-text">Use natural search or filter by category.</p>
+      <div id="productsList" class="card-grid"></div>
+      <section class="panel">
+        <div class="section-head"><div><p class="eyebrow">compare</p><h2>Comparison Table</h2></div></div>
+        <div class="table-wrap"><table id="productsCompareTable"><thead><tr><th>Product</th><th>Price</th><th>Features</th><th>Rating</th><th>Badge</th></tr></thead><tbody></tbody></table></div>
+      </section>
+    </main>
+  </div>
+  <script src="/site.js"></script>
+</body>
+</html>

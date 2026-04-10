@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Bundle | Gamers Arena</title>
+  <meta name="description" content="Explore premium game bundles on Gamers Arena, view bundle details, add them to cart, and continue to QR checkout.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Oxanium:wght@400;600;700&family=Manrope:wght@400;500;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/styles.css">
+</head>
+<body data-page="bundle">
+  <div class="shell">
+    <nav class="topbar">
+      <a class="brand" href="/"><span class="brand-mark">GA</span><span><strong data-site-title>Gamers Arena</strong><br><small class="muted">bundle page</small></span></a>
+      <div class="nav-links">
+        <a class="nav-link" href="/">Home</a>
+        <a class="nav-link" href="/cart.html">Cart</a>
+        <a class="nav-link" href="/checkout.html">Checkout</a>
+        <a class="nav-link" href="/chat.html">Support</a>
+      </div>
+      <div class="nav-actions">
+        <span class="muted" data-user-label>Guest</span>
+        <button class="btn btn-secondary" type="button" data-auth-action>Login</button>
+      </div>
+    </nav>
+
+    <main class="bundle-layout">
+      <section class="panel bundle-viewer">
+        <div class="section-head">
+          <div>
+            <p class="eyebrow">bundle showcase</p>
+            <h1 id="bundleTitle" class="section-title">Bundle</h1>
+          </div>
+        </div>
+        <div class="bundle-slider-shell">
+          <button id="bundlePrev" class="slider-nav" type="button" aria-label="Previous bundle image">&#8249;</button>
+          <div class="bundle-slider-window">
+            <div id="bundleSliderTrack" class="bundle-slider-track"></div>
+          </div>
+          <button id="bundleNext" class="slider-nav" type="button" aria-label="Next bundle image">&#8250;</button>
+        </div>
+        <div id="bundleSliderDots" class="slider-dots"></div>
+      </section>
+
+      <aside class="panel bundle-side">
+        <p class="eyebrow">premium offer</p>
+        <h2 id="bundleCount" class="card-title">Games bundle</h2>
+        <p id="bundleDescription" class="hero-copy"></p>
+        <div id="bundleHeroMeta" class="chip-row"></div>
+        <p id="bundlePrice" class="price">&#8377;0</p>
+        <div class="stack">
+          <button id="bundleSaveAction" class="btn btn-secondary" type="button">Save Bundle</button>
+          <button id="addBundleToCart" class="btn btn-secondary" type="button">Add Bundle To Cart</button>
+          <button id="buyBundleNow" class="btn btn-primary" type="button">Buy This Bundle</button>
+          <a class="btn btn-secondary" data-telegram-general href="https://t.me/gamersarena_shop" target="_blank" rel="noreferrer">Ask On Telegram</a>
+        </div>
+        <p id="bundleStatus" class="status"></p>
+      </aside>
+    </main>
+
+    <section class="panel">
+      <div class="section-head">
+        <div>
+          <p class="eyebrow">bundle details</p>
+          <h2 class="section-title">Why This Bundle Works</h2>
+        </div>
+      </div>
+      <div id="bundleHighlights" class="feature-grid"></div>
+    </section>
+  </div>
+  <script src="/app.js"></script>
+</body>
+</html>

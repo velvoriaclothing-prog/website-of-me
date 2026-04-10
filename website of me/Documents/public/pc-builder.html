@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>PC Builder & FPS Tools | Gamers Arena</title>
+  <meta name="description" content="Use the Gamers Arena PC builder, FPS optimizer, can-I-run checks, and game recommender tools.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Oxanium:wght@400;600;700&family=Manrope:wght@400;500;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/styles.css">
+</head>
+<body data-page="pc-builder">
+  <div class="bg-grid"></div>
+  <div class="site-shell">
+    <nav class="topbar">
+      <a class="brand" href="/"><span class="brand-mark">GA</span><span><strong>Gamers Arena</strong><small>performance tools</small></span></a>
+      <div class="nav-links"><div class="nav-item"><a href="/games.html">Games</a></div><div class="nav-item"><a href="/products.html">Products</a></div><div class="nav-item"><a href="/deals.html">Deals</a></div></div>
+    </nav>
+    <header class="hero compact"><section class="hero-card"><p class="eyebrow">tools</p><h1>PC Builder & FPS Tools</h1><p class="hero-copy">Use clean performance tools to plan hardware, estimate playability, and optimize settings without bloating the rest of the site.</p></section></header>
+    <main class="panel">
+      <div class="tool-grid">
+        <article class="tool-card">
+          <h3>PC Builder</h3>
+          <input id="builderBudget" type="number" value="60000" placeholder="Budget">
+          <input id="builderTarget" type="text" value="1080p gaming" placeholder="Target">
+          <button id="builderRun" class="btn btn-primary" type="button">Build PC</button>
+          <p id="builderStatus" class="status-text"></p>
+        </article>
+        <article class="tool-card">
+          <h3>FPS Optimizer</h3>
+          <input id="fpsGameName" type="text" placeholder="Game name">
+          <div class="two-col"><input id="fpsCpu" type="text" placeholder="CPU"><input id="fpsGpu" type="text" placeholder="GPU"></div>
+          <div class="two-col"><input id="fpsRam" type="text" placeholder="RAM"><input id="fpsStorage" type="text" placeholder="Storage"></div>
+          <button id="fpsRun" class="btn btn-primary" type="button">Optimize</button>
+          <p id="fpsStatus" class="status-text"></p>
+        </article>
+        <article class="tool-card">
+          <h3>Can I Run This Game</h3>
+          <input id="runGameName" type="text" placeholder="Game name">
+          <div class="two-col"><select id="runCpuTier"><option value="low">Low CPU</option><option value="mid" selected>Mid CPU</option><option value="high">High CPU</option></select><select id="runGpuTier"><option value="low">Low GPU</option><option value="mid" selected>Mid GPU</option><option value="high">High GPU</option></select></div>
+          <div class="two-col"><input id="runRam" type="number" value="16" placeholder="RAM"><select id="runStorage"><option value="ssd">SSD</option><option value="hdd">HDD</option></select></div>
+          <button id="runCheck" class="btn btn-primary" type="button">Check</button>
+          <p id="runStatus" class="status-text"></p>
+        </article>
+        <article class="tool-card">
+          <h3>Game Recommender</h3>
+          <select id="recommendPick"><option>Action</option><option>Racing</option><option>RPG</option><option>Shooter</option><option>Low-end PC</option><option>Upcoming</option></select>
+          <button id="recommendRun" class="btn btn-primary" type="button">Recommend</button>
+          <p id="recommendStatus" class="status-text"></p>
+        </article>
+        <article class="tool-card">
+          <h3>Deal Finder</h3>
+          <button id="dealRun" class="btn btn-primary" type="button">Find Deals</button>
+          <div id="toolDeals" class="stack-grid"></div>
+        </article>
+        <article class="tool-card">
+          <h3>Chat Assistant</h3>
+          <textarea id="chatMessage" rows="4" placeholder="Ask about a build, deal, or game"></textarea>
+          <button id="chatRun" class="btn btn-primary" type="button">Ask</button>
+          <p id="chatStatus" class="status-text"></p>
+        </article>
+      </div>
+    </main>
+  </div>
+  <script src="/site.js"></script>
+</body>
+</html>

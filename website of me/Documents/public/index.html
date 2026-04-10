@@ -1,0 +1,271 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Gamers Arena</title>
+  <meta name="description" content="Gamers Arena is a fast, dark-themed gaming store with game accounts, bundles, QR checkout, wishlist support, Telegram help, and a clean multi-page buying flow.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Oxanium:wght@400;600;700&family=Manrope:wght@400;500;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/styles.css">
+</head>
+<body data-page="home">
+  <div class="shell">
+    <nav class="topbar">
+      <a class="brand" href="/"><span class="brand-mark">GA</span><span><strong data-site-title>Gamers Arena</strong><br><small class="muted">simple game store</small></span></a>
+      <div class="nav-links">
+        <a class="nav-link" data-nav-link="home" href="/">Home</a>
+        <a class="nav-link" href="#storeSection">Games</a>
+        <a class="nav-link" href="/bundles.html">Bundles</a>
+        <a class="nav-link" href="/cart.html">Cart (<span data-cart-count>0</span>)</a>
+        <a class="nav-link" href="/checkout.html">Checkout</a>
+        <a class="nav-link" href="/chat.html">Support</a>
+        <a class="nav-link" href="/blog.html">Blog</a>
+      </div>
+      <div class="nav-actions">
+        <span class="muted" data-user-label>Guest</span>
+        <button class="btn btn-secondary" type="button" data-auth-action>Login</button>
+      </div>
+    </nav>
+
+    <header class="hero reveal" data-reveal>
+      <div class="hero-grid">
+        <div class="hero-main">
+          <p class="eyebrow">clean gaming store</p>
+          <h1>Buy game accounts fast. Pay by QR. Continue on Telegram support.</h1>
+          <p class="hero-copy">Gamers Arena keeps everything simple for both customers and admin. Browse clean text-only game cards, add items to cart, pay, and continue your order or query on Telegram.</p>
+          <div class="chip-row hero-chip-row">
+            <span class="chip">Fast search</span>
+            <span class="chip">Wishlist support</span>
+            <span class="chip">Bundle pages</span>
+            <span class="chip">Telegram handoff</span>
+          </div>
+          <div class="cta-row">
+            <a class="btn btn-primary" href="#storeSection">Browse Games</a>
+            <a class="btn btn-secondary" href="/bundles.html">Open Bundles</a>
+            <a class="btn btn-secondary" data-telegram-general href="https://t.me/gamersarena_shop" target="_blank" rel="noreferrer">Ask On Telegram</a>
+          </div>
+          <div class="quick-filter-row">
+            <button class="filter-pill active" type="button" data-home-category="">All Games</button>
+            <button class="filter-pill" type="button" data-home-category="Action">Action</button>
+            <button class="filter-pill" type="button" data-home-category="Shooter">Shooter</button>
+            <button class="filter-pill" type="button" data-home-category="RPG">RPG</button>
+            <button class="filter-pill" type="button" data-home-category="Racing">Racing</button>
+            <button class="filter-pill" type="button" data-home-category="Low-end PC">Low-End PC</button>
+            <button class="filter-pill" type="button" data-home-category="Upcoming">Upcoming</button>
+          </div>
+        </div>
+        <aside class="hero-side">
+          <div class="hero-note">Live store pulse</div>
+          <div class="metric-grid">
+            <article class="metric-card">
+              <span class="metric-label">Games Live</span>
+              <strong id="metricGames" class="metric-value">0</strong>
+            </article>
+            <article class="metric-card">
+              <span class="metric-label">Bundles</span>
+              <strong id="metricBundles" class="metric-value">0</strong>
+            </article>
+            <article class="metric-card">
+              <span class="metric-label">Upcoming</span>
+              <strong id="metricUpcoming" class="metric-value">0</strong>
+            </article>
+            <article class="metric-card">
+              <span class="metric-label">Saved</span>
+              <strong id="metricWishlist" class="metric-value">0</strong>
+            </article>
+          </div>
+          <div class="route-steps">
+            <div class="route-step"><span>01</span> Browse games or bundles</div>
+            <div class="route-step"><span>02</span> Add to cart and pay by QR</div>
+            <div class="route-step"><span>03</span> Continue to Telegram support</div>
+          </div>
+        </aside>
+      </div>
+    </header>
+
+    <main>
+      <section class="panel pulse-panel reveal" data-reveal>
+        <div class="section-head">
+          <div>
+            <p class="eyebrow">store pulse</p>
+            <h2 class="section-title">Popular Universes Across Gamers Arena</h2>
+          </div>
+        </div>
+        <div class="pulse-rail auto-rail" data-auto-rail data-auto-rail-speed="3600">
+          <span class="pulse-pill">Grand Theft Auto</span>
+          <span class="pulse-pill">Black Myth: Wukong</span>
+          <span class="pulse-pill">Ghost of Tsushima</span>
+          <span class="pulse-pill">Red Dead Redemption</span>
+          <span class="pulse-pill">Elden Ring</span>
+          <span class="pulse-pill">Cyberpunk 2077</span>
+          <span class="pulse-pill">Resident Evil</span>
+          <span class="pulse-pill">Assassin&apos;s Creed</span>
+          <span class="pulse-pill">Call of Duty</span>
+          <span class="pulse-pill">Need for Speed</span>
+          <span class="pulse-pill">Spider-Man</span>
+          <span class="pulse-pill">God of War</span>
+        </div>
+      </section>
+
+      <section id="storeSection" class="panel reveal store-panel" data-reveal>
+        <div class="store-stage-top">
+          <div class="store-stage-copy">
+            <p class="eyebrow">game store</p>
+            <h2 class="section-title">Game Accounts</h2>
+            <p class="hero-copy">Search fast, filter by category, and add games to your cart in a clean storefront. If a game is missing, the request flow sends buyers straight to Telegram.</p>
+            <div class="chip-row">
+              <span class="chip">Same simple layout</span>
+              <span class="chip">₹45 game pricing</span>
+              <span class="chip">Fast Telegram support</span>
+            </div>
+          </div>
+          <aside class="store-note-card">
+            <p class="eyebrow">quick help</p>
+            <strong>Need a missing title?</strong>
+            <p class="hero-copy">Use search first. If it is not listed, the store shows a Telegram request button so customers can still place a demand quickly.</p>
+          </aside>
+        </div>
+        <div class="toolbar">
+          <div class="search-suggestions-shell">
+            <input id="gameSearch" class="input" placeholder="Search games">
+            <div id="searchSuggestions" class="search-suggestions hidden"></div>
+          </div>
+          <select id="gameCategory" class="select">
+            <option value="">All categories</option>
+          </select>
+          <button id="clearGameFilters" class="btn btn-secondary" type="button">Clear</button>
+        </div>
+        <p id="resultsMeta" class="muted"></p>
+        <p id="homeStatus" class="status"></p>
+        <div id="gamesGrid" class="game-grid"></div>
+        <div id="loadMoreWrap" class="load-more-wrap hidden">
+          <button id="loadMoreGames" class="btn btn-secondary" type="button">Load More Games</button>
+        </div>
+      </section>
+
+      <section class="panel reveal" data-reveal>
+        <div class="section-head">
+          <div>
+            <p class="eyebrow">bundles</p>
+            <h2 class="section-title">Bundles</h2>
+          </div>
+          <a class="btn btn-secondary" href="/bundles.html">Open Bundle Catalog</a>
+        </div>
+        <div id="bundleList" class="bundle-grid auto-rail" data-auto-rail></div>
+      </section>
+
+      <section class="panel reveal" data-reveal>
+        <div class="section-head">
+          <div>
+            <p class="eyebrow">featured</p>
+            <h2 class="section-title">Quick Picks For Buyers</h2>
+          </div>
+        </div>
+        <div id="featuredSections" class="feature-grid"></div>
+      </section>
+
+      <section class="panel reveal" data-reveal>
+        <div class="section-head">
+          <div>
+            <p class="eyebrow">upcoming</p>
+            <h2 class="section-title">Upcoming Watchlist</h2>
+          </div>
+        </div>
+        <div id="upcomingGrid" class="game-grid"></div>
+      </section>
+
+      <section class="panel reveal" data-reveal>
+        <div class="section-head">
+          <div>
+            <p class="eyebrow">why us</p>
+            <h2 class="section-title">Simple Multi-Page Buying Flow</h2>
+          </div>
+        </div>
+        <div class="feature-grid">
+          <article class="card feature-item">
+            <h3 class="card-title">1. Pick Games</h3>
+            <p class="hero-copy">Browse clean text-only cards with the same easy layout and fast add-to-cart flow.</p>
+          </article>
+          <article class="card feature-item">
+            <h3 class="card-title">2. Pay By QR</h3>
+            <p class="hero-copy">Checkout stays simple. Scan the QR, pay, and click one button to continue.</p>
+          </article>
+          <article class="card feature-item">
+            <h3 class="card-title">3. Support On Telegram</h3>
+            <p class="hero-copy">After payment or for any query, users go directly to Telegram support with a ready message.</p>
+          </article>
+        </div>
+      </section>
+
+      <section class="panel reveal" data-reveal>
+        <div class="section-head">
+          <div>
+            <p class="eyebrow">page builder</p>
+            <h2 class="section-title">Custom Homepage Blocks</h2>
+          </div>
+        </div>
+        <div id="homeLayout" class="list"></div>
+      </section>
+
+      <section class="panel reveal" data-reveal>
+        <div class="section-head">
+          <div>
+            <p class="eyebrow">saved for later</p>
+            <h2 class="section-title">Wishlist</h2>
+          </div>
+          <a class="btn btn-secondary" href="/wishlist.html">Open Wishlist</a>
+        </div>
+        <div id="wishlistPreview" class="bundle-grid"></div>
+      </section>
+
+      <section class="panel reveal" data-reveal>
+        <div class="section-head">
+          <div>
+            <p class="eyebrow">customer voice</p>
+            <h2 class="section-title">Reviews And Trust</h2>
+          </div>
+          <a class="btn btn-secondary" href="/reviews.html">All Reviews</a>
+        </div>
+        <div id="reviewPreview" class="bundle-grid auto-rail" data-auto-rail></div>
+      </section>
+
+      <section class="panel reveal" data-reveal>
+        <div class="section-head">
+          <div>
+            <p class="eyebrow">help center</p>
+            <h2 class="section-title">FAQ</h2>
+          </div>
+          <a class="btn btn-secondary" href="/faq.html">Open FAQ</a>
+        </div>
+        <div id="faqPreview" class="feature-grid"></div>
+      </section>
+
+      <section class="panel reveal" data-reveal>
+        <div class="section-head">
+          <div>
+            <p class="eyebrow">trust</p>
+            <h2 class="section-title">Launch Confidence</h2>
+          </div>
+        </div>
+        <div class="feature-grid">
+          <article class="card feature-item">
+            <h3 class="card-title">All Games Same Price</h3>
+            <p class="hero-copy">Every listed game account is currently set to ₹45 unless you change it later from admin.</p>
+          </article>
+          <article class="card feature-item">
+            <h3 class="card-title">Fast Support</h3>
+            <p class="hero-copy">After payment, users are redirected straight to Telegram support with an order-ready message.</p>
+          </article>
+          <article class="card feature-item">
+            <h3 class="card-title">Easy Management</h3>
+            <p class="hero-copy">You can change title, QR, games, blog, and homepage sections from the admin dashboard and editor.</p>
+          </article>
+        </div>
+      </section>
+    </main>
+  </div>
+  <script src="/app.js"></script>
+</body>
+</html>
