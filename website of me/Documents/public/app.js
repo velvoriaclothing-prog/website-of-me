@@ -1575,7 +1575,24 @@ async function initAdmin() {
   renderAdminBundles();
   renderBundleGameChecklist();
   if (qs("siteTitleInput")) qs("siteTitleInput").value = state.settings.siteTitle || "Gamers Arena";
-  if (qs("adminEmailInput")) qs("adminEmailInput").value = state.session.contact || "admin@gamersarena.com";
+  const adminEmailInput = qs("adminEmailInput");
+  if (adminEmailInput) {
+    adminEmailInput.value = state.settings.adminEmail || state.session.contact || "admin@gamersarena.com";
+    adminEmailInput.disabled = Boolean(state.settings.adminEmailManagedByEnv);
+  }
+  const adminPasswordInput = qs("adminPasswordInput");
+  if (adminPasswordInput) {
+    adminPasswordInput.disabled = Boolean(state.settings.adminPasswordManagedByEnv);
+    adminPasswordInput.placeholder = state.settings.adminPasswordManagedByEnv
+      ? "Managed by Render environment variables"
+      : "New admin password (optional)";
+  }
+  const credentialsHint = qs("credentialsHint");
+  if (credentialsHint) {
+    credentialsHint.textContent = state.settings.credentialsManagedByEnv
+      ? "Admin login credentials are managed by deployment environment variables on this server."
+      : "";
+  }
   const qrPreview = qs("qrPreview");
   if (qrPreview) qrPreview.src = state.settings.qrImage;
   connectSocket();

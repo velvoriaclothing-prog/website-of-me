@@ -31,7 +31,8 @@ Gamers Arena is a clean multi-page gaming store built with Node.js, Express, van
 ## Admin defaults
 
 - Email: `admin@gamersarena.com`
-- Password: `Aditisubhan`
+- Password: set `ADMIN_PASSWORD` in your environment
+- Secondary passcode: set `ADMIN_SECONDARY_PASSWORD` in your environment
 
 ## Telegram support
 
@@ -51,7 +52,21 @@ Then open:
 
 ## Notes
 
-- Store data is kept in [store.json](C:/Users/subhan/Downloads/Documents-20260407T145643Z-3-001/Documents/data/store.json)
+- Store data is kept in `data/store.json` by default
 - Admin can change site title, QR image, homepage blocks, games, and blogs
 - Users are redirected to Telegram after clicking `I Paid`
 - Bundles are intentionally empty right now so you can add them later
+- For deployment, set `SESSION_SECRET`, `ADMIN_EMAIL`, `ADMIN_PASSWORD`, and `ADMIN_SECONDARY_PASSWORD`
+- To keep data across Render restarts, set `STORE_PATH` to a persistent-disk path such as `/var/data/store.json`
+- If `STORE_PATH` points somewhere new, the app will seed that file from the bundled `data/store.json` on first boot
+
+## Render deployment
+
+This app is prepared for deployment from the repository root using `render.yaml`.
+
+- Render service root directory: `website of me/Documents`
+- Build command: `npm install`
+- Start command: `npm start`
+- Health check: `/health`
+
+Use the repository root `README.md` for the GitHub, Render, and Hostinger launch steps.

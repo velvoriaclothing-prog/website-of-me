@@ -6,7 +6,9 @@ const { attachSession, getSession, setSession, clearSession } = require("./sessi
 const { getMergedBlogs, getBlogBySlug } = require("./blogEngine");
 const { ensureBundleDrafts, getBundleBySlug, getBundles, normalizeBundle } = require("./bundleCatalog");
 
-const ADMIN_SECONDARY_PASSWORD = "Aditi";
+const ADMIN_SECONDARY_PASSWORD = process.env.ADMIN_SECONDARY_PASSWORD || "change-me";
+const ADMIN_EMAIL = process.env.ADMIN_EMAIL || "admin@gamersarena.com";
+const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || null;
 
 function sanitizeGame(game) {
   return {
@@ -75,6 +77,18 @@ function createApp(io) {
   const publicDir = path.join(__dirname, "..", "public");
   readStore();
 
+  function getAdminCredentials(store) {
+    return {
+      email: ADMIN_EMAIL || store.admin.email,
+      password: ADMIN_PASSWORD || store.admin.password,
+      secondaryPassword: ADMIN_SECONDARY_PASSWORD,
+      emailManagedByEnv: Boolean(process.env.ADMIN_EMAIL),
+      passwordManagedByEnv: Boolean(process.env.ADMIN_PASSWORD),
+      secondaryManagedByEnv: Boolean(process.env.ADMIN_SECONDARY_PASSWORD),
+      managedByEnv: Boolean(process.env.ADMIN_EMAIL || process.env.ADMIN_PASSWORD || process.env.ADMIN_SECONDARY_PASSWORD)
+    };
+  }
+
   app.use(compression());
   app.use(express.json({ limit: "25mb" }));
   app.use((req, res, next) => {
@@ -142,6 +156,7 @@ function createApp(io) {
     const session = getSession(req);
     const store = readStore();
     const settings = store.settings || {};
+    const admin = getAdminCredentials(store);
     res.json({
       user: session?.userId ? {
         id: session.userId,
@@ -151,14 +166,18 @@ function createApp(io) {
       } : session?.isAdmin ? {
         id: "admin",
         name: "Admin",
-        contact: store.admin.email,
+        contact: admin.email,
         isAdmin: true
       } : null,
       settings: {
         siteTitle: settings.siteTitle || "Gamers Arena",
         qrImage: settings.qrImage || defaultQr,
         homeLayout: Array.isArray(settings.homeLayout) ? settings.homeLayout : [],
-        bundles: getBundles(store).map(sanitizeBundle)
+        bundles: getBundles(store).map(sanitizeBundle),
+        adminEmail: admin.email,
+        adminEmailManagedByEnv: admin.emailManagedByEnv,
+        adminPasswordManagedByEnv: admin.passwordManagedByEnv,
+        credentialsManagedByEnv: admin.managedByEnv
       }
     });
   });
@@ -209,12 +228,13 @@ function createApp(io) {
     const adminPasscode = String(req.body?.adminPasscode || "").trim();
     const role = String(req.body?.role || "user");
     const store = readStore();
+    const admin = getAdminCredentials(store);
 
     if (role === "admin") {
       if (
-        contact.toLowerCase() !== store.admin.email.toLowerCase() ||
-        password !== store.admin.password ||
-        adminPasscode !== ADMIN_SECONDARY_PASSWORD
+        contact.toLowerCase() !== admin.email.toLowerCase() ||
+        password !== admin.password ||
+        adminPasscode !== admin.secondaryPassword
       ) {
         return res.status(401).json({ error: "Invalid admin credentials." });
       }
@@ -222,10 +242,10 @@ function createApp(io) {
         ownerKey: "admin",
         userId: "admin",
         name: "Admin",
-        contact: store.admin.email,
+        contact: admin.email,
         isAdmin: true
       });
-      return res.json({ user: { id: "admin", name: "Admin", contact: store.admin.email, isAdmin: true } });
+      return res.json({ user: { id: "admin", name: "Admin", contact: admin.email, isAdmin: true } });
     }
 
     const user = store.users.find((item) => item.contact.toLowerCase() === contact.toLowerCase() && item.password === password);
@@ -599,15 +619,22 @@ function createApp(io) {
 
   app.get("/settings", (_req, res) => {
     const store = readStore();
+    const admin = getAdminCredentials(store);
     res.json({
       siteTitle: store.settings.siteTitle || "Gamers Arena",
       qrImage: store.settings.qrImage || defaultQr,
       homeLayout: Array.isArray(store.settings.homeLayout) ? store.settings.homeLayout : [],
-      bundles: getBundles(store).map(sanitizeBundle)
+      bundles: getBundles(store).map(sanitizeBundle),
+      adminEmail: admin.email,
+      adminEmailManagedByEnv: admin.emailManagedByEnv,
+      adminPasswordManagedByEnv: admin.passwordManagedByEnv,
+      credentialsManagedByEnv: admin.managedByEnv
     });
   });
 
   app.put("/settings", requireAdmin, (req, res) => {
+    const currentStore = readStore();
+    const admin = getAdminCredentials(currentStore);
     const siteTitle = String(req.body?.siteTitle || "").trim() || "Gamers Arena";
     const qrImage = String(req.body?.qrImage || "").trim() || defaultQr;
     const homeLayout = Array.isArray(req.body?.homeLayout) ? req.body.homeLayout : [];
@@ -629,15 +656,20 @@ function createApp(io) {
           .map((bundle, index) => normalizeBundle(bundle, index))
           .filter((bundle) => bundle.name);
       }
-      if (adminEmail) draft.admin.email = adminEmail;
-      if (adminPassword) draft.admin.password = adminPassword;
+      if (adminEmail && !admin.emailManagedByEnv) draft.admin.email = adminEmail;
+      if (adminPassword && !admin.passwordManagedByEnv) draft.admin.password = adminPassword;
       return draft;
     });
+    const activeAdmin = getAdminCredentials(store);
     res.json({
       siteTitle: store.settings.siteTitle,
       qrImage: store.settings.qrImage,
       homeLayout: store.settings.homeLayout,
-      bundles: getBundles(store).map(sanitizeBundle)
+      bundles: getBundles(store).map(sanitizeBundle),
+      adminEmail: activeAdmin.email,
+      adminEmailManagedByEnv: activeAdmin.emailManagedByEnv,
+      adminPasswordManagedByEnv: activeAdmin.passwordManagedByEnv,
+      credentialsManagedByEnv: activeAdmin.managedByEnv
     });
   });
 

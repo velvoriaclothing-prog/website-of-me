@@ -1,7 +1,15 @@
 const crypto = require("crypto");
 
 const COOKIE_NAME = "ga_sid";
-const sessions = new Map();
+const SESSION_SECRET = process.env.SESSION_SECRET || "change-me-session-secret";
+const secureCookie = process.env.NODE_ENV === "production";
+
+function buildCookie(value, maxAge) {
+  const parts = [`${COOKIE_NAME}=${value}`, "Path=/", "HttpOnly", "SameSite=Lax"];
+  if (typeof maxAge === "number") parts.push(`Max-Age=${maxAge}`);
+  if (secureCookie) parts.push("Secure");
+  return parts.join("; ");
+}
 
 function parseCookies(header = "") {
   return header
@@ -22,10 +30,62 @@ function makeSid() {
   return crypto.randomBytes(24).toString("hex");
 }
 
+function createGuestSession() {
+  const sid = makeSid();
+  return {
+    ownerKey: `guest-${sid.slice(0, 10)}`,
+    userId: null,
+    name: "Guest",
+    contact: "",
+    isAdmin: false
+  };
+}
+
+function normalizeSession(value) {
+  const ownerKey = String(value?.ownerKey || "").trim();
+  if (!ownerKey) return null;
+
+  return {
+    ownerKey,
+    userId: value?.userId ? String(value.userId) : null,
+    name: String(value?.name || "Guest"),
+    contact: String(value?.contact || ""),
+    isAdmin: Boolean(value?.isAdmin)
+  };
+}
+
+function safeEqual(left, right) {
+  const leftBuffer = Buffer.from(left);
+  const rightBuffer = Buffer.from(right);
+  if (leftBuffer.length !== rightBuffer.length) return false;
+  return crypto.timingSafeEqual(leftBuffer, rightBuffer);
+}
+
+function sign(payload) {
+  return crypto.createHmac("sha256", SESSION_SECRET).update(payload).digest("base64url");
+}
+
+function encodeSession(session) {
+  const payload = Buffer.from(JSON.stringify(session), "utf8").toString("base64url");
+  return `${payload}.${sign(payload)}`;
+}
+
+function decodeSession(token) {
+  const [payload, signature] = String(token || "").split(".");
+  if (!payload || !signature) return null;
+  if (!safeEqual(sign(payload), signature)) return null;
+
+  try {
+    const session = JSON.parse(Buffer.from(payload, "base64url").toString("utf8"));
+    return normalizeSession(session);
+  } catch (_error) {
+    return null;
+  }
+}
+
 function getSession(req) {
-  const sid = parseCookies(req.headers.cookie || "")[COOKIE_NAME];
-  if (!sid) return null;
-  return sessions.get(sid) ? { sid, ...sessions.get(sid) } : null;
+  const token = parseCookies(req.headers.cookie || "")[COOKIE_NAME];
+  return decodeSession(token);
 }
 
 function attachSession(req, res) {
@@ -35,47 +95,34 @@ function attachSession(req, res) {
     return current;
   }
 
-  const sid = makeSid();
-  const session = {
-    ownerKey: `guest-${sid.slice(0, 10)}`,
-    userId: null,
-    name: "Guest",
-    contact: "",
-    isAdmin: false
-  };
-  sessions.set(sid, session);
-  res.setHeader("Set-Cookie", `${COOKIE_NAME}=${sid}; Path=/; HttpOnly; SameSite=Lax`);
-  req.session = { sid, ...session };
+  const session = createGuestSession();
+  res.setHeader("Set-Cookie", buildCookie(encodeSession(session)));
+  req.session = session;
   return req.session;
 }
 
 function setSession(req, res, value) {
   const attached = attachSession(req, res);
-  const session = {
-    ownerKey: value.ownerKey,
+  const session = normalizeSession({
+    ownerKey: value.ownerKey || attached.ownerKey,
     userId: value.userId || null,
     name: value.name || "Guest",
     contact: value.contact || "",
     isAdmin: Boolean(value.isAdmin)
-  };
-  sessions.set(attached.sid, session);
-  req.session = { sid: attached.sid, ...session };
-  res.setHeader("Set-Cookie", `${COOKIE_NAME}=${attached.sid}; Path=/; HttpOnly; SameSite=Lax`);
+  }) || attached;
+  req.session = session;
+  res.setHeader("Set-Cookie", buildCookie(encodeSession(session)));
   return req.session;
 }
 
 function clearSession(req, res) {
-  const current = getSession(req);
-  if (current) sessions.delete(current.sid);
-  res.setHeader("Set-Cookie", `${COOKIE_NAME}=; Path=/; HttpOnly; Max-Age=0; SameSite=Lax`);
+  res.setHeader("Set-Cookie", buildCookie("", 0));
   req.session = null;
 }
 
 function sessionFromSocket(handshake) {
-  const sid = parseCookies(handshake.headers.cookie || "")[COOKIE_NAME];
-  if (!sid) return null;
-  const session = sessions.get(sid);
-  return session ? { sid, ...session } : null;
+  const token = parseCookies(handshake.headers.cookie || "")[COOKIE_NAME];
+  return decodeSession(token);
 }
 
 module.exports = {

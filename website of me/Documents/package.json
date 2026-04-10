@@ -3,6 +3,9 @@
   "version": "1.0.0",
   "description": "Gamers Arena gaming store with QR checkout, private chat, admin dashboard, blog, and page builder",
   "main": "server.js",
+  "engines": {
+    "node": ">=20 <23"
+  },
   "scripts": {
     "start": "node server.js",
     "dev": "node server.js"

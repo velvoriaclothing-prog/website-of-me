@@ -5,6 +5,7 @@ const createApp = require("./src/app");
 const { sessionFromSocket } = require("./src/sessionManager");
 
 const PORT = Number(process.env.PORT || 3000);
+const HOST = process.env.HOST || "0.0.0.0";
 
 const io = new Server({
   cors: {
@@ -25,6 +26,6 @@ const server = http.createServer(app);
 
 io.attach(server);
 
-server.listen(PORT, () => {
-  console.log(`Gamers Arena running on http://localhost:${PORT}`);
+server.listen(PORT, HOST, () => {
+  console.log(`Gamers Arena running on http://${HOST}:${PORT}`);
 });
