@@ -6,6 +6,7 @@ const storePath = process.env.STORE_PATH ? path.resolve(process.env.STORE_PATH) 
 const seedStorePath = process.env.STORE_SEED_PATH ? path.resolve(process.env.STORE_SEED_PATH) : bundledStorePath;
 const defaultAdminEmail = process.env.ADMIN_EMAIL || "admin@gamersarena.com";
 const defaultAdminPassword = process.env.ADMIN_PASSWORD || "change-me";
+const defaultAdminSecondaryPassword = process.env.ADMIN_SECONDARY_PASSWORD || "change-me";
 const defaultQr = "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 320 320'><rect width='320' height='320' rx='24' fill='white'/><rect x='26' y='26' width='84' height='84' fill='black'/><rect x='44' y='44' width='48' height='48' fill='white'/><rect x='210' y='26' width='84' height='84' fill='black'/><rect x='228' y='44' width='48' height='48' fill='white'/><rect x='26' y='210' width='84' height='84' fill='black'/><rect x='44' y='228' width='48' height='48' fill='white'/><text x='160' y='302' font-size='18' font-family='Arial' text-anchor='middle' fill='%23111'>SCAN TO PAY</text></svg>";
 let cachedStore = null;
 let cachedMtimeMs = 0;
@@ -17,8 +18,9 @@ function cloneStore(value) {
 function normalizeStore(store) {
   const next = store || {};
   next.admin = next.admin || {};
-  next.admin.email = process.env.ADMIN_EMAIL || next.admin.email || defaultAdminEmail;
-  next.admin.password = process.env.ADMIN_PASSWORD || next.admin.password || defaultAdminPassword;
+  next.admin.email = next.admin.email || defaultAdminEmail;
+  next.admin.password = next.admin.password || defaultAdminPassword;
+  next.admin.secondaryPassword = next.admin.secondaryPassword || defaultAdminSecondaryPassword;
   next.settings = next.settings || {};
   return next;
 }
@@ -28,14 +30,15 @@ function createInitialStore() {
   return normalizeStore({
     admin: {
       email: defaultAdminEmail,
-      password: defaultAdminPassword
+      password: defaultAdminPassword,
+      secondaryPassword: defaultAdminSecondaryPassword
     },
     settings: {
       siteTitle: "Gamers Arena",
       qrImage: defaultQr,
       homeLayout: [
-        { id: "block-1", type: "text", content: "Buy game accounts fast, pay by QR, and continue in a private chat with admin." },
-        { id: "block-2", type: "text", content: "Every game card stays clean and simple so users can decide quickly." }
+        { id: "block-1", type: "text", content: "Shop cheap Steam games, discounted bundles, and budget-friendly PC game deals with a clean buying flow." },
+        { id: "block-2", type: "text", content: "Search fast, pay by QR, save your wishlist, and continue the order with direct Telegram support." }
       ]
     },
     games: [

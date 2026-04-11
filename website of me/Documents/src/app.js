@@ -1,3 +1,4 @@
+const fs = require("fs");
 const express = require("express");
 const compression = require("compression");
 const path = require("path");
@@ -5,10 +6,15 @@ const { readStore, updateStore, createId, slugify, defaultQr } = require("./stor
 const { attachSession, getSession, setSession, clearSession } = require("./sessionManager");
 const { getMergedBlogs, getBlogBySlug } = require("./blogEngine");
 const { ensureBundleDrafts, getBundleBySlug, getBundles, normalizeBundle } = require("./bundleCatalog");
+const { buildRobotsTxt, buildSitemapXml, getSeoForPath, injectSeo } = require("./seo");
 
-const ADMIN_SECONDARY_PASSWORD = process.env.ADMIN_SECONDARY_PASSWORD || "change-me";
 const ADMIN_EMAIL = process.env.ADMIN_EMAIL || "admin@gamersarena.com";
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || null;
+const ADMIN_SECONDARY_PASSWORD = process.env.ADMIN_SECONDARY_PASSWORD || "change-me";
+const ADMIN_RECOVERY_DOB1 = process.env.ADMIN_RECOVERY_DOB1 || "27-03-2007";
+const ADMIN_RECOVERY_DOB2 = process.env.ADMIN_RECOVERY_DOB2 || "17-10-2008";
+const ADMIN_PRIMARY_WINDOW_MS = 5 * 60 * 1000;
+const ADMIN_RECOVERY_WINDOW_MS = 10 * 60 * 1000;
 
 function sanitizeGame(game) {
   return {
@@ -72,6 +78,15 @@ function normalizeSearchValue(value) {
     .trim();
 }
 
+function normalizeDobValue(value) {
+  const digits = String(value || "").replace(/\D/g, "");
+  if (digits.length !== 8) return "";
+  if (digits.startsWith("19") || digits.startsWith("20")) {
+    return `${digits.slice(6, 8)}-${digits.slice(4, 6)}-${digits.slice(0, 4)}`;
+  }
+  return `${digits.slice(0, 2)}-${digits.slice(2, 4)}-${digits.slice(4, 8)}`;
+}
+
 function createApp(io) {
   const app = express();
   const publicDir = path.join(__dirname, "..", "public");
@@ -79,14 +94,40 @@ function createApp(io) {
 
   function getAdminCredentials(store) {
     return {
-      email: ADMIN_EMAIL || store.admin.email,
-      password: ADMIN_PASSWORD || store.admin.password,
-      secondaryPassword: ADMIN_SECONDARY_PASSWORD,
-      emailManagedByEnv: Boolean(process.env.ADMIN_EMAIL),
-      passwordManagedByEnv: Boolean(process.env.ADMIN_PASSWORD),
-      secondaryManagedByEnv: Boolean(process.env.ADMIN_SECONDARY_PASSWORD),
-      managedByEnv: Boolean(process.env.ADMIN_EMAIL || process.env.ADMIN_PASSWORD || process.env.ADMIN_SECONDARY_PASSWORD)
+      email: store.admin.email || ADMIN_EMAIL,
+      password: store.admin.password || ADMIN_PASSWORD || "change-me",
+      secondaryPassword: store.admin.secondaryPassword || ADMIN_SECONDARY_PASSWORD || "change-me",
+      emailManagedByEnv: false,
+      passwordManagedByEnv: false,
+      secondaryManagedByEnv: false,
+      managedByEnv: false
     };
+  }
+
+  function isPrimaryVerificationActive(session, email) {
+    return Boolean(
+      session?.adminPrimaryEmail &&
+      session.adminPrimaryEmail.toLowerCase() === String(email || "").toLowerCase() &&
+      Number(session.adminPrimaryVerifiedUntil || 0) > Date.now()
+    );
+  }
+
+  function isRecoveryVerificationActive(session) {
+    return Number(session?.adminRecoveryVerifiedUntil || 0) > Date.now();
+  }
+
+  function resolveBaseUrl(req) {
+    const envBaseUrl = String(process.env.BASE_URL || "").trim();
+    if (envBaseUrl) return envBaseUrl.replace(/\/+$/, "");
+    return `${req.protocol}://${req.get("host")}`;
+  }
+
+  function sendSeoPage(req, res, fileName, seoPath) {
+    const filePath = path.join(publicDir, fileName);
+    if (!fs.existsSync(filePath)) return res.sendStatus(404);
+    const html = fs.readFileSync(filePath, "utf8");
+    const seo = getSeoForPath(seoPath);
+    return res.type("html").send(injectSeo(html, seo, resolveBaseUrl(req)));
   }
 
   app.use(compression());
@@ -94,6 +135,21 @@ function createApp(io) {
   app.use((req, res, next) => {
     attachSession(req, res);
     next();
+  });
+  app.get("/robots.txt", (req, res) => {
+    res.type("text/plain").send(buildRobotsTxt(resolveBaseUrl(req)));
+  });
+  app.get("/sitemap.xml", (req, res) => {
+    res.type("application/xml").send(buildSitemapXml(resolveBaseUrl(req)));
+  });
+  app.use((req, res, next) => {
+    if (!["GET", "HEAD"].includes(req.method)) return next();
+    const pagePath = req.path === "/" ? "/index.html" : req.path;
+    if (!pagePath.endsWith(".html")) return next();
+    const fileName = pagePath === "/index.html" ? "index.html" : pagePath.slice(1);
+    const filePath = path.join(publicDir, fileName);
+    if (!fs.existsSync(filePath)) return next();
+    return sendSeoPage(req, res, fileName, pagePath);
   });
   app.use(express.static(publicDir, {
     etag: true,
@@ -123,6 +179,17 @@ function createApp(io) {
 
   function getOwnerKey(session) {
     return session?.userId || session?.ownerKey;
+  }
+
+  function findUserByContact(store, contact) {
+    return (store.users || []).find((item) => String(item.contact || "").toLowerCase() === String(contact || "").toLowerCase());
+  }
+
+  function findUserByRecovery(store, name, contact) {
+    return (store.users || []).find((item) => (
+      String(item.contact || "").toLowerCase() === String(contact || "").toLowerCase() &&
+      String(item.name || "").trim().toLowerCase() === String(name || "").trim().toLowerCase()
+    ));
   }
 
   function buildCartItems(store, ownerKey) {
@@ -177,6 +244,7 @@ function createApp(io) {
         adminEmail: admin.email,
         adminEmailManagedByEnv: admin.emailManagedByEnv,
         adminPasswordManagedByEnv: admin.passwordManagedByEnv,
+        adminSecondaryManagedByEnv: admin.secondaryManagedByEnv,
         credentialsManagedByEnv: admin.managedByEnv
       }
     });
@@ -203,7 +271,7 @@ function createApp(io) {
       return draft;
     });
 
-    const user = store.users.find((item) => item.contact.toLowerCase() === contact.toLowerCase());
+    const user = findUserByContact(store, contact);
     const guestOwner = getSession(req)?.ownerKey;
     setSession(req, res, {
       ownerKey: user.id,
@@ -232,24 +300,27 @@ function createApp(io) {
 
     if (role === "admin") {
       if (
-        contact.toLowerCase() !== admin.email.toLowerCase() ||
-        password !== admin.password ||
-        adminPasscode !== admin.secondaryPassword
+        contact.toLowerCase() === admin.email.toLowerCase() &&
+        password === admin.password &&
+        adminPasscode === admin.secondaryPassword
       ) {
-        return res.status(401).json({ error: "Invalid admin credentials." });
+        setSession(req, res, {
+          ownerKey: "admin",
+          userId: "admin",
+          name: "Admin",
+          contact: admin.email,
+          isAdmin: true,
+          adminPrimaryEmail: "",
+          adminPrimaryVerifiedUntil: 0,
+          adminRecoveryVerifiedUntil: 0
+        });
+        return res.json({ user: { id: "admin", name: "Admin", contact: admin.email, isAdmin: true } });
       }
-      setSession(req, res, {
-        ownerKey: "admin",
-        userId: "admin",
-        name: "Admin",
-        contact: admin.email,
-        isAdmin: true
-      });
-      return res.json({ user: { id: "admin", name: "Admin", contact: admin.email, isAdmin: true } });
+      return res.status(401).json({ error: "Invalid admin credentials." });
     }
 
-    const user = store.users.find((item) => item.contact.toLowerCase() === contact.toLowerCase() && item.password === password);
-    if (!user) return res.status(401).json({ error: "Invalid user credentials." });
+    const user = findUserByContact(store, contact);
+    if (!user || user.password !== password) return res.status(401).json({ error: "Invalid user credentials." });
     const guestOwner = getSession(req)?.ownerKey;
     setSession(req, res, {
       ownerKey: user.id,
@@ -266,6 +337,158 @@ function createApp(io) {
       });
     }
     return res.json({ user: { id: user.id, name: user.name, contact: user.contact, isAdmin: false } });
+  });
+
+  app.post("/auth/admin/primary", (req, res) => {
+    const contact = String(req.body?.contact || "").trim();
+    const password = String(req.body?.password || "").trim();
+    const store = readStore();
+    const admin = getAdminCredentials(store);
+    if (contact.toLowerCase() !== admin.email.toLowerCase() || password !== admin.password) {
+      return res.status(401).json({ error: "First admin password is incorrect." });
+    }
+
+    const current = getSession(req);
+    setSession(req, res, {
+      ownerKey: current?.ownerKey || "admin-check",
+      userId: null,
+      name: current?.name || "Guest",
+      contact: current?.contact || "",
+      isAdmin: false,
+      adminPrimaryEmail: admin.email,
+      adminPrimaryVerifiedUntil: Date.now() + ADMIN_PRIMARY_WINDOW_MS,
+      adminRecoveryVerifiedUntil: 0
+    });
+    return res.json({ ok: true, message: "First password verified." });
+  });
+
+  app.post("/auth/admin/secondary", (req, res) => {
+    const contact = String(req.body?.contact || "").trim();
+    const adminPasscode = String(req.body?.adminPasscode || "").trim();
+    const session = getSession(req);
+    const store = readStore();
+    const admin = getAdminCredentials(store);
+    if (!isPrimaryVerificationActive(session, contact)) {
+      return res.status(401).json({ error: "Please verify the first admin password again." });
+    }
+    if (adminPasscode !== admin.secondaryPassword) {
+      return res.status(401).json({ error: "Second admin password is incorrect." });
+    }
+
+    setSession(req, res, {
+      ownerKey: "admin",
+      userId: "admin",
+      name: "Admin",
+      contact: admin.email,
+      isAdmin: true,
+      adminPrimaryEmail: "",
+      adminPrimaryVerifiedUntil: 0,
+      adminRecoveryVerifiedUntil: 0
+    });
+    return res.json({ user: { id: "admin", name: "Admin", contact: admin.email, isAdmin: true } });
+  });
+
+  app.post("/auth/admin/recovery", (req, res) => {
+    const dob1 = normalizeDobValue(req.body?.dob1 || "");
+    const dob2 = normalizeDobValue(req.body?.dob2 || "");
+    const expectedDob1 = normalizeDobValue(ADMIN_RECOVERY_DOB1);
+    const expectedDob2 = normalizeDobValue(ADMIN_RECOVERY_DOB2);
+    if (!dob1 || !dob2 || dob1 !== expectedDob1 || dob2 !== expectedDob2) {
+      return res.status(401).json({ error: "Security answers did not match." });
+    }
+
+    const current = getSession(req);
+    setSession(req, res, {
+      ownerKey: current?.ownerKey || "admin-recovery",
+      userId: null,
+      name: current?.name || "Guest",
+      contact: current?.contact || "",
+      isAdmin: false,
+      adminPrimaryEmail: "",
+      adminPrimaryVerifiedUntil: 0,
+      adminRecoveryVerifiedUntil: Date.now() + ADMIN_RECOVERY_WINDOW_MS
+    });
+    return res.json({ ok: true, message: "Recovery verified. Set new admin passwords now." });
+  });
+
+  app.post("/auth/admin/reset", (req, res) => {
+    const session = getSession(req);
+    if (!isRecoveryVerificationActive(session)) {
+      return res.status(401).json({ error: "Please complete birthday verification again." });
+    }
+
+    const password = String(req.body?.password || "").trim();
+    const adminPasscode = String(req.body?.adminPasscode || "").trim();
+    if (password.length < 4 || adminPasscode.length < 4) {
+      return res.status(400).json({ error: "Enter a new first and second admin password." });
+    }
+
+    const store = updateStore((draft) => {
+      draft.admin = draft.admin || {};
+      draft.admin.email = draft.admin.email || ADMIN_EMAIL;
+      draft.admin.password = password;
+      draft.admin.secondaryPassword = adminPasscode;
+      draft.admin.updatedAt = new Date().toISOString();
+      return draft;
+    });
+    const admin = getAdminCredentials(store);
+    setSession(req, res, {
+      ownerKey: "admin",
+      userId: "admin",
+      name: "Admin",
+      contact: admin.email,
+      isAdmin: true,
+      adminPrimaryEmail: "",
+      adminPrimaryVerifiedUntil: 0,
+      adminRecoveryVerifiedUntil: 0
+    });
+    return res.json({
+      ok: true,
+      message: "Admin password reset completed.",
+      user: { id: "admin", name: "Admin", contact: admin.email, isAdmin: true }
+    });
+  });
+
+  app.post("/auth/reset-password", (req, res) => {
+    const name = String(req.body?.name || "").trim();
+    const contact = String(req.body?.contact || "").trim();
+    const password = String(req.body?.password || "").trim();
+    if (!name || !validateContact(contact) || password.length < 4) {
+      return res.status(400).json({ error: "Enter the same name, valid email or mobile, and a new password." });
+    }
+
+    const session = getSession(req);
+    const guestOwner = session?.isAdmin ? null : session?.ownerKey;
+    const recoveryUser = findUserByRecovery(readStore(), name, contact);
+    if (!recoveryUser) {
+      return res.status(404).json({ error: "No account matched that name and contact." });
+    }
+
+    const store = updateStore((draft) => {
+      const target = findUserByRecovery(draft, name, contact);
+      if (!target) throw new Error("No account matched that name and contact.");
+      target.password = password;
+      target.updatedAt = new Date().toISOString();
+      if (guestOwner && guestOwner !== target.id && draft.carts[guestOwner]?.length) {
+        draft.carts[target.id] = [...(draft.carts[target.id] || []), ...draft.carts[guestOwner]];
+        delete draft.carts[guestOwner];
+      }
+      return draft;
+    });
+
+    const user = findUserByContact(store, contact);
+    setSession(req, res, {
+      ownerKey: user.id,
+      userId: user.id,
+      name: user.name,
+      contact: user.contact,
+      isAdmin: false
+    });
+    return res.json({
+      ok: true,
+      message: "Password updated.",
+      user: { id: user.id, name: user.name, contact: user.contact, isAdmin: false }
+    });
   });
 
   app.post("/auth/logout", (req, res) => {
@@ -628,6 +851,7 @@ function createApp(io) {
       adminEmail: admin.email,
       adminEmailManagedByEnv: admin.emailManagedByEnv,
       adminPasswordManagedByEnv: admin.passwordManagedByEnv,
+      adminSecondaryManagedByEnv: admin.secondaryManagedByEnv,
       credentialsManagedByEnv: admin.managedByEnv
     });
   });
@@ -641,6 +865,7 @@ function createApp(io) {
     const bundles = Array.isArray(req.body?.bundles) ? req.body.bundles : null;
     const adminEmail = String(req.body?.adminEmail || "").trim();
     const adminPassword = String(req.body?.adminPassword || "").trim();
+    const adminSecondaryPassword = String(req.body?.adminSecondaryPassword || "").trim();
     const store = updateStore((draft) => {
       draft.settings.siteTitle = siteTitle;
       draft.settings.qrImage = qrImage;
@@ -658,6 +883,7 @@ function createApp(io) {
       }
       if (adminEmail && !admin.emailManagedByEnv) draft.admin.email = adminEmail;
       if (adminPassword && !admin.passwordManagedByEnv) draft.admin.password = adminPassword;
+      if (adminSecondaryPassword && !admin.secondaryManagedByEnv) draft.admin.secondaryPassword = adminSecondaryPassword;
       return draft;
     });
     const activeAdmin = getAdminCredentials(store);
@@ -669,6 +895,7 @@ function createApp(io) {
       adminEmail: activeAdmin.email,
       adminEmailManagedByEnv: activeAdmin.emailManagedByEnv,
       adminPasswordManagedByEnv: activeAdmin.passwordManagedByEnv,
+      adminSecondaryManagedByEnv: activeAdmin.secondaryManagedByEnv,
       credentialsManagedByEnv: activeAdmin.managedByEnv
     });
   });
@@ -848,17 +1075,17 @@ function createApp(io) {
     res.json({ ok: true, app: "Gamers Arena" });
   });
 
-  app.get("/", (_req, res) => res.sendFile(path.join(publicDir, "index.html")));
-  app.get("/cart.html", (_req, res) => res.sendFile(path.join(publicDir, "cart.html")));
-  app.get("/checkout.html", (_req, res) => res.sendFile(path.join(publicDir, "checkout.html")));
-  app.get("/chat.html", (_req, res) => res.sendFile(path.join(publicDir, "chat.html")));
-  app.get("/login.html", (_req, res) => res.sendFile(path.join(publicDir, "login.html")));
-  app.get("/admin.html", (_req, res) => res.sendFile(path.join(publicDir, "admin.html")));
-  app.get("/blog.html", (_req, res) => res.sendFile(path.join(publicDir, "blog.html")));
-  app.get("/post.html", (_req, res) => res.sendFile(path.join(publicDir, "post.html")));
-  app.get("/bundle.html", (_req, res) => res.sendFile(path.join(publicDir, "bundle.html")));
-  app.get("/bundle/:slug", (_req, res) => res.sendFile(path.join(publicDir, "bundle.html")));
-  app.get("/editor.html", (_req, res) => res.sendFile(path.join(publicDir, "editor.html")));
+  app.get("/", (req, res) => sendSeoPage(req, res, "index.html", "/index.html"));
+  app.get("/cart.html", (req, res) => sendSeoPage(req, res, "cart.html", "/cart.html"));
+  app.get("/checkout.html", (req, res) => sendSeoPage(req, res, "checkout.html", "/checkout.html"));
+  app.get("/chat.html", (req, res) => sendSeoPage(req, res, "chat.html", "/chat.html"));
+  app.get("/login.html", (req, res) => sendSeoPage(req, res, "login.html", "/login.html"));
+  app.get("/admin.html", (req, res) => sendSeoPage(req, res, "admin.html", "/admin.html"));
+  app.get("/blog.html", (req, res) => sendSeoPage(req, res, "blog.html", "/blog.html"));
+  app.get("/post.html", (req, res) => sendSeoPage(req, res, "post.html", "/post.html"));
+  app.get("/bundle.html", (req, res) => sendSeoPage(req, res, "bundle.html", "/bundle.html"));
+  app.get("/bundle/:slug", (req, res) => sendSeoPage(req, res, "bundle.html", "/bundle.html"));
+  app.get("/editor.html", (req, res) => sendSeoPage(req, res, "editor.html", "/editor.html"));
 
   app.use((error, _req, res, _next) => {
     res.status(500).json({ error: error.message || "Internal server error" });

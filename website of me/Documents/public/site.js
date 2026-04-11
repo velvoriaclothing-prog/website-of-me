@@ -3,9 +3,6 @@ const CART_KEY = "gamers-arena-cart-v1";
 const TICKET_KEY = "gamers-arena-tickets-v1";
 const ADMIN_GAMES_KEY = "gamers-arena-admin-games-v1";
 const ADMIN_SETTINGS_KEY = "gamers-arena-admin-settings-v1";
-const ADMIN_PASSWORD_KEY = "gamers-arena-admin-password-v1";
-const DEFAULT_ADMIN_PASSWORD = "Aditisubhan";
-const ADMIN_BIRTHDAYS = ["2008-10-17", "2007-03-27"];
 const GAME_PRICE = 45;
 const DEFAULT_SUPPORT_PROMPT = "After payment, create a private ticket and keep your order code safe.";
 const defaultQr = `data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 320"><rect width="320" height="320" rx="24" fill="white"/><rect x="26" y="26" width="84" height="84" fill="black"/><rect x="44" y="44" width="48" height="48" fill="white"/><rect x="210" y="26" width="84" height="84" fill="black"/><rect x="228" y="44" width="48" height="48" fill="white"/><rect x="26" y="210" width="84" height="84" fill="black"/><rect x="44" y="228" width="48" height="48" fill="white"/><text x="160" y="302" font-size="18" font-family="Arial" text-anchor="middle" fill="#111">SCAN TO PAY</text></svg>`;
@@ -25,7 +22,7 @@ let gamesPageHandlersBound = false;
 let adminHandlersBound = false;
 
 function defaultHomeCopy() {
-  return "Discover game accounts, add them to cart, pay with QR, and continue in a private ticket chat. The store now focuses on game buying instead of product gear listings.";
+  return "Discover cheap Steam games, discounted bundles, and budget-friendly PC game deals with QR checkout and direct Telegram support.";
 }
 
 function activeAdminTicket() {
@@ -113,14 +110,6 @@ function loadAdminSettings() {
 function saveAdminSettings() {
   localStorage.setItem(ADMIN_SETTINGS_KEY, JSON.stringify(state.adminSettings));
   syncAdminQrPreview();
-}
-
-function loadAdminPassword() {
-  return localStorage.getItem(ADMIN_PASSWORD_KEY) || DEFAULT_ADMIN_PASSWORD;
-}
-
-function saveAdminPassword(password) {
-  localStorage.setItem(ADMIN_PASSWORD_KEY, password);
 }
 
 function saveTickets() {
@@ -613,7 +602,7 @@ async function loadGamePage() {
         <p>${state.adminSettings.supportPrompt}</p>
         <button id="singleGameAddCart" class="btn btn-primary" type="button">Add to Cart</button>
         <button id="singleGameBuyQr" class="btn btn-secondary" type="button">Buy with QR</button>
-        <div class="ad-slot blog">Header AdSense Placeholder</div>
+        <div class="ad-slot blog">Need a different edition or missing title? Message support on Telegram and ask for a custom game quote.</div>
       </aside>
     </section>
     <section class="layout-2" style="margin-top:22px;">
@@ -679,15 +668,7 @@ function bindAdminActions() {
   if (adminHandlersBound) return;
   adminHandlersBound = true;
   document.getElementById("adminLoginBtn")?.addEventListener("click", () => {
-    const password = document.getElementById("adminPasswordInput").value;
-    if (password !== loadAdminPassword()) {
-      document.getElementById("adminLoginStatus").textContent = "Wrong password.";
-      return;
-    }
-    state.adminUnlocked = true;
-    document.getElementById("adminLoginStatus").textContent = "";
-    renderAdminState();
-    switchAdminTab("dashboard");
+    window.location.href = "/login.html";
   });
 
   document.querySelectorAll(".admin-tab-btn").forEach((button) => {
@@ -697,39 +678,7 @@ function bindAdminActions() {
   });
 
   document.getElementById("forgotPasswordBtn")?.addEventListener("click", () => {
-    document.getElementById("forgotPasswordPanel")?.classList.toggle("hidden");
-    document.getElementById("changePasswordPanel")?.classList.add("hidden");
-    document.getElementById("forgotPasswordStatus").textContent = "";
-    document.getElementById("changePasswordStatus").textContent = "";
-  });
-
-  document.getElementById("verifyBirthdaysBtn")?.addEventListener("click", () => {
-    const entered = [
-      document.getElementById("birthdayCheckOne").value,
-      document.getElementById("birthdayCheckTwo").value
-    ].filter(Boolean).sort();
-    const expected = [...ADMIN_BIRTHDAYS].sort();
-
-    if (entered.length !== 2 || entered[0] !== expected[0] || entered[1] !== expected[1]) {
-      document.getElementById("forgotPasswordStatus").textContent = "Birthdays do not match the recovery hint.";
-      document.getElementById("changePasswordPanel")?.classList.add("hidden");
-      return;
-    }
-
-    document.getElementById("forgotPasswordStatus").textContent = "Birthdays verified. You can now change the admin password.";
-    document.getElementById("changePasswordPanel")?.classList.remove("hidden");
-  });
-
-  document.getElementById("changeAdminPasswordBtn")?.addEventListener("click", () => {
-    const newPassword = document.getElementById("newAdminPasswordInput").value.trim();
-    if (!newPassword) {
-      document.getElementById("changePasswordStatus").textContent = "Enter a new password first.";
-      return;
-    }
-
-    saveAdminPassword(newPassword);
-    document.getElementById("changePasswordStatus").textContent = "Admin password updated successfully.";
-    document.getElementById("adminPasswordInput").value = newPassword;
+    window.location.href = "/login.html";
   });
 
   document.getElementById("adminSaveSettingsBtn")?.addEventListener("click", async () => {

@@ -172,13 +172,14 @@
           <div class="section-head">
             <div>
               <p class="eyebrow">settings</p>
-              <h2 class="section-title">Site Title And QR</h2>
+              <h2 class="section-title">Site Title, QR And Admin Access</h2>
             </div>
           </div>
           <form id="settingsForm" class="stack">
             <input id="siteTitleInput" class="input" placeholder="Site title">
             <input id="adminEmailInput" class="input" placeholder="Admin email">
-            <input id="adminPasswordInput" class="input" type="password" placeholder="New admin password (optional)">
+            <input id="adminPasswordInput" class="input" type="password" placeholder="New first admin password (optional)">
+            <input id="adminSecondaryPasswordInput" class="input" type="password" placeholder="New second admin password (optional)">
             <p id="credentialsHint" class="status"></p>
             <input id="qrUrlInput" class="input" placeholder="QR image URL">
             <input id="qrFile" class="input" type="file" accept="image/*">
@@ -191,6 +192,13 @@
     </main>
   </div>
   <script src="/socket.io/socket.io.js"></script>
+  <script src="/mobile-nav.js"></script>
+  <script src="/header-scroll.js"></script>
   <script src="/app.js"></script>
 </body>
 </html>
+
+
+
+
+

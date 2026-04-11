@@ -45,12 +45,18 @@ function normalizeSession(value) {
   const ownerKey = String(value?.ownerKey || "").trim();
   if (!ownerKey) return null;
 
+  const primaryVerifiedUntil = Number(value?.adminPrimaryVerifiedUntil || 0);
+  const recoveryVerifiedUntil = Number(value?.adminRecoveryVerifiedUntil || 0);
+
   return {
     ownerKey,
     userId: value?.userId ? String(value.userId) : null,
     name: String(value?.name || "Guest"),
     contact: String(value?.contact || ""),
-    isAdmin: Boolean(value?.isAdmin)
+    isAdmin: Boolean(value?.isAdmin),
+    adminPrimaryEmail: value?.adminPrimaryEmail ? String(value.adminPrimaryEmail) : "",
+    adminPrimaryVerifiedUntil: Number.isFinite(primaryVerifiedUntil) ? primaryVerifiedUntil : 0,
+    adminRecoveryVerifiedUntil: Number.isFinite(recoveryVerifiedUntil) ? recoveryVerifiedUntil : 0
   };
 }
 
@@ -105,10 +111,13 @@ function setSession(req, res, value) {
   const attached = attachSession(req, res);
   const session = normalizeSession({
     ownerKey: value.ownerKey || attached.ownerKey,
-    userId: value.userId || null,
-    name: value.name || "Guest",
-    contact: value.contact || "",
-    isAdmin: Boolean(value.isAdmin)
+    userId: Object.prototype.hasOwnProperty.call(value, "userId") ? value.userId : attached.userId,
+    name: Object.prototype.hasOwnProperty.call(value, "name") ? value.name : attached.name,
+    contact: Object.prototype.hasOwnProperty.call(value, "contact") ? value.contact : attached.contact,
+    isAdmin: Object.prototype.hasOwnProperty.call(value, "isAdmin") ? Boolean(value.isAdmin) : Boolean(attached.isAdmin),
+    adminPrimaryEmail: Object.prototype.hasOwnProperty.call(value, "adminPrimaryEmail") ? value.adminPrimaryEmail : attached.adminPrimaryEmail,
+    adminPrimaryVerifiedUntil: Object.prototype.hasOwnProperty.call(value, "adminPrimaryVerifiedUntil") ? value.adminPrimaryVerifiedUntil : attached.adminPrimaryVerifiedUntil,
+    adminRecoveryVerifiedUntil: Object.prototype.hasOwnProperty.call(value, "adminRecoveryVerifiedUntil") ? value.adminRecoveryVerifiedUntil : attached.adminRecoveryVerifiedUntil
   }) || attached;
   req.session = session;
   res.setHeader("Set-Cookie", buildCookie(encodeSession(session)));

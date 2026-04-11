@@ -46,56 +46,12 @@
       </section>
       <aside class="stack-grid">
         <section class="panel" id="adminPanel">
-          <div class="section-head"><div><p class="eyebrow">admin</p><h2>Admin Panel</h2></div></div>
-          <div id="adminLoginBox" class="stack-grid">
-            <input id="adminPasswordInput" type="password" placeholder="Admin password">
-            <button id="adminLoginBtn" class="btn btn-primary" type="button">Unlock Admin</button>
-            <button id="forgotPasswordBtn" class="btn btn-secondary" type="button">Forgot Password?</button>
-            <p id="adminLoginStatus" class="status-text"></p>
-            <div id="forgotPasswordPanel" class="stack-grid hidden">
-              <p class="status-text">Hint: it is S and A birthday. Enter both birthdays correctly in any order.</p>
-              <input id="birthdayCheckOne" type="date">
-              <input id="birthdayCheckTwo" type="date">
-              <button id="verifyBirthdaysBtn" class="btn btn-secondary" type="button">Verify Birthdays</button>
-              <p id="forgotPasswordStatus" class="status-text"></p>
-            </div>
-            <div id="changePasswordPanel" class="stack-grid hidden">
-              <input id="newAdminPasswordInput" type="password" placeholder="New admin password">
-              <button id="changeAdminPasswordBtn" class="btn btn-primary" type="button">Change Password</button>
-              <p id="changePasswordStatus" class="status-text"></p>
-            </div>
-          </div>
-          <div id="adminWorkspace" class="stack-grid hidden">
-            <div class="card compact-card">
-              <h4>Website & Checkout Settings</h4>
-              <input id="adminHomeEyebrow" type="text" placeholder="Homepage eyebrow">
-              <input id="adminHomeTitle" type="text" placeholder="Homepage title">
-              <textarea id="adminHomeCopy" rows="3" placeholder="Homepage main text"></textarea>
-              <textarea id="adminSupportPrompt" rows="3" placeholder="Support message"></textarea>
-              <input id="adminQrUpload" type="file" accept="image/*">
-              <button id="adminSaveSettingsBtn" class="btn btn-secondary" type="button">Save Settings</button>
-              <p id="adminSettingsStatus" class="status-text"></p>
-            </div>
-            <div class="card compact-card">
-              <h4>Add Game By Name</h4>
-              <input id="adminNewGameName" type="text" placeholder="Enter game name only">
-              <button id="adminAddGameBtn" class="btn btn-primary" type="button">Add Game</button>
-              <p id="adminAddGameStatus" class="status-text"></p>
-            </div>
-            <div class="card compact-card">
-              <h4>Manage All Games</h4>
-              <div id="adminCatalogEditor" class="stack-grid"></div>
-            </div>
-            <div class="card compact-card">
-              <h4>Ticket Inbox</h4>
-              <div id="adminTicketList" class="stack-grid"></div>
-            </div>
-            <div class="card compact-card">
-              <h4>Reply to Selected Ticket</h4>
-              <textarea id="adminReplyMessage" rows="3" placeholder="Reply to customer"></textarea>
-              <input id="adminReplyImage" type="file" accept="image/*">
-              <button id="adminReplyBtn" class="btn btn-primary" type="button">Send Reply</button>
-              <p id="adminReplyStatus" class="status-text"></p>
+          <div class="section-head"><div><p class="eyebrow">admin</p><h2>Secure Admin Access</h2></div></div>
+          <div class="card compact-card">
+            <p class="status-text">Admin tools now use the secure server-side dashboard with two-step login. Password recovery is only available there after both recovery birthdays are verified.</p>
+            <div class="cta-row">
+              <a class="btn btn-primary" href="/login.html">Open Secure Admin Login</a>
+              <a class="btn btn-secondary" href="/admin.html">Go To Admin Dashboard</a>
             </div>
           </div>
         </section>
@@ -131,6 +87,13 @@
       </aside>
     </main>
   </div>
+  <script src="/mobile-nav.js"></script>
+  <script src="/header-scroll.js"></script>
   <script src="/site.js"></script>
 </body>
 </html>
+
+
+
+
+

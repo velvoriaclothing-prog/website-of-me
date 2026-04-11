@@ -40,22 +40,40 @@
       <section class="auth-card">
         <p class="eyebrow">login</p>
         <h1 class="auth-title">User Login</h1>
-        <p class="hero-copy">Users can login here with email or mobile. Admin access is separate and now opens from the small header icon with two passwords.</p>
+        <p class="hero-copy">Users can login here with email or mobile. Admin access is separate and opens from the small header icon with a secure two-step login.</p>
         <form id="userLoginForm" class="stack" style="margin-bottom:18px;">
           <input id="loginContact" class="input" placeholder="Email or mobile">
           <input id="loginPassword" class="input" type="password" placeholder="Password">
           <button class="btn btn-primary" type="submit">User Login</button>
         </form>
+        <button id="toggleForgotPassword" class="btn btn-secondary" type="button">Forgot Password?</button>
+        <form id="resetPasswordForm" class="stack hidden" style="margin:18px 0;">
+          <p class="hero-copy">Reset a user password by entering the same full name and contact used during signup, then choose a new password.</p>
+          <input id="resetName" class="input" placeholder="Full name used at signup">
+          <input id="resetContact" class="input" placeholder="Email or 10-digit mobile">
+          <input id="resetPassword" class="input" type="password" placeholder="New password">
+          <input id="resetPasswordConfirm" class="input" type="password" placeholder="Confirm new password">
+          <button class="btn btn-primary" type="submit">Reset Password</button>
+          <p id="resetStatus" class="status"></p>
+        </form>
         <div class="card">
           <p class="eyebrow">admin</p>
           <h2 class="card-title">Separate Admin Login</h2>
-          <p class="hero-copy">Use the small `AD` icon in the header to login as admin. After the main password, you will also need the second admin password.</p>
+          <p class="hero-copy">Use the small `AD` icon in the header to login as admin. Step 1 verifies the first password, then Step 2 unlocks the second admin password field.</p>
+          <p class="hero-copy">If you forget admin access, click `Forgot Password?` in the admin modal and enter both recovery birthdays before resetting the first and second admin passwords.</p>
         </div>
         <a class="btn btn-secondary" data-telegram-general href="https://t.me/gamersarena_shop" target="_blank" rel="noreferrer">Need Help On Telegram?</a>
         <p id="loginStatus" class="status"></p>
       </section>
     </main>
   </div>
+  <script src="/mobile-nav.js"></script>
+  <script src="/header-scroll.js"></script>
   <script src="/app.js"></script>
 </body>
 </html>
+
+
+
+
+

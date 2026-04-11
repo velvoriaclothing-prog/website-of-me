@@ -118,6 +118,25 @@ const reviewEntries = [
     text: "The bundles, reviews, FAQ, and wishlists make the website feel much more trustworthy and complete."
   }
 ];
+const DEFAULT_EDITOR_IMAGE = `data:image/svg+xml;utf8,${encodeURIComponent(`
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 630">
+  <defs>
+    <linearGradient id="hero" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#03111f"/>
+      <stop offset="55%" stop-color="#0b2940"/>
+      <stop offset="100%" stop-color="#123447"/>
+    </linearGradient>
+  </defs>
+  <rect width="1200" height="630" fill="url(#hero)"/>
+  <circle cx="180" cy="130" r="120" fill="rgba(34,211,238,0.18)"/>
+  <circle cx="1010" cy="500" r="160" fill="rgba(52,211,153,0.16)"/>
+  <rect x="90" y="96" width="1020" height="438" rx="34" fill="rgba(10,20,33,0.58)" stroke="rgba(34,211,238,0.36)" stroke-width="2"/>
+  <text x="120" y="222" fill="#8ff6ff" font-family="Oxanium, Arial, sans-serif" font-size="28" font-weight="700">Gamers Arena</text>
+  <text x="120" y="300" fill="#ffffff" font-family="Manrope, Arial, sans-serif" font-size="58" font-weight="800">Cheap Steam Games</text>
+  <text x="120" y="360" fill="#ffffff" font-family="Manrope, Arial, sans-serif" font-size="58" font-weight="800">&amp; Fast PC Deals</text>
+  <text x="120" y="432" fill="#b8d8e8" font-family="Manrope, Arial, sans-serif" font-size="28">Budget-friendly bundles, QR checkout, wishlist saves, and direct Telegram support.</text>
+</svg>
+`)}`;
 
 function telegramMessageLink(message) {
   return `${TELEGRAM_URL}?text=${encodeURIComponent(message)}`;
@@ -391,6 +410,22 @@ function injectAdminAccess() {
           </div>
           <button id="adminQuickSubmit" class="btn btn-primary" type="submit">Continue</button>
         </form>
+        <div class="inline-actions">
+          <button id="adminQuickForgot" class="btn btn-secondary" type="button">Forgot Password?</button>
+          <button id="adminQuickBack" class="btn btn-secondary hidden" type="button">Back To Login</button>
+        </div>
+        <form id="adminRecoveryForm" class="stack hidden" data-stage="verify">
+          <p class="hero-copy">Enter both recovery birthdays to unlock admin password reset.</p>
+          <input id="adminRecoveryDob1" class="input" type="text" inputmode="numeric" placeholder="DOB 1 (DD-MM-YYYY)">
+          <input id="adminRecoveryDob2" class="input" type="text" inputmode="numeric" placeholder="DOB 2 (DD-MM-YYYY)">
+          <div id="adminRecoveryResetWrap" class="stack hidden">
+            <input id="adminRecoveryPassword" class="input" type="password" placeholder="New first admin password">
+            <input id="adminRecoveryPasscode" class="input" type="password" placeholder="New second admin password">
+          </div>
+          <button id="adminRecoverySubmit" class="btn btn-primary" type="submit">Verify Birthdays</button>
+        </form>
+        <p class="hero-copy">Recovery only unlocks the reset after both birthday answers match on the server.</p>
+        <p id="adminRecoveryStatus" class="status"></p>
         <p id="adminQuickStatus" class="status"></p>
       </div>
     `;
@@ -422,11 +457,25 @@ function ensureExpandedNav() {
 function resetAdminAccessModal() {
   const form = qs("adminQuickLoginForm");
   if (form) form.dataset.stage = "primary";
+  const recoveryForm = qs("adminRecoveryForm");
+  if (recoveryForm) recoveryForm.dataset.stage = "verify";
   qs("adminQuickSecondWrap")?.classList.add("hidden");
+  qs("adminRecoveryResetWrap")?.classList.add("hidden");
+  qs("adminQuickLoginForm")?.classList.remove("hidden");
+  qs("adminRecoveryForm")?.classList.add("hidden");
+  qs("adminQuickForgot")?.classList.remove("hidden");
+  qs("adminQuickBack")?.classList.add("hidden");
   if (qs("adminQuickPassword")) qs("adminQuickPassword").value = "";
   if (qs("adminQuickPasscode")) qs("adminQuickPasscode").value = "";
+  if (qs("adminQuickEmail")) qs("adminQuickEmail").value = state.settings?.adminEmail || "admin@gamersarena.com";
+  if (qs("adminRecoveryDob1")) qs("adminRecoveryDob1").value = "";
+  if (qs("adminRecoveryDob2")) qs("adminRecoveryDob2").value = "";
+  if (qs("adminRecoveryPassword")) qs("adminRecoveryPassword").value = "";
+  if (qs("adminRecoveryPasscode")) qs("adminRecoveryPasscode").value = "";
   if (qs("adminQuickSubmit")) qs("adminQuickSubmit").textContent = "Continue";
+  if (qs("adminRecoverySubmit")) qs("adminRecoverySubmit").textContent = "Verify Birthdays";
   setStatus("adminQuickStatus", "");
+  setStatus("adminRecoveryStatus", "");
 }
 
 async function bootstrap() {
@@ -1585,13 +1634,20 @@ async function initAdmin() {
     adminPasswordInput.disabled = Boolean(state.settings.adminPasswordManagedByEnv);
     adminPasswordInput.placeholder = state.settings.adminPasswordManagedByEnv
       ? "Managed by Render environment variables"
-      : "New admin password (optional)";
+      : "New first admin password (leave blank to keep current)";
+  }
+  const adminSecondaryPasswordInput = qs("adminSecondaryPasswordInput");
+  if (adminSecondaryPasswordInput) {
+    adminSecondaryPasswordInput.disabled = Boolean(state.settings.adminSecondaryManagedByEnv);
+    adminSecondaryPasswordInput.placeholder = state.settings.adminSecondaryManagedByEnv
+      ? "Managed by Render environment variables"
+      : "New second admin password (leave blank to keep current)";
   }
   const credentialsHint = qs("credentialsHint");
   if (credentialsHint) {
     credentialsHint.textContent = state.settings.credentialsManagedByEnv
       ? "Admin login credentials are managed by deployment environment variables on this server."
-      : "";
+      : "Admin login uses two passwords. If you get locked out, use the admin Forgot Password flow and verify both recovery birthdays before resetting access.";
   }
   const qrPreview = qs("qrPreview");
   if (qrPreview) qrPreview.src = state.settings.qrImage;
@@ -1911,6 +1967,33 @@ document.addEventListener("click", async (event) => {
     if (deleteBlock) blocks = blocks.filter((block) => block.id !== id);
     renderEditorBlocks(blocks);
   }
+
+  if (event.target.id === "toggleForgotPassword") {
+    const form = qs("resetPasswordForm");
+    const isHidden = form?.classList.contains("hidden");
+    form?.classList.toggle("hidden", !isHidden);
+    event.target.textContent = isHidden ? "Hide Reset Form" : "Forgot Password?";
+    setStatus("resetStatus", "");
+    if (isHidden) {
+      const loginContactValue = qs("loginContact")?.value?.trim() || "";
+      if (qs("resetContact") && loginContactValue) qs("resetContact").value = loginContactValue;
+      qs("resetName")?.focus();
+    }
+  }
+
+  if (event.target.id === "adminQuickForgot") {
+    qs("adminQuickLoginForm")?.classList.add("hidden");
+    qs("adminRecoveryForm")?.classList.remove("hidden");
+    qs("adminQuickForgot")?.classList.add("hidden");
+    qs("adminQuickBack")?.classList.remove("hidden");
+    setStatus("adminQuickStatus", "");
+    setStatus("adminRecoveryStatus", "");
+    qs("adminRecoveryDob1")?.focus();
+  }
+
+  if (event.target.id === "adminQuickBack") {
+    resetAdminAccessModal();
+  }
 });
 
 document.addEventListener("submit", async (event) => {
@@ -1948,6 +2031,30 @@ document.addEventListener("submit", async (event) => {
     }
   }
 
+  if (event.target.id === "resetPasswordForm") {
+    event.preventDefault();
+    if (qs("resetPassword").value !== qs("resetPasswordConfirm").value) {
+      setStatus("resetStatus", "New password and confirm password must match.", true);
+      return;
+    }
+    try {
+      await api("/auth/reset-password", {
+        method: "POST",
+        body: JSON.stringify({
+          name: qs("resetName").value,
+          contact: qs("resetContact").value,
+          password: qs("resetPassword").value
+        })
+      });
+      if (qs("loginContact")) qs("loginContact").value = qs("resetContact").value.trim();
+      if (qs("loginPassword")) qs("loginPassword").value = qs("resetPassword").value;
+      setStatus("resetStatus", "Password updated. You are now logged in.");
+      window.location.href = getQuery("redirect") || "/";
+    } catch (error) {
+      setStatus("resetStatus", error.message, true);
+    }
+  }
+
   if (event.target.id === "adminLoginForm") {
     event.preventDefault();
     try {
@@ -1975,27 +2082,79 @@ document.addEventListener("submit", async (event) => {
         setStatus("adminQuickStatus", "Enter admin email and password first.", true);
         return;
       }
-      qs("adminQuickSecondWrap")?.classList.remove("hidden");
-      form.dataset.stage = "secondary";
-      if (qs("adminQuickSubmit")) qs("adminQuickSubmit").textContent = "Login As Admin";
-      setStatus("adminQuickStatus", "Enter the second admin password to continue.");
-      qs("adminQuickPasscode")?.focus();
+      try {
+        await api("/auth/admin/primary", {
+          method: "POST",
+          body: JSON.stringify({
+            contact: qs("adminQuickEmail").value,
+            password: qs("adminQuickPassword").value
+          })
+        });
+        qs("adminQuickSecondWrap")?.classList.remove("hidden");
+        form.dataset.stage = "secondary";
+        if (qs("adminQuickSubmit")) qs("adminQuickSubmit").textContent = "Login As Admin";
+        setStatus("adminQuickStatus", "First password verified. Enter the second admin password.");
+        qs("adminQuickPasscode")?.focus();
+      } catch (error) {
+        setStatus("adminQuickStatus", error.message, true);
+      }
       return;
     }
 
     try {
-      await api("/auth/login", {
+      await api("/auth/admin/secondary", {
         method: "POST",
         body: JSON.stringify({
           contact: qs("adminQuickEmail").value,
-          password: qs("adminQuickPassword").value,
-          adminPasscode: qs("adminQuickPasscode").value,
-          role: "admin"
+          adminPasscode: qs("adminQuickPasscode").value
         })
       });
       window.location.href = "/admin.html";
     } catch (error) {
       setStatus("adminQuickStatus", error.message, true);
+    }
+  }
+
+  if (event.target.id === "adminRecoveryForm") {
+    event.preventDefault();
+    const form = event.target;
+    const stage = form.dataset.stage || "verify";
+    if (stage === "verify") {
+      try {
+        await api("/auth/admin/recovery", {
+          method: "POST",
+          body: JSON.stringify({
+            dob1: qs("adminRecoveryDob1").value,
+            dob2: qs("adminRecoveryDob2").value
+          })
+        });
+        form.dataset.stage = "reset";
+        qs("adminRecoveryResetWrap")?.classList.remove("hidden");
+        if (qs("adminRecoverySubmit")) qs("adminRecoverySubmit").textContent = "Reset And Login";
+        setStatus("adminRecoveryStatus", "Birthdays verified. Set new admin passwords now.");
+        qs("adminRecoveryPassword")?.focus();
+      } catch (error) {
+        setStatus("adminRecoveryStatus", error.message, true);
+      }
+      return;
+    }
+
+    if (!qs("adminRecoveryPassword").value.trim() || !qs("adminRecoveryPasscode").value.trim()) {
+      setStatus("adminRecoveryStatus", "Enter both new admin passwords.", true);
+      return;
+    }
+
+    try {
+      await api("/auth/admin/reset", {
+        method: "POST",
+        body: JSON.stringify({
+          password: qs("adminRecoveryPassword").value,
+          adminPasscode: qs("adminRecoveryPasscode").value
+        })
+      });
+      window.location.href = "/admin.html";
+    } catch (error) {
+      setStatus("adminRecoveryStatus", error.message, true);
     }
   }
 
@@ -2117,7 +2276,8 @@ document.addEventListener("submit", async (event) => {
           homeLayout: state.settings.homeLayout,
           bundles: state.bundles,
           adminEmail: qs("adminEmailInput").value,
-          adminPassword: qs("adminPasswordInput").value
+          adminPassword: qs("adminPasswordInput").value,
+          adminSecondaryPassword: qs("adminSecondaryPasswordInput")?.value || ""
         })
       });
       await bootstrap();
@@ -2303,7 +2463,7 @@ async function bindPageActions() {
   if (qs("addImageBlock")) {
     qs("addImageBlock").onclick = async () => {
       const current = await api("/editor-layout");
-      renderEditorBlocks([...current, { id: `block-${Date.now()}`, type: "image", content: "https://via.placeholder.com/1200x630?text=Gamers+Arena" }]);
+      renderEditorBlocks([...current, { id: `block-${Date.now()}`, type: "image", content: DEFAULT_EDITOR_IMAGE }]);
     };
   }
 
