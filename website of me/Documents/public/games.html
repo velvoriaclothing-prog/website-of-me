@@ -3,97 +3,127 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>All Games | Gamers Arena</title>
-  <meta name="description" content="Browse game accounts, bundles, QR checkout, and private support tickets on Gamers Arena.">
+  <title>All Game Deals | Gamers Arena</title>
+  <meta name="description" content="Browse all Gamers Arena game deals, bundles, and saved picks with a faster mobile-ready storefront.">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Oxanium:wght@400;600;700&family=Manrope:wght@400;500;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/styles.css">
 </head>
 <body data-page="games">
-  <div class="bg-grid"></div>
-  <div class="site-shell">
+  <div class="shell">
     <nav class="topbar">
-      <a class="brand" href="/"><span class="brand-mark">GA</span><span><strong>Gamers Arena</strong><small>game accounts</small></span></a>
+      <a class="brand" href="/"><span class="brand-mark">GA</span><span><strong data-site-title>Gamers Arena</strong><br><small class="muted">all game deals</small></span></a>
       <div class="nav-links">
-        <div class="nav-item"><span class="menu-label">Games</span><div class="dropdown"><a href="/games.html">All Games</a><a href="/games.html?category=Shooter">Shooter</a><a href="/games.html?category=Low-end%20PC">Low-end PC</a></div></div>
-        <div class="nav-item"><span class="menu-label">Support</span><div class="dropdown"><a href="#cartPanel">Cart</a><a href="#ticketSupport">Private Ticket Chat</a></div></div>
-        <div class="nav-item"><a href="/admin.html">Admin Panel</a></div>
-        <div class="nav-item"><span class="menu-label">Blog</span><div class="dropdown"><a href="/blog.html">Blog</a></div></div>
-        <div class="nav-item"><span class="menu-label">News</span><div class="dropdown"><a href="/news.html">News</a></div></div>
-        <div class="nav-item"><span class="menu-label">PC Builder</span><div class="dropdown"><a href="/pc-builder.html">PC Builder</a></div></div>
-        <div class="nav-item"><a id="cartNavLink" href="#cartPanel">Cart (0)</a></div>
+        <a class="nav-link" href="/">Home</a>
+        <a class="nav-link" data-nav-link="games" href="/games.html">Games</a>
+        <a class="nav-link" href="/bundles.html">Bundles</a>
+        <a class="nav-link" href="/wishlist.html">Wishlist</a>
+        <a class="nav-link" href="/cart.html">Cart (<span data-cart-count>0</span>)</a>
+        <a class="nav-link" href="/chat.html">Support</a>
+      </div>
+      <div class="nav-actions">
+        <span class="muted" data-user-label>Guest</span>
+        <button class="btn btn-secondary" type="button" data-auth-action>Login</button>
       </div>
     </nav>
-    <header class="hero compact">
-      <section class="hero-card">
-        <p class="eyebrow">catalog</p>
-        <h1>All Games</h1>
-        <p class="hero-copy">Explore the full Gamers Arena game-account catalog, add games or bundles to cart, pay with QR, and continue in a private ticket thread.</p>
-      </section>
-    </header>
-    <main class="layout-2">
-      <section class="panel">
-        <div class="toolbar">
-          <input id="gamesSearch" type="search" placeholder="Search games">
-          <select id="gamesCategory"><option value="">All categories</option></select>
-        </div>
-        <div id="gamesList" class="card-grid"></div>
-        <section class="panel" style="margin-top:22px;">
-          <div class="section-head"><div><p class="eyebrow">bundles</p><h2>Game bundles</h2></div></div>
-          <div id="bundleList" class="card-grid"></div>
-        </section>
-      </section>
-      <aside class="stack-grid">
-        <section class="panel" id="adminPanel">
-          <div class="section-head"><div><p class="eyebrow">admin</p><h2>Secure Admin Access</h2></div></div>
-          <div class="card compact-card">
-            <p class="status-text">Admin tools now use the secure server-side dashboard with two-step login. Password recovery is only available there after both recovery birthdays are verified.</p>
-            <div class="cta-row">
-              <a class="btn btn-primary" href="/login.html">Open Secure Admin Login</a>
-              <a class="btn btn-secondary" href="/admin.html">Go To Admin Dashboard</a>
-            </div>
+
+    <header class="hero reveal" data-reveal>
+      <div class="hero-grid">
+        <div class="hero-main">
+          <p class="eyebrow">catalog</p>
+          <h1>Browse All Game Deals</h1>
+          <p class="hero-copy">The full Gamers Arena catalog now loads through the same faster responsive storefront as the homepage, with search, filters, bundles, and touch-friendly cards for mobile shoppers.</p>
+          <div class="chip-row hero-chip-row">
+            <span class="chip">Mobile-ready cards</span>
+            <span class="chip">Fast filters</span>
+            <span class="chip">Lazy images</span>
+            <span class="chip">Bundle access</span>
           </div>
-        </section>
-        <section class="panel" id="cartPanel">
-          <div class="section-head"><div><p class="eyebrow">cart</p><h2>Your Cart</h2></div></div>
-          <div id="cartItems" class="stack-grid"></div>
-          <p id="cartSummary" class="status-text">Your cart is empty.</p>
-          <button id="checkoutBtn" class="btn btn-primary" type="button">Buy with QR</button>
-        </section>
-        <section class="panel" id="ticketSupport">
-          <div class="section-head"><div><p class="eyebrow">support</p><h2>Private Ticket Chat</h2></div></div>
-          <p id="supportPromptText" class="status-text">After payment, create a private ticket and keep your order code safe.</p>
-          <form id="ticketCreateForm" class="stack-grid">
-            <input id="ticketCustomerName" type="text" placeholder="Your name">
-            <input id="ticketPaymentRef" type="text" placeholder="Payment note or reference">
-            <textarea id="ticketMessage" rows="4" placeholder="I paid for my cart, please continue my order..."></textarea>
-            <input id="ticketImage" type="file" accept="image/*">
-            <button class="btn btn-secondary" type="submit">Create Private Ticket</button>
-            <p id="ticketCreateStatus" class="status-text"></p>
-          </form>
-          <form id="ticketOpenForm" class="stack-grid">
-            <input id="ticketLookupCode" type="text" placeholder="Ticket code">
-            <input id="ticketLookupName" type="text" placeholder="Your name">
-            <button class="btn btn-secondary" type="submit">Open Existing Ticket</button>
-          </form>
-          <div id="ticketThread" class="stack-grid"></div>
-          <form id="ticketReplyForm" class="stack-grid hidden">
-            <textarea id="ticketReplyMessage" rows="3" placeholder="Send another message"></textarea>
-            <input id="ticketReplyImage" type="file" accept="image/*">
-            <button class="btn btn-primary" type="submit">Send Message</button>
-          </form>
-        </section>
-      </aside>
+          <div class="cta-row">
+            <a class="btn btn-primary" href="#gamesSection">Start Browsing</a>
+            <a class="btn btn-secondary" href="/bundles.html">Open Bundles</a>
+          </div>
+        </div>
+        <aside class="hero-side">
+          <div class="hero-note">Mobile-first catalog</div>
+          <div class="route-steps">
+            <div class="route-step"><span>01</span> Search and filter on any phone</div>
+            <div class="route-step"><span>02</span> Save games or add to cart</div>
+            <div class="route-step"><span>03</span> Checkout and continue on Telegram</div>
+          </div>
+        </aside>
+      </div>
+    </header>
+
+    <main>
+      <section id="gamesSection" class="panel reveal store-panel" data-reveal>
+        <div class="store-stage-top">
+          <div class="store-stage-copy">
+            <p class="eyebrow">game store</p>
+            <h2 class="section-title">All Available Games</h2>
+            <p class="hero-copy">Use search or category filters to find fast-moving deals, low-end picks, racing games, shooters, RPGs, and upcoming titles in one clean catalog.</p>
+          </div>
+          <aside class="store-note-card">
+            <p class="eyebrow">help</p>
+            <strong>Missing a title?</strong>
+            <p class="hero-copy">If the game is not listed, use the Telegram support button from the homepage or chat page and request it directly.</p>
+          </aside>
+        </div>
+        <div class="toolbar">
+          <div class="search-suggestions-shell">
+            <input id="gameSearch" class="input" placeholder="Search games">
+            <div id="searchSuggestions" class="search-suggestions hidden"></div>
+          </div>
+          <select id="gameCategory" class="select">
+            <option value="">All categories</option>
+          </select>
+          <button id="clearGameFilters" class="btn btn-secondary" type="button">Clear</button>
+        </div>
+        <p id="resultsMeta" class="muted"></p>
+        <p id="homeStatus" class="status"></p>
+        <div id="gamesGrid" class="game-grid"></div>
+        <div id="loadMoreWrap" class="load-more-wrap hidden">
+          <button id="loadMoreGames" class="btn btn-secondary" type="button">Load More Games</button>
+        </div>
+      </section>
+
+      <section class="panel reveal" data-reveal>
+        <div class="section-head">
+          <div>
+            <p class="eyebrow">bundles</p>
+            <h2 class="section-title">Bundle Deals</h2>
+          </div>
+          <a class="btn btn-secondary" href="/bundles.html">View All Bundles</a>
+        </div>
+        <div id="bundleList" class="bundle-grid"></div>
+      </section>
+
+      <section class="panel reveal" data-reveal>
+        <div class="section-head">
+          <div>
+            <p class="eyebrow">saved</p>
+            <h2 class="section-title">Wishlist Preview</h2>
+          </div>
+          <a class="btn btn-secondary" href="/wishlist.html">Open Wishlist</a>
+        </div>
+        <div id="wishlistPreview" class="bundle-grid"></div>
+      </section>
+
+      <section class="panel reveal" data-reveal>
+        <div class="section-head">
+          <div>
+            <p class="eyebrow">help center</p>
+            <h2 class="section-title">Quick FAQ</h2>
+          </div>
+          <a class="btn btn-secondary" href="/faq.html">Full FAQ</a>
+        </div>
+        <div id="faqPreview" class="feature-grid"></div>
+      </section>
     </main>
   </div>
   <script src="/mobile-nav.js"></script>
   <script src="/header-scroll.js"></script>
-  <script src="/site.js"></script>
+  <script src="/app.js"></script>
 </body>
 </html>
-
-
-
-
-

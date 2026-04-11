@@ -52,6 +52,9 @@
           <div class="tab-row">
             <button class="btn btn-secondary tab-btn active" type="button" data-admin-tab="adminGamesPanel">Games</button>
             <button class="btn btn-secondary tab-btn" type="button" data-admin-tab="adminBundlesPanel">Bundles</button>
+            <button class="btn btn-secondary tab-btn" type="button" data-admin-tab="adminContentPanel">Content</button>
+            <button class="btn btn-secondary tab-btn" type="button" data-admin-tab="adminPagesPanel">Pages</button>
+            <button class="btn btn-secondary tab-btn" type="button" data-admin-tab="adminMediaPanel">Media</button>
             <button class="btn btn-secondary tab-btn" type="button" data-admin-tab="adminOrdersPanel">Orders</button>
             <button class="btn btn-secondary tab-btn" type="button" data-admin-tab="adminChatsPanel">Chats</button>
             <button class="btn btn-secondary tab-btn" type="button" data-admin-tab="adminBlogsPanel">Blog</button>
@@ -81,10 +84,14 @@
               <option value="Shooter">Shooter</option>
               <option value="RPG">RPG</option>
               <option value="Racing">Racing</option>
+              <option value="Sports">Sports</option>
               <option value="Low-end PC">Low-end PC</option>
               <option value="Upcoming">Upcoming</option>
             </select>
             <input id="newGamePrice" class="input" type="number" value="45" placeholder="Price">
+            <input id="newGameImageUrl" class="input" placeholder="Game image URL (optional)">
+            <input id="newGameImage" class="input" type="file" accept="image/*">
+            <textarea id="newGameDescription" class="textarea" placeholder="Short game description"></textarea>
             <button class="btn btn-primary" type="submit">Add Game</button>
           </form>
           <p id="adminGamesStatus" class="status"></p>
@@ -113,6 +120,86 @@
           </form>
           <p id="adminBundlesStatus" class="status"></p>
           <div id="bundleAdminList" class="list"></div>
+        </section>
+
+        <section id="adminContentPanel" data-admin-panel class="panel hidden">
+          <div class="section-head">
+            <div>
+              <p class="eyebrow">homepage content</p>
+              <h2 class="section-title">Edit Homepage Text And Flexible Blocks</h2>
+            </div>
+          </div>
+          <p class="hero-copy">Use sections for the important homepage text and use the block builder below to add extra text, images, and videos anywhere on the homepage.</p>
+          <form id="createSectionForm" class="stack" style="margin-bottom:18px;">
+            <input id="newSectionKey" class="input" placeholder="Section key (example: home-hero)">
+            <input id="newSectionSubtitle" class="input" placeholder="Subtitle / eyebrow">
+            <input id="newSectionTitle" class="input" placeholder="Section title">
+            <textarea id="newSectionBody" class="textarea" placeholder="Section body"></textarea>
+            <input id="newSectionButtonLabel" class="input" placeholder="Button label">
+            <input id="newSectionButtonHref" class="input" placeholder="Button link">
+            <input id="newSectionImage" class="input" placeholder="Optional image URL">
+            <button class="btn btn-primary" type="submit">Add Content Section</button>
+          </form>
+          <p id="contentStatus" class="status"></p>
+          <div id="contentSectionsList" class="admin-editor-grid"></div>
+
+          <div class="section-head" style="margin-top:22px;">
+            <div>
+              <p class="eyebrow">homepage builder</p>
+              <h3 class="card-title">Add Text, Image, Or Video Blocks</h3>
+            </div>
+          </div>
+          <div class="inline-actions" style="margin-bottom:12px;">
+            <button id="addTextBlock" class="btn btn-secondary" type="button">Add Text Block</button>
+            <button id="addImageBlock" class="btn btn-secondary" type="button">Add Image Block</button>
+            <button id="addVideoBlock" class="btn btn-secondary" type="button">Add Video Block</button>
+          </div>
+          <form id="editorSaveForm" class="stack">
+            <div id="editorBlocks" class="list"></div>
+            <button class="btn btn-primary" type="submit">Save Homepage Layout</button>
+          </form>
+          <p id="editorStatus" class="status"></p>
+        </section>
+
+        <section id="adminPagesPanel" data-admin-panel class="panel hidden">
+          <div class="section-head">
+            <div>
+              <p class="eyebrow">pages</p>
+              <h2 class="section-title">Create And Edit Custom Pages</h2>
+            </div>
+          </div>
+          <p class="hero-copy">Page content supports normal text or full HTML, so you can place images, formatted sections, or buttons inside the page body whenever you need.</p>
+          <form id="createPageForm" class="stack" style="margin-bottom:18px;">
+            <input id="newPageTitle" class="input" placeholder="Page title">
+            <input id="newPageSlug" class="input" placeholder="Page slug">
+            <input id="newPageSummary" class="input" placeholder="Short summary">
+            <input id="newPageImage" class="input" placeholder="Hero image URL (optional)">
+            <input id="newPageSeoTitle" class="input" placeholder="SEO title (optional)">
+            <textarea id="newPageSeoDescription" class="textarea" placeholder="SEO description (optional)"></textarea>
+            <textarea id="newPageContent" class="textarea code-textarea" placeholder="Page content. HTML is supported."></textarea>
+            <button class="btn btn-primary" type="submit">Create Page</button>
+          </form>
+          <p id="pagesStatus" class="status"></p>
+          <div id="pagesList" class="admin-editor-grid"></div>
+        </section>
+
+        <section id="adminMediaPanel" data-admin-panel class="panel hidden">
+          <div class="section-head">
+            <div>
+              <p class="eyebrow">media</p>
+              <h2 class="section-title">Store Images For Reuse</h2>
+            </div>
+          </div>
+          <form id="createMediaForm" class="stack" style="margin-bottom:18px;">
+            <input id="newMediaName" class="input" placeholder="Media name">
+            <input id="newMediaUrl" class="input" placeholder="Image URL">
+            <input id="newMediaFile" class="input" type="file" accept="image/*">
+            <input id="newMediaAlt" class="input" placeholder="Alt text">
+            <input id="newMediaPlacement" class="input" placeholder="Placement tag (example: hero, deals, banner)">
+            <button class="btn btn-primary" type="submit">Save Media</button>
+          </form>
+          <p id="mediaStatus" class="status"></p>
+          <div id="mediaList" class="admin-editor-grid"></div>
         </section>
 
         <section id="adminOrdersPanel" data-admin-panel class="panel hidden">

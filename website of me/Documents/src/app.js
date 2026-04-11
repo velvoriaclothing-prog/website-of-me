@@ -7,6 +7,8 @@ const { attachSession, getSession, setSession, clearSession } = require("./sessi
 const { getMergedBlogs, getBlogBySlug } = require("./blogEngine");
 const { ensureBundleDrafts, getBundleBySlug, getBundles, normalizeBundle } = require("./bundleCatalog");
 const { buildRobotsTxt, buildSitemapXml, getSeoForPath, injectSeo } = require("./seo");
+const createContentController = require("./controllers/contentController");
+const createContentRoutes = require("./routes/contentRoutes");
 
 const ADMIN_EMAIL = process.env.ADMIN_EMAIL || "admin@gamersarena.com";
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || null;
@@ -17,11 +19,15 @@ const ADMIN_PRIMARY_WINDOW_MS = 5 * 60 * 1000;
 const ADMIN_RECOVERY_WINDOW_MS = 10 * 60 * 1000;
 
 function sanitizeGame(game) {
+  const name = String(game.name || "").trim();
   return {
     id: game.id,
-    name: String(game.name || "").trim(),
+    slug: String(game.slug || slugify(name)).trim(),
+    name,
     price: Number(game.price || 45),
-    category: String(game.category || "Action").trim()
+    category: String(game.category || "Action").trim(),
+    description: String(game.description || `${name} is available on Gamers Arena.`).trim(),
+    image: String(game.image || "").trim()
   };
 }
 
@@ -47,7 +53,8 @@ function sanitizeBlog(blog) {
   };
 }
 
-function sanitizeBundle(bundle) {
+function sanitizeBundle(bundle, options = {}) {
+  const includeImages = options.includeImages !== false;
   return {
     id: bundle.id,
     slug: bundle.slug,
@@ -55,7 +62,7 @@ function sanitizeBundle(bundle) {
     itemCount: Number(bundle.itemCount || 0),
     price: Number(bundle.price || 45),
     description: String(bundle.description || "").trim(),
-    images: Array.isArray(bundle.images) ? bundle.images.map((image) => String(image || "").trim()).filter(Boolean).slice(0, 2) : [],
+    images: includeImages && Array.isArray(bundle.images) ? bundle.images.map((image) => String(image || "").trim()).filter(Boolean).slice(0, 2) : [],
     gameIds: Array.isArray(bundle.gameIds) ? bundle.gameIds : []
   };
 }
@@ -87,10 +94,15 @@ function normalizeDobValue(value) {
   return `${digits.slice(0, 2)}-${digits.slice(2, 4)}-${digits.slice(4, 8)}`;
 }
 
+function stripHtmlText(value) {
+  return String(value || "").replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim();
+}
+
 function createApp(io) {
   const app = express();
   const publicDir = path.join(__dirname, "..", "public");
   readStore();
+  const contentController = createContentController({ readStore, updateStore, createId, slugify });
 
   function getAdminCredentials(store) {
     return {
@@ -170,6 +182,8 @@ function createApp(io) {
     next();
   }
 
+  app.use("/api/content", createContentRoutes(contentController, requireAdmin));
+
   function validateContact(contact) {
     const value = String(contact || "").trim();
     const emailOk = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
@@ -224,6 +238,7 @@ function createApp(io) {
     const store = readStore();
     const settings = store.settings || {};
     const admin = getAdminCredentials(store);
+    const includeQr = String(req.query?.includeQr || "") === "1";
     res.json({
       user: session?.userId ? {
         id: session.userId,
@@ -238,9 +253,9 @@ function createApp(io) {
       } : null,
       settings: {
         siteTitle: settings.siteTitle || "Gamers Arena",
-        qrImage: settings.qrImage || defaultQr,
+        qrImage: includeQr ? (settings.qrImage || defaultQr) : "",
         homeLayout: Array.isArray(settings.homeLayout) ? settings.homeLayout : [],
-        bundles: getBundles(store).map(sanitizeBundle),
+        bundles: getBundles(store).map((bundle) => sanitizeBundle(bundle, { includeImages: false })),
         adminEmail: admin.email,
         adminEmailManagedByEnv: admin.emailManagedByEnv,
         adminPasswordManagedByEnv: admin.passwordManagedByEnv,
@@ -532,17 +547,17 @@ function createApp(io) {
 
     const total = items.length;
     const pagedItems = (all ? items : items.slice(offset, offset + limit)).map(sanitizeGame);
-    res.json({
-      items: pagedItems,
-      total,
-      offset,
-      limit: all ? total : limit,
-      hasMore: all ? false : offset + pagedItems.length < total,
-      canEdit: Boolean(session?.isAdmin),
-      categories,
-      bundles: getBundles(store).map(sanitizeBundle)
+      res.json({
+        items: pagedItems,
+        total,
+        offset,
+        limit: all ? total : limit,
+        hasMore: all ? false : offset + pagedItems.length < total,
+        canEdit: Boolean(session?.isAdmin),
+        categories,
+        bundles: getBundles(store).map((bundle) => sanitizeBundle(bundle, { includeImages: false }))
+      });
     });
-  });
 
   app.get("/search-suggestions", (req, res) => {
     const store = readStore();
@@ -590,13 +605,20 @@ function createApp(io) {
     const name = String(req.body?.name || "").trim();
     const price = Number(req.body?.price || 45);
     const category = String(req.body?.category || "Action").trim() || "Action";
+    const description = String(req.body?.description || "").trim();
+    const image = String(req.body?.image || "").trim();
     if (!name) return res.status(400).json({ error: "Game name is required." });
     const store = updateStore((draft) => {
       draft.games.unshift({
         id: createId("game"),
+        slug: slugify(name),
         name,
         price: Number.isFinite(price) ? price : 45,
-        category
+        category,
+        description,
+        image,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString()
       });
       return draft;
     });
@@ -607,13 +629,19 @@ function createApp(io) {
     const name = String(req.body?.name || "").trim();
     const price = Number(req.body?.price || 45);
     const category = String(req.body?.category || "Action").trim() || "Action";
+    const description = String(req.body?.description || "").trim();
+    const image = String(req.body?.image || "").trim();
     const store = updateStore((draft) => {
       const target = draft.games.find((game) => game.id === req.params.id);
       if (!target) throw new Error("Game not found.");
       if (!name) throw new Error("Game name is required.");
       target.name = name;
+      target.slug = slugify(name);
       target.price = Number.isFinite(price) ? price : 45;
       target.category = category;
+      target.description = description;
+      target.image = image;
+      target.updatedAt = new Date().toISOString();
       return draft;
     });
     const updated = store.games.find((game) => game.id === req.params.id);
@@ -844,11 +872,11 @@ function createApp(io) {
     const store = readStore();
     const admin = getAdminCredentials(store);
     res.json({
-      siteTitle: store.settings.siteTitle || "Gamers Arena",
-      qrImage: store.settings.qrImage || defaultQr,
-      homeLayout: Array.isArray(store.settings.homeLayout) ? store.settings.homeLayout : [],
-      bundles: getBundles(store).map(sanitizeBundle),
-      adminEmail: admin.email,
+        siteTitle: store.settings.siteTitle || "Gamers Arena",
+        qrImage: store.settings.qrImage || defaultQr,
+        homeLayout: Array.isArray(store.settings.homeLayout) ? store.settings.homeLayout : [],
+        bundles: getBundles(store).map((bundle) => sanitizeBundle(bundle, { includeImages: false })),
+        adminEmail: admin.email,
       adminEmailManagedByEnv: admin.emailManagedByEnv,
       adminPasswordManagedByEnv: admin.passwordManagedByEnv,
       adminSecondaryManagedByEnv: admin.secondaryManagedByEnv,
@@ -888,11 +916,11 @@ function createApp(io) {
     });
     const activeAdmin = getAdminCredentials(store);
     res.json({
-      siteTitle: store.settings.siteTitle,
-      qrImage: store.settings.qrImage,
-      homeLayout: store.settings.homeLayout,
-      bundles: getBundles(store).map(sanitizeBundle),
-      adminEmail: activeAdmin.email,
+        siteTitle: store.settings.siteTitle,
+        qrImage: store.settings.qrImage,
+        homeLayout: store.settings.homeLayout,
+        bundles: getBundles(store).map((bundle) => sanitizeBundle(bundle, { includeImages: false })),
+        adminEmail: activeAdmin.email,
       adminEmailManagedByEnv: activeAdmin.emailManagedByEnv,
       adminPasswordManagedByEnv: activeAdmin.passwordManagedByEnv,
       adminSecondaryManagedByEnv: activeAdmin.secondaryManagedByEnv,
@@ -902,7 +930,7 @@ function createApp(io) {
 
   app.get("/bundles", (_req, res) => {
     const store = readStore();
-    res.json(getBundles(store).map(sanitizeBundle));
+    res.json(getBundles(store).map((bundle) => sanitizeBundle(bundle, { includeImages: false })));
   });
 
   app.get("/bundles/:slug", (req, res) => {
@@ -1071,6 +1099,24 @@ function createApp(io) {
     });
   });
 
+  app.get("/pages/:slug", (req, res) => {
+    const store = readStore();
+    const pageRecord = (store.pages || []).find((item) => item.slug === req.params.slug);
+    if (!pageRecord) return res.sendStatus(404);
+    const filePath = path.join(publicDir, "page.html");
+    if (!fs.existsSync(filePath)) return res.sendStatus(404);
+    const html = fs.readFileSync(filePath, "utf8");
+    const description = String(pageRecord.seoDescription || pageRecord.summary || stripHtmlText(pageRecord.content).slice(0, 160)).trim();
+    const seo = {
+      title: String(pageRecord.seoTitle || `${pageRecord.title} | Gamers Arena`).trim(),
+      description,
+      ogTitle: String(pageRecord.seoTitle || pageRecord.title || "Gamers Arena").trim(),
+      ogDescription: description,
+      ogType: "article"
+    };
+    return res.type("html").send(injectSeo(html, seo, resolveBaseUrl(req)));
+  });
+
   app.get("/health", (_req, res) => {
     res.json({ ok: true, app: "Gamers Arena" });
   });
@@ -1086,6 +1132,7 @@ function createApp(io) {
   app.get("/bundle.html", (req, res) => sendSeoPage(req, res, "bundle.html", "/bundle.html"));
   app.get("/bundle/:slug", (req, res) => sendSeoPage(req, res, "bundle.html", "/bundle.html"));
   app.get("/editor.html", (req, res) => sendSeoPage(req, res, "editor.html", "/editor.html"));
+  app.get("/page.html", (req, res) => sendSeoPage(req, res, "page.html", "/page.html"));
 
   app.use((error, _req, res, _next) => {
     res.status(500).json({ error: error.message || "Internal server error" });

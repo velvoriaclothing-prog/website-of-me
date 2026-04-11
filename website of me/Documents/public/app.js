@@ -1,12 +1,13 @@
 const page = document.body.dataset.page;
-const GAME_PAGE_SIZE = 24;
+const DESKTOP_GAME_PAGE_SIZE = 24;
+const MOBILE_GAME_PAGE_SIZE = 12;
 
 const state = {
   session: null,
   settings: null,
   games: [],
   filteredGames: [],
-  visibleGameCount: GAME_PAGE_SIZE,
+  visibleGameCount: DESKTOP_GAME_PAGE_SIZE,
   totalGames: 0,
   catalogHasMore: false,
   catalogQuery: "",
@@ -29,7 +30,8 @@ const state = {
   showcase: { action: [], lowEnd: [], upcoming: [], upcomingPreview: [], upcomingTotal: 0 },
   admin: { stats: {}, users: [], chats: [] },
   activeChat: null,
-  socket: null
+  socket: null,
+  content: { sections: [], pages: [], media: [] }
 };
 const TELEGRAM_HANDLE = "gamersarena_shop";
 const TELEGRAM_URL = `https://t.me/${TELEGRAM_HANDLE}`;
@@ -177,6 +179,166 @@ function stripHtml(value) {
   return String(value || "").replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim();
 }
 
+function safeHref(value, fallback = "#") {
+  const href = String(value || "").trim();
+  return /^(https?:\/\/|\/|#)/i.test(href) ? href : fallback;
+}
+
+function getContentSection(key) {
+  return (state.content.sections || []).find((item) => item.key === key) || null;
+}
+
+async function loadPublicContent() {
+  const data = await api("/api/content/public");
+  state.content = {
+    ...(state.content || {}),
+    sections: data.sections || [],
+    pages: data.pages || []
+  };
+  return state.content;
+}
+
+async function loadAdminContent() {
+  const data = await api("/api/content");
+  state.content = {
+    sections: data.sections || [],
+    pages: data.pages || [],
+    media: data.media || []
+  };
+  renderContentSectionsAdmin();
+  renderPagesAdmin();
+  renderMediaAdmin();
+  return state.content;
+}
+
+function applyManagedSections() {
+  document.querySelectorAll("[data-section-title]").forEach((element) => {
+    const section = getContentSection(element.dataset.sectionTitle);
+    if (section?.title) element.textContent = section.title;
+  });
+
+  document.querySelectorAll("[data-section-subtitle]").forEach((element) => {
+    const section = getContentSection(element.dataset.sectionSubtitle);
+    if (section?.subtitle) element.textContent = section.subtitle;
+  });
+
+  document.querySelectorAll("[data-section-body]").forEach((element) => {
+    const section = getContentSection(element.dataset.sectionBody);
+    if (section?.body) element.textContent = section.body;
+  });
+
+  document.querySelectorAll("[data-section-html]").forEach((element) => {
+    const section = getContentSection(element.dataset.sectionHtml);
+    if (section?.body) element.innerHTML = section.body;
+  });
+
+  document.querySelectorAll("[data-section-button-label]").forEach((element) => {
+    const section = getContentSection(element.dataset.sectionButtonLabel);
+    if (section?.buttonLabel) element.textContent = section.buttonLabel;
+  });
+
+  document.querySelectorAll("[data-section-button-href]").forEach((element) => {
+    const section = getContentSection(element.dataset.sectionButtonHref);
+    if (section?.buttonHref) element.setAttribute("href", safeHref(section.buttonHref, element.getAttribute("href") || "#"));
+  });
+
+  document.querySelectorAll("[data-section-image]").forEach((element) => {
+    const section = getContentSection(element.dataset.sectionImage);
+    if (!section?.image) return;
+    element.setAttribute("src", section.image);
+    element.classList.remove("hidden");
+  });
+}
+
+function renderContentSectionsAdmin() {
+  const wrap = qs("contentSectionsList");
+  if (!wrap) return;
+  wrap.innerHTML = (state.content.sections || []).length
+    ? state.content.sections.map((section) => `
+      <article class="card admin-editor-card">
+        <div class="section-head">
+          <div>
+            <p class="eyebrow">${escapeHtml(section.key)}</p>
+            <h3 class="card-title">${escapeHtml(section.title || "Untitled section")}</h3>
+          </div>
+        </div>
+        <div class="stack">
+          <input id="section-key-${section.id}" class="input" value="${escapeHtml(section.key)}" placeholder="Section key">
+          <input id="section-subtitle-${section.id}" class="input" value="${escapeHtml(section.subtitle || "")}" placeholder="Subtitle">
+          <input id="section-title-${section.id}" class="input" value="${escapeHtml(section.title || "")}" placeholder="Title">
+          <textarea id="section-body-${section.id}" class="textarea" placeholder="Section body">${escapeHtml(section.body || "")}</textarea>
+          <input id="section-button-label-${section.id}" class="input" value="${escapeHtml(section.buttonLabel || "")}" placeholder="Button label">
+          <input id="section-button-href-${section.id}" class="input" value="${escapeHtml(section.buttonHref || "")}" placeholder="Button link">
+          <input id="section-image-${section.id}" class="input" value="${escapeHtml(section.image || "")}" placeholder="Image URL (optional)">
+          <div class="inline-actions">
+            <button class="btn btn-secondary" type="button" data-save-section="${section.id}">Save Section</button>
+            <button class="btn btn-danger" type="button" data-delete-section="${section.id}">Delete</button>
+          </div>
+        </div>
+      </article>
+    `).join("")
+    : `<div class="empty">No managed content sections yet.</div>`;
+}
+
+function renderPagesAdmin() {
+  const wrap = qs("pagesList");
+  if (!wrap) return;
+  wrap.innerHTML = (state.content.pages || []).length
+    ? state.content.pages.map((item) => `
+      <article class="card admin-editor-card">
+        <div class="section-head">
+          <div>
+            <p class="eyebrow">/${escapeHtml(item.slug)}</p>
+            <h3 class="card-title">${escapeHtml(item.title || "Untitled page")}</h3>
+          </div>
+          <a class="btn btn-secondary" href="/pages/${encodeURIComponent(item.slug)}" target="_blank" rel="noreferrer">Open Page</a>
+        </div>
+        <div class="stack">
+          <input id="page-title-${item.id}" class="input" value="${escapeHtml(item.title || "")}" placeholder="Page title">
+          <input id="page-slug-${item.id}" class="input" value="${escapeHtml(item.slug || "")}" placeholder="Page slug">
+          <input id="page-summary-${item.id}" class="input" value="${escapeHtml(item.summary || "")}" placeholder="Short summary">
+          <input id="page-image-${item.id}" class="input" value="${escapeHtml(item.heroImage || "")}" placeholder="Hero image URL">
+          <input id="page-seo-title-${item.id}" class="input" value="${escapeHtml(item.seoTitle || "")}" placeholder="SEO title">
+          <textarea id="page-seo-description-${item.id}" class="textarea" placeholder="SEO description">${escapeHtml(item.seoDescription || "")}</textarea>
+          <textarea id="page-content-${item.id}" class="textarea code-textarea" placeholder="HTML or text content">${escapeHtml(item.content || "")}</textarea>
+          <div class="inline-actions">
+            <button class="btn btn-secondary" type="button" data-save-page="${item.id}">Save Page</button>
+            <button class="btn btn-danger" type="button" data-delete-page="${item.id}">Delete</button>
+          </div>
+        </div>
+      </article>
+    `).join("")
+    : `<div class="empty">No custom pages yet.</div>`;
+}
+
+function renderMediaAdmin() {
+  const wrap = qs("mediaList");
+  if (!wrap) return;
+  wrap.innerHTML = (state.content.media || []).length
+    ? state.content.media.map((item) => `
+      <article class="card admin-editor-card">
+        <div class="section-head">
+          <div>
+            <p class="eyebrow">${escapeHtml(item.placement || "media")}</p>
+            <h3 class="card-title">${escapeHtml(item.name || "Media item")}</h3>
+          </div>
+        </div>
+        <div class="stack">
+          <input id="media-name-${item.id}" class="input" value="${escapeHtml(item.name || "")}" placeholder="Media name">
+          <input id="media-url-${item.id}" class="input" value="${escapeHtml(item.url || "")}" placeholder="Image URL or uploaded data URL">
+          <input id="media-alt-${item.id}" class="input" value="${escapeHtml(item.alt || "")}" placeholder="Alt text">
+          <input id="media-placement-${item.id}" class="input" value="${escapeHtml(item.placement || "")}" placeholder="Placement tag (home, banner, hero)">
+          ${item.url ? `<img class="admin-media-preview" src="${escapeHtml(item.url)}" alt="${escapeHtml(item.alt || item.name || "Media preview")}" loading="lazy">` : ""}
+          <div class="inline-actions">
+            <button class="btn btn-secondary" type="button" data-save-media="${item.id}">Save Media</button>
+            <button class="btn btn-danger" type="button" data-delete-media="${item.id}">Delete</button>
+          </div>
+        </div>
+      </article>
+    `).join("")
+    : `<div class="empty">No saved media items yet.</div>`;
+}
+
 function upsertMeta(selector, attributes, content) {
   let element = document.head.querySelector(selector);
   if (!element) {
@@ -227,6 +389,14 @@ function scheduleIdleTask(callback) {
   window.setTimeout(() => callback(), 90);
 }
 
+function useCompactMode() {
+  return window.innerWidth <= 768 || Boolean(navigator.connection?.saveData);
+}
+
+function getGamePageSize() {
+  return useCompactMode() ? MOBILE_GAME_PAGE_SIZE : DESKTOP_GAME_PAGE_SIZE;
+}
+
 function syncHomeCategoryButtons() {
   document.querySelectorAll("[data-home-category]").forEach((button) => {
     button.classList.toggle("active", String(button.dataset.homeCategory || "") === String(state.catalogCategory || ""));
@@ -268,7 +438,7 @@ function initRevealAnimations() {
   const items = [...document.querySelectorAll("[data-reveal]")];
   if (!items.length) return;
 
-  if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+  if (window.matchMedia("(prefers-reduced-motion: reduce)").matches || useCompactMode()) {
     items.forEach((item) => item.classList.add("is-visible"));
     return;
   }
@@ -479,7 +649,8 @@ function resetAdminAccessModal() {
 }
 
 async function bootstrap() {
-  const sessionData = await api("/api/session");
+  const includeQr = ["checkout", "admin", "editor"].includes(page);
+  const sessionData = await api(`/api/session${includeQr ? "?includeQr=1" : ""}`);
   state.session = sessionData.user;
   state.settings = sessionData.settings;
   state.wishlist = readWishlist();
@@ -544,7 +715,7 @@ async function loadGames(options = {}) {
     params.set("all", "1");
   } else {
     params.set("offset", reset ? "0" : String(state.games.length));
-    params.set("limit", String(GAME_PAGE_SIZE));
+    params.set("limit", String(getGamePageSize()));
   }
   const data = await api(`/games?${params.toString()}`);
   state.games = reset || all ? data.items : [...state.games, ...data.items];
@@ -612,28 +783,32 @@ function renderGameCards() {
     }
   }
   wrap.innerHTML = sourceGames.length
-    ? sourceGames.map((game) => `
-      <article class="card game-card">
-        <p class="eyebrow">${escapeHtml(game.category)}</p>
-        <strong>${escapeHtml(game.name)}</strong>
-        <div class="price">${game.category === "Upcoming" ? "Coming Soon" : currency(game.price)}</div>
-        <div class="inline-actions" style="justify-content:center;">
-          <button class="btn btn-primary" type="button" data-add-cart="${game.id}">Add to Cart</button>
-          <button class="btn btn-secondary" type="button" data-save-item="game" data-save-key="${game.id}" data-save-name="${escapeHtml(game.name)}" data-save-price="${game.price}" data-save-category="${escapeHtml(game.category)}">${isWishlisted("game", game.id) ? "Saved" : "Save"}</button>
-          ${state.session?.isAdmin ? `<button class="btn btn-secondary" type="button" data-edit-game="${game.id}">Edit</button>` : ""}
+      ? sourceGames.map((game) => `
+        <article class="card game-card">
+          ${game.image ? `<img class="game-thumb" src="${escapeHtml(game.image)}" alt="${escapeHtml(game.name)}" loading="lazy">` : `<div class="game-thumb game-thumb-fallback" aria-hidden="true">${escapeHtml((game.name || "G").slice(0, 1))}</div>`}
+          <p class="eyebrow">${escapeHtml(game.category)}</p>
+          <strong>${escapeHtml(game.name)}</strong>
+          <p class="muted game-summary">${escapeHtml(game.description || "Affordable game deal with fast Telegram support.")}</p>
+          <div class="price">${game.category === "Upcoming" ? "Coming Soon" : currency(game.price)}</div>
+          <div class="inline-actions" style="justify-content:center;">
+            <button class="btn btn-primary" type="button" data-add-cart="${game.id}">Add to Cart</button>
+            <button class="btn btn-secondary" type="button" data-save-item="game" data-save-key="${game.id}" data-save-name="${escapeHtml(game.name)}" data-save-price="${game.price}" data-save-category="${escapeHtml(game.category)}">${isWishlisted("game", game.id) ? "Saved" : "Save"}</button>
+            ${state.session?.isAdmin ? `<button class="btn btn-secondary" type="button" data-edit-game="${game.id}">Edit</button>` : ""}
         </div>
         ${state.session?.isAdmin ? `
           <div class="stack hidden" id="edit-${game.id}">
             <input class="input" id="name-${game.id}" value="${game.name}">
-            <select class="select" id="category-${game.id}">
-              ${["Action", "Shooter", "RPG", "Racing", "Low-end PC", "Upcoming"].map((category) => `<option value="${category}" ${game.category === category ? "selected" : ""}>${category}</option>`).join("")}
-            </select>
-            <input class="input" id="price-${game.id}" type="number" value="${game.price}">
-            <div class="inline-actions" style="justify-content:center;">
-              <button class="btn btn-secondary" type="button" data-save-game="${game.id}">Save</button>
-              <button class="btn btn-danger" type="button" data-delete-game="${game.id}">Delete</button>
+              <select class="select" id="category-${game.id}">
+                ${["Action", "Shooter", "RPG", "Racing", "Sports", "Low-end PC", "Upcoming"].map((category) => `<option value="${category}" ${game.category === category ? "selected" : ""}>${category}</option>`).join("")}
+              </select>
+              <input class="input" id="price-${game.id}" type="number" value="${game.price}">
+              <input class="input" id="image-${game.id}" value="${escapeHtml(game.image || "")}" placeholder="Image URL">
+              <textarea class="textarea" id="description-${game.id}" placeholder="Short description">${escapeHtml(game.description || "")}</textarea>
+              <div class="inline-actions" style="justify-content:center;">
+                <button class="btn btn-secondary" type="button" data-save-game="${game.id}">Save</button>
+                <button class="btn btn-danger" type="button" data-delete-game="${game.id}">Delete</button>
+              </div>
             </div>
-          </div>
         ` : ""}
       </article>
     `).join("")
@@ -972,7 +1147,7 @@ function renderHomeCollectionLoading() {
 }
 
 function initAutoRails() {
-  if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+  if (window.matchMedia("(prefers-reduced-motion: reduce)").matches || useCompactMode()) return;
   document.querySelectorAll("[data-auto-rail]").forEach((rail) => {
     if (rail.dataset.autoRailReady === "1") return;
     rail.dataset.autoRailReady = "1";
@@ -1533,33 +1708,71 @@ function renderEditorBlocks(blocks) {
 }
 
 async function initHome() {
+  await loadPublicContent();
+  applyManagedSections();
   const initialQuery = getQuery("q") || "";
   const initialCategory = getQuery("category") || "";
   await loadGames({ reset: true, query: initialQuery, category: initialCategory });
   hydrateGameFilters();
   renderGameCards();
-  renderHomeLayout();
   renderBundleSection();
-  renderFaqCards("faqPreview", 4);
-  renderReviews("reviewPreview", 6);
-  renderWishlistPreview();
   renderHomeCollectionLoading();
   updateHomeMetrics();
-  initAutoRails();
   initRevealAnimations();
 
   scheduleIdleTask(async () => {
     try {
+      renderHomeLayout();
+      renderFaqCards("faqPreview", useCompactMode() ? 3 : 4);
+      renderReviews("reviewPreview", useCompactMode() ? 4 : 6);
+      renderWishlistPreview();
       await loadHomeShowcase();
       renderFeaturedSections();
       renderUpcomingPreview();
       updateHomeMetrics();
       initAutoRails();
     } catch (_error) {
+      renderHomeLayout();
+      renderFaqCards("faqPreview", useCompactMode() ? 3 : 4);
+      renderReviews("reviewPreview", useCompactMode() ? 4 : 6);
+      renderWishlistPreview();
       renderFeaturedSections();
       renderUpcomingPreview();
     }
   });
+}
+
+async function initGamesCatalog() {
+  const initialQuery = getQuery("q") || "";
+  const initialCategory = getQuery("category") || "";
+  await loadGames({ reset: true, query: initialQuery, category: initialCategory });
+  hydrateGameFilters();
+  renderGameCards();
+  renderBundleSection();
+  renderWishlistPreview();
+  renderFaqCards("faqPreview", useCompactMode() ? 3 : 5);
+  initRevealAnimations();
+}
+
+async function initManagedPage() {
+  const slug = window.location.pathname.split("/pages/")[1] || "";
+  if (!slug) throw new Error("Page not found.");
+  const data = await api(`/api/content/pages/${encodeURIComponent(slug)}`);
+  const title = qs("managedPageTitle");
+  const subtitle = qs("managedPageSummary");
+  const body = qs("managedPageBody");
+  const image = qs("managedPageImage");
+  if (title) title.textContent = data.title || "Custom Page";
+  if (subtitle) subtitle.textContent = data.summary || "";
+  if (body) body.innerHTML = data.content || "<p>No content added yet.</p>";
+  if (image) {
+    if (data.heroImage) {
+      image.src = data.heroImage;
+      image.classList.remove("hidden");
+    } else {
+      image.classList.add("hidden");
+    }
+  }
 }
 
 async function initCart() {
@@ -1618,11 +1831,13 @@ async function initAdmin() {
     loadAdminOverview(),
     loadBundleCandidates()
   ]);
+  await loadAdminContent();
   hydrateGameFilters();
   renderGameCards();
   renderBlogList();
   renderAdminBundles();
   renderBundleGameChecklist();
+  renderEditorBlocks(state.settings.homeLayout || []);
   if (qs("siteTitleInput")) qs("siteTitleInput").value = state.settings.siteTitle || "Gamers Arena";
   const adminEmailInput = qs("adminEmailInput");
   if (adminEmailInput) {
@@ -1839,7 +2054,9 @@ document.addEventListener("click", async (event) => {
         body: JSON.stringify({
           name: qs(`name-${saveGame.dataset.saveGame}`).value,
           category: qs(`category-${saveGame.dataset.saveGame}`).value,
-          price: Number(qs(`price-${saveGame.dataset.saveGame}`).value || 45)
+          price: Number(qs(`price-${saveGame.dataset.saveGame}`).value || 45),
+          image: qs(`image-${saveGame.dataset.saveGame}`).value,
+          description: qs(`description-${saveGame.dataset.saveGame}`).value
         })
       });
       await applyGameFilters();
@@ -1857,6 +2074,112 @@ document.addEventListener("click", async (event) => {
       setStatus("adminGamesStatus", "Game deleted.");
     } catch (error) {
       setStatus("adminGamesStatus", error.message, true);
+    }
+  }
+
+  const saveSection = event.target.closest("[data-save-section]");
+  if (saveSection) {
+    try {
+      await api(`/api/content/sections/${saveSection.dataset.saveSection}`, {
+        method: "PUT",
+        body: JSON.stringify({
+          item: {
+            key: qs(`section-key-${saveSection.dataset.saveSection}`).value,
+            subtitle: qs(`section-subtitle-${saveSection.dataset.saveSection}`).value,
+            title: qs(`section-title-${saveSection.dataset.saveSection}`).value,
+            body: qs(`section-body-${saveSection.dataset.saveSection}`).value,
+            buttonLabel: qs(`section-button-label-${saveSection.dataset.saveSection}`).value,
+            buttonHref: qs(`section-button-href-${saveSection.dataset.saveSection}`).value,
+            image: qs(`section-image-${saveSection.dataset.saveSection}`).value
+          }
+        })
+      });
+      await loadAdminContent();
+      await loadPublicContent();
+      applyManagedSections();
+      setStatus("contentStatus", "Content section updated.");
+    } catch (error) {
+      setStatus("contentStatus", error.message, true);
+    }
+  }
+
+  const deleteSection = event.target.closest("[data-delete-section]");
+  if (deleteSection) {
+    try {
+      await api(`/api/content/sections/${deleteSection.dataset.deleteSection}`, { method: "DELETE" });
+      await loadAdminContent();
+      await loadPublicContent();
+      applyManagedSections();
+      setStatus("contentStatus", "Content section deleted.");
+    } catch (error) {
+      setStatus("contentStatus", error.message, true);
+    }
+  }
+
+  const savePage = event.target.closest("[data-save-page]");
+  if (savePage) {
+    try {
+      await api(`/api/content/pages/${savePage.dataset.savePage}`, {
+        method: "PUT",
+        body: JSON.stringify({
+          item: {
+            title: qs(`page-title-${savePage.dataset.savePage}`).value,
+            slug: qs(`page-slug-${savePage.dataset.savePage}`).value,
+            summary: qs(`page-summary-${savePage.dataset.savePage}`).value,
+            heroImage: qs(`page-image-${savePage.dataset.savePage}`).value,
+            seoTitle: qs(`page-seo-title-${savePage.dataset.savePage}`).value,
+            seoDescription: qs(`page-seo-description-${savePage.dataset.savePage}`).value,
+            content: qs(`page-content-${savePage.dataset.savePage}`).value
+          }
+        })
+      });
+      await loadAdminContent();
+      setStatus("pagesStatus", "Page updated.");
+    } catch (error) {
+      setStatus("pagesStatus", error.message, true);
+    }
+  }
+
+  const deletePage = event.target.closest("[data-delete-page]");
+  if (deletePage) {
+    try {
+      await api(`/api/content/pages/${deletePage.dataset.deletePage}`, { method: "DELETE" });
+      await loadAdminContent();
+      setStatus("pagesStatus", "Page deleted.");
+    } catch (error) {
+      setStatus("pagesStatus", error.message, true);
+    }
+  }
+
+  const saveMedia = event.target.closest("[data-save-media]");
+  if (saveMedia) {
+    try {
+      await api(`/api/content/media/${saveMedia.dataset.saveMedia}`, {
+        method: "PUT",
+        body: JSON.stringify({
+          item: {
+            name: qs(`media-name-${saveMedia.dataset.saveMedia}`).value,
+            url: qs(`media-url-${saveMedia.dataset.saveMedia}`).value,
+            alt: qs(`media-alt-${saveMedia.dataset.saveMedia}`).value,
+            placement: qs(`media-placement-${saveMedia.dataset.saveMedia}`).value
+          }
+        })
+      });
+      await loadAdminContent();
+      setStatus("mediaStatus", "Media updated.");
+    } catch (error) {
+      setStatus("mediaStatus", error.message, true);
+    }
+  }
+
+  const deleteMedia = event.target.closest("[data-delete-media]");
+  if (deleteMedia) {
+    try {
+      await api(`/api/content/media/${deleteMedia.dataset.deleteMedia}`, { method: "DELETE" });
+      await loadAdminContent();
+      setStatus("mediaStatus", "Media deleted.");
+    } catch (error) {
+      setStatus("mediaStatus", error.message, true);
     }
   }
 
@@ -2194,12 +2517,15 @@ document.addEventListener("submit", async (event) => {
   if (event.target.id === "addGameForm") {
     event.preventDefault();
     try {
+      const gameImageUpload = await inputToDataUrl("newGameImage");
       await api("/games", {
         method: "POST",
         body: JSON.stringify({
           name: qs("newGameName").value,
           category: qs("newGameCategory").value,
-          price: Number(qs("newGamePrice").value || 45)
+          price: Number(qs("newGamePrice").value || 45),
+          description: qs("newGameDescription")?.value || "",
+          image: gameImageUpload || qs("newGameImageUrl")?.value || ""
         })
       });
       event.target.reset();
@@ -2285,15 +2611,91 @@ document.addEventListener("submit", async (event) => {
       const qrPreview = qs("qrPreview");
       if (qrPreview) qrPreview.src = state.settings.qrImage;
       setStatus("settingsStatus", "Settings saved.");
-    } catch (error) {
-      setStatus("settingsStatus", error.message, true);
+      } catch (error) {
+        setStatus("settingsStatus", error.message, true);
+      }
     }
-  }
 
-  if (event.target.id === "editorSaveForm") {
-    event.preventDefault();
-    try {
-      const blocks = [...document.querySelectorAll("[data-block-id]")].map((input) => ({
+    if (event.target.id === "createSectionForm") {
+      event.preventDefault();
+      try {
+        await api("/api/content", {
+          method: "POST",
+          body: JSON.stringify({
+            type: "sections",
+            item: {
+              key: qs("newSectionKey").value,
+              subtitle: qs("newSectionSubtitle").value,
+              title: qs("newSectionTitle").value,
+              body: qs("newSectionBody").value,
+              buttonLabel: qs("newSectionButtonLabel").value,
+              buttonHref: qs("newSectionButtonHref").value,
+              image: qs("newSectionImage").value
+            }
+          })
+        });
+        event.target.reset();
+        await loadAdminContent();
+        setStatus("contentStatus", "Content section added.");
+      } catch (error) {
+        setStatus("contentStatus", error.message, true);
+      }
+    }
+
+    if (event.target.id === "createPageForm") {
+      event.preventDefault();
+      try {
+        await api("/api/content", {
+          method: "POST",
+          body: JSON.stringify({
+            type: "pages",
+            item: {
+              title: qs("newPageTitle").value,
+              slug: qs("newPageSlug").value,
+              summary: qs("newPageSummary").value,
+              heroImage: qs("newPageImage").value,
+              seoTitle: qs("newPageSeoTitle").value,
+              seoDescription: qs("newPageSeoDescription").value,
+              content: qs("newPageContent").value
+            }
+          })
+        });
+        event.target.reset();
+        await loadAdminContent();
+        setStatus("pagesStatus", "Page created.");
+      } catch (error) {
+        setStatus("pagesStatus", error.message, true);
+      }
+    }
+
+    if (event.target.id === "createMediaForm") {
+      event.preventDefault();
+      try {
+        const upload = await inputToDataUrl("newMediaFile");
+        await api("/api/content", {
+          method: "POST",
+          body: JSON.stringify({
+            type: "media",
+            item: {
+              name: qs("newMediaName").value,
+              url: upload || qs("newMediaUrl").value,
+              alt: qs("newMediaAlt").value,
+              placement: qs("newMediaPlacement").value
+            }
+          })
+        });
+        event.target.reset();
+        await loadAdminContent();
+        setStatus("mediaStatus", "Media saved.");
+      } catch (error) {
+        setStatus("mediaStatus", error.message, true);
+      }
+    }
+
+    if (event.target.id === "editorSaveForm") {
+      event.preventDefault();
+      try {
+        const blocks = [...document.querySelectorAll("[data-block-id]")].map((input) => ({
         id: input.dataset.blockId,
         type: input.dataset.blockType,
         content: input.value
@@ -2501,6 +2903,7 @@ async function init() {
     await refreshCart();
     await bindPageActions();
     if (page === "home") await initHome();
+    if (page === "games") await initGamesCatalog();
     if (page === "cart") await initCart();
     if (page === "checkout") await initCheckout();
     if (page === "bundle") await initBundle();
@@ -2513,6 +2916,7 @@ async function init() {
     if (page === "reviews") await initReviews();
     if (page === "wishlist") await initWishlist();
     if (page === "post") await loadPost();
+    if (page === "managed-page") await initManagedPage();
     if (page === "editor") await initEditor();
   } catch (error) {
     const target = qs("pageStatus") || document.querySelector("main") || document.body;
