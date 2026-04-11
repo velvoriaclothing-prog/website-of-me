@@ -125,6 +125,16 @@ function createContentController(helpers) {
     updateStore
   } = helpers;
 
+  function sanitizePageContent(pageContent = {}) {
+    return {
+      title: String(pageContent.title || "").trim(),
+      description: String(pageContent.description || "").trim(),
+      buttonLabel: String(pageContent.buttonLabel || "").trim(),
+      buttonHref: String(pageContent.buttonHref || "").trim(),
+      heroImage: String(pageContent.heroImage || "").trim()
+    };
+  }
+
   function getAll(_req, res) {
     const store = readStore();
     res.json({
@@ -152,6 +162,28 @@ function createContentController(helpers) {
     const page = (store.pages || []).find((item) => item.slug === req.params.slug);
     if (!page) return res.status(404).json({ error: "Page not found." });
     return res.json(sanitizePage(page));
+  }
+
+  function getPageContent(req, res) {
+    const store = readStore();
+    const content = store.contentByPage && store.contentByPage[req.params.page];
+    if (!content) return res.status(404).json({ error: "Page content not found." });
+    return res.json({ page: req.params.page, content: sanitizePageContent(content) });
+  }
+
+  function upsertPageContent(req, res) {
+    const pageKey = String(req.params.page || "").trim();
+    if (!pageKey) return res.status(400).json({ error: "Page key is required." });
+    const incoming = req.body?.content || {};
+    const store = updateStore((draft) => {
+      draft.contentByPage = draft.contentByPage && typeof draft.contentByPage === "object" ? draft.contentByPage : {};
+      draft.contentByPage[pageKey] = sanitizePageContent({
+        ...(draft.contentByPage[pageKey] || {}),
+        ...incoming
+      });
+      return draft;
+    });
+    return res.json({ page: pageKey, content: sanitizePageContent(store.contentByPage[pageKey]) });
   }
 
   function createItem(req, res) {
@@ -240,6 +272,8 @@ function createContentController(helpers) {
     getAll,
     getPublicContent,
     getPage,
+    getPageContent,
+    upsertPageContent,
     createItem,
     updateItem,
     deleteItem

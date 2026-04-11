@@ -36,6 +36,7 @@ const state = {
 const TELEGRAM_HANDLE = "gamersarena_shop";
 const TELEGRAM_URL = `https://t.me/${TELEGRAM_HANDLE}`;
 const WISHLIST_KEY = "ga-wishlist";
+const LOCAL_CART_KEY = "ga-cart-cache";
 const faqEntries = [
   {
     question: "How long does delivery usually take after payment?",
@@ -184,28 +185,78 @@ function safeHref(value, fallback = "#") {
   return /^(https?:\/\/|\/|#)/i.test(href) ? href : fallback;
 }
 
+function readLocalCart() {
+  try {
+    const parsed = JSON.parse(localStorage.getItem(LOCAL_CART_KEY) || '{"items":[],"total":0}');
+    if (!parsed || !Array.isArray(parsed.items)) return { items: [], total: 0 };
+    return {
+      items: parsed.items,
+      total: Number(parsed.total || 0)
+    };
+  } catch (_error) {
+    return { items: [], total: 0 };
+  }
+}
+
+function writeLocalCart(cart) {
+  localStorage.setItem(LOCAL_CART_KEY, JSON.stringify({
+    items: Array.isArray(cart?.items) ? cart.items : [],
+    total: Number(cart?.total || 0)
+  }));
+}
+
 function getContentSection(key) {
   return (state.content.sections || []).find((item) => item.key === key) || null;
 }
 
 async function loadPublicContent() {
   const data = await api("/api/content/public");
+  const [homeContent, gamesContent, cartContent] = await Promise.all([
+    loadPageContent("home"),
+    loadPageContent("games"),
+    loadPageContent("cart")
+  ]);
   state.content = {
     ...(state.content || {}),
     sections: data.sections || [],
-    pages: data.pages || []
+    pages: data.pages || [],
+    pageContent: {
+      home: homeContent || {},
+      games: gamesContent || {},
+      cart: cartContent || {}
+    }
   };
   return state.content;
 }
 
+async function loadPageContent(pageKey) {
+  try {
+    const data = await api(`/api/content/${encodeURIComponent(pageKey)}`);
+    return data.content || null;
+  } catch (_error) {
+    return null;
+  }
+}
+
 async function loadAdminContent() {
   const data = await api("/api/content");
+  const [homeContent, gamesContent, cartContent] = await Promise.all([
+    loadPageContent("home"),
+    loadPageContent("games"),
+    loadPageContent("cart")
+  ]);
   state.content = {
     sections: data.sections || [],
     pages: data.pages || [],
-    media: data.media || []
+    media: data.media || [],
+    pageContent: {
+      home: homeContent || {},
+      games: gamesContent || {},
+      cart: cartContent || {}
+    }
   };
   renderContentSectionsAdmin();
+  renderPageContentAdmin();
   renderPagesAdmin();
   renderMediaAdmin();
   return state.content;
@@ -339,6 +390,33 @@ function renderMediaAdmin() {
     : `<div class="empty">No saved media items yet.</div>`;
 }
 
+function renderPageContentAdmin() {
+  const wrap = qs("pageContentList");
+  if (!wrap) return;
+  const pages = state.content.pageContent || {};
+  const entries = Object.entries(pages);
+  wrap.innerHTML = entries.length
+    ? entries.map(([pageKey, content]) => `
+      <article class="card admin-editor-card">
+        <div class="section-head">
+          <div>
+            <p class="eyebrow">${escapeHtml(pageKey)}</p>
+            <h3 class="card-title">${escapeHtml(content.title || "Page content")}</h3>
+          </div>
+        </div>
+        <div class="stack">
+          <input id="page-content-title-${pageKey}" class="input" value="${escapeHtml(content.title || "")}" placeholder="Title">
+          <textarea id="page-content-description-${pageKey}" class="textarea" placeholder="Description">${escapeHtml(content.description || "")}</textarea>
+          <input id="page-content-button-label-${pageKey}" class="input" value="${escapeHtml(content.buttonLabel || "")}" placeholder="Button label">
+          <input id="page-content-button-href-${pageKey}" class="input" value="${escapeHtml(content.buttonHref || "")}" placeholder="Button href">
+          <input id="page-content-hero-${pageKey}" class="input" value="${escapeHtml(content.heroImage || "")}" placeholder="Hero image URL">
+          <button class="btn btn-secondary" type="button" data-save-page-content="${pageKey}">Save ${escapeHtml(pageKey)} Content</button>
+        </div>
+      </article>
+    `).join("")
+    : `<div class="empty">No page content groups yet.</div>`;
+}
+
 function upsertMeta(selector, attributes, content) {
   let element = document.head.querySelector(selector);
   if (!element) {
@@ -379,6 +457,34 @@ function updateWishlistBadges() {
   document.querySelectorAll("[data-wishlist-count]").forEach((element) => {
     element.textContent = String(state.wishlist.length);
   });
+}
+
+function updateCartBadges() {
+  const count = Number(state.cart?.items?.length || readLocalCart().items.length || 0);
+  document.querySelectorAll("[data-cart-count]").forEach((element) => {
+    element.textContent = String(count);
+  });
+  const floatingCount = qs("floatingCartCount");
+  if (floatingCount) floatingCount.textContent = String(count);
+}
+
+function injectFloatingCart() {
+  if (page === "cart" || page === "checkout") return;
+  if (document.getElementById("floatingCartButton")) return;
+  const cachedCart = readLocalCart();
+  const button = document.createElement("button");
+  button.id = "floatingCartButton";
+  button.className = "floating-cart";
+  button.type = "button";
+  button.setAttribute("aria-label", "Open cart");
+  button.innerHTML = `
+    <span class="floating-cart-icon">Cart</span>
+    <span id="floatingCartCount" class="floating-cart-count">${Number(cachedCart.items.length || 0)}</span>
+  `;
+  button.onclick = () => {
+    window.location.href = "/cart.html";
+  };
+  document.body.appendChild(button);
 }
 
 function scheduleIdleTask(callback) {
@@ -654,14 +760,17 @@ async function bootstrap() {
   state.session = sessionData.user;
   state.settings = sessionData.settings;
   state.wishlist = readWishlist();
+  state.cart = readLocalCart();
   document.querySelectorAll("[data-site-title]").forEach((element) => {
     element.textContent = state.settings.siteTitle || "Gamers Arena";
   });
   injectSiteBanner();
   injectAdminAccess();
+  injectFloatingCart();
   ensureExpandedNav();
   updateNav();
   updateWishlistBadges();
+  updateCartBadges();
 }
 
 function updateNav() {
@@ -698,7 +807,44 @@ function renderHomeLayout() {
       }
       return `<article class="block-card"><p class="hero-copy">${block.content}</p></article>`;
     }).join("")
-    : `<div class="empty">No custom homepage blocks saved yet.</div>`;
+      : `<div class="empty">No custom homepage blocks saved yet.</div>`;
+}
+
+function renderSlidingRows() {
+  const rails = [qs("gameRailRow1"), qs("gameRailRow2")];
+  if (!rails.some(Boolean)) return;
+  const source = (state.games || []).slice(0, 16);
+  const rows = [
+    source.filter((_, index) => index % 2 === 0),
+    source.filter((_, index) => index % 2 === 1)
+  ];
+  rails.forEach((rail, rowIndex) => {
+    if (!rail) return;
+    const rowItems = rows[rowIndex] || [];
+    rail.innerHTML = rowItems.length
+      ? rowItems.map((game) => `
+        <article class="card slider-game-card">
+          ${game.image ? `<img class="slider-game-thumb" src="${escapeHtml(game.image)}" alt="${escapeHtml(game.name)}" loading="lazy">` : `<div class="slider-game-thumb game-thumb-fallback" aria-hidden="true">${escapeHtml((game.name || "G").slice(0, 1))}</div>`}
+          <div class="stack">
+            <p class="eyebrow">${escapeHtml(game.category)}</p>
+            <h3 class="card-title">${escapeHtml(game.name)}</h3>
+            <p class="price">${game.category === "Upcoming" ? "Coming Soon" : currency(game.price)}</p>
+          </div>
+          <div class="inline-actions">
+            <button class="btn btn-primary" type="button" data-add-cart="${game.id}">Add to Cart</button>
+            <button class="btn btn-secondary" type="button" data-save-item="game" data-save-key="${game.id}" data-save-name="${escapeHtml(game.name)}" data-save-price="${game.price}" data-save-category="${escapeHtml(game.category)}">${isWishlisted("game", game.id) ? "Saved" : "Save"}</button>
+          </div>
+        </article>
+      `).join("")
+      : `<div class="empty">No games loaded yet.</div>`;
+  });
+}
+
+function scrollSliderRow(rowId, direction) {
+  const rail = qs(rowId);
+  if (!rail) return;
+  const amount = Math.max(260, Math.floor(rail.clientWidth * 0.8));
+  rail.scrollBy({ left: amount * direction, behavior: "smooth" });
 }
 
 async function loadGames(options = {}) {
@@ -829,9 +975,8 @@ function renderGameCards() {
 async function refreshCart() {
   state.cart = await api("/cart");
   state.cartLoaded = true;
-  document.querySelectorAll("[data-cart-count]").forEach((element) => {
-    element.textContent = String(state.cart.items.length);
-  });
+  writeLocalCart(state.cart);
+  updateCartBadges();
 }
 
 function renderCartPage() {
@@ -1710,11 +1855,17 @@ function renderEditorBlocks(blocks) {
 async function initHome() {
   await loadPublicContent();
   applyManagedSections();
+  const homePageContent = await loadPageContent("home");
+  if (homePageContent?.title && qs("managedHomeTitle")) qs("managedHomeTitle").textContent = homePageContent.title;
+  if (homePageContent?.description && qs("managedHomeDescription")) qs("managedHomeDescription").textContent = homePageContent.description;
+  if (homePageContent?.buttonLabel && qs("managedHomeButton")) qs("managedHomeButton").textContent = homePageContent.buttonLabel;
+  if (homePageContent?.buttonHref && qs("managedHomeButton")) qs("managedHomeButton").setAttribute("href", safeHref(homePageContent.buttonHref, "#storeSection"));
   const initialQuery = getQuery("q") || "";
   const initialCategory = getQuery("category") || "";
   await loadGames({ reset: true, query: initialQuery, category: initialCategory });
   hydrateGameFilters();
   renderGameCards();
+  renderSlidingRows();
   renderBundleSection();
   renderHomeCollectionLoading();
   updateHomeMetrics();
@@ -1743,6 +1894,11 @@ async function initHome() {
 }
 
 async function initGamesCatalog() {
+  const gamesPageContent = await loadPageContent("games");
+  if (gamesPageContent?.title && qs("managedGamesTitle")) qs("managedGamesTitle").textContent = gamesPageContent.title;
+  if (gamesPageContent?.description && qs("managedGamesDescription")) qs("managedGamesDescription").textContent = gamesPageContent.description;
+  if (gamesPageContent?.buttonLabel && qs("managedGamesButton")) qs("managedGamesButton").textContent = gamesPageContent.buttonLabel;
+  if (gamesPageContent?.buttonHref && qs("managedGamesButton")) qs("managedGamesButton").setAttribute("href", safeHref(gamesPageContent.buttonHref, "#gamesSection"));
   const initialQuery = getQuery("q") || "";
   const initialCategory = getQuery("category") || "";
   await loadGames({ reset: true, query: initialQuery, category: initialCategory });
@@ -1776,9 +1932,13 @@ async function initManagedPage() {
 }
 
 async function initCart() {
-  if (!state.cartLoaded) await refreshCart();
-  renderCartPage();
-}
+  const cartPageContent = await loadPageContent("cart");
+  if (cartPageContent?.title && qs("managedCartTitle")) qs("managedCartTitle").textContent = cartPageContent.title;
+  if (cartPageContent?.description && qs("managedCartDescription")) qs("managedCartDescription").textContent = cartPageContent.description;
+  if (cartPageContent?.buttonLabel && qs("goCheckoutBtn")) qs("goCheckoutBtn").textContent = cartPageContent.buttonLabel;
+    if (!state.cartLoaded) await refreshCart();
+    renderCartPage();
+  }
 
 async function initCheckout() {
   if (!state.cartLoaded) await refreshCart();
@@ -2111,6 +2271,30 @@ document.addEventListener("click", async (event) => {
       await loadPublicContent();
       applyManagedSections();
       setStatus("contentStatus", "Content section deleted.");
+    } catch (error) {
+      setStatus("contentStatus", error.message, true);
+    }
+  }
+
+  const savePageContent = event.target.closest("[data-save-page-content]");
+  if (savePageContent) {
+    try {
+      const pageKey = savePageContent.dataset.savePageContent;
+      await api(`/api/content/${encodeURIComponent(pageKey)}`, {
+        method: "PUT",
+        body: JSON.stringify({
+          content: {
+            title: qs(`page-content-title-${pageKey}`).value,
+            description: qs(`page-content-description-${pageKey}`).value,
+            buttonLabel: qs(`page-content-button-label-${pageKey}`).value,
+            buttonHref: qs(`page-content-button-href-${pageKey}`).value,
+            heroImage: qs(`page-content-hero-${pageKey}`).value
+          }
+        })
+      });
+      await loadAdminContent();
+      if (page === "home" || page === "games" || page === "cart") await loadPublicContent();
+      setStatus("contentStatus", `${pageKey} page content updated.`);
     } catch (error) {
       setStatus("contentStatus", error.message, true);
     }
@@ -2726,6 +2910,12 @@ async function bindPageActions() {
       renderGameCards();
     };
   }
+
+  document.querySelectorAll("[data-slider-row]").forEach((button) => {
+    button.onclick = () => {
+      scrollSliderRow(button.dataset.sliderRow, Number(button.dataset.sliderDirection || 1));
+    };
+  });
 
   if (qs("bundlePrev")) {
     qs("bundlePrev").onclick = () => {

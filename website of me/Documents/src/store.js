@@ -94,6 +94,28 @@ function normalizeStore(store) {
   next.chats = Array.isArray(next.chats) ? next.chats : [];
   next.blogs = Array.isArray(next.blogs) ? next.blogs : [];
   next.orders = Array.isArray(next.orders) ? next.orders : [];
+  next.contentByPage = next.contentByPage && typeof next.contentByPage === "object" ? next.contentByPage : {};
+  next.contentByPage.home = next.contentByPage.home && typeof next.contentByPage.home === "object" ? next.contentByPage.home : {
+    title: "Cheap Steam Games & PC Game Deals",
+    description: "Buy cheap Steam games, discounted bundles, and budget-friendly PC game deals at Gamers Arena.",
+    buttonLabel: "Browse Games",
+    buttonHref: "#storeSection",
+    heroImage: ""
+  };
+  next.contentByPage.games = next.contentByPage.games && typeof next.contentByPage.games === "object" ? next.contentByPage.games : {
+    title: "Browse All Game Deals",
+    description: "Explore the full Gamers Arena game catalog with filters, bundle access, and fast support.",
+    buttonLabel: "Start Browsing",
+    buttonHref: "#gamesSection",
+    heroImage: ""
+  };
+  next.contentByPage.cart = next.contentByPage.cart && typeof next.contentByPage.cart === "object" ? next.contentByPage.cart : {
+    title: "Your Cart",
+    description: "Review saved games and bundles before continuing to checkout.",
+    buttonLabel: "Continue to QR Payment",
+    buttonHref: "/checkout.html",
+    heroImage: ""
+  };
   if (!hadPages && !next.pages.length) {
     next.pages = [
       normalizePage({

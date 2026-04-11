@@ -836,6 +836,92 @@ body.header-scroll-enabled .topbar.hidden-header {
   align-items: stretch;
 }
 
+.slider-row-shell {
+  display: grid;
+  gap: 12px;
+}
+
+.slider-row-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+}
+
+.game-slider-row {
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: minmax(220px, 260px);
+  gap: 14px;
+  overflow-x: auto;
+  padding: 4px 2px 10px;
+  scroll-snap-type: x proximity;
+  scrollbar-width: none;
+  overscroll-behavior-x: contain;
+}
+
+.game-slider-row::-webkit-scrollbar {
+  display: none;
+}
+
+.slider-game-card {
+  min-height: 100%;
+  scroll-snap-align: start;
+  justify-content: start;
+  text-align: left;
+}
+
+.slider-game-thumb {
+  width: 100%;
+  aspect-ratio: 16 / 10;
+  border-radius: 18px;
+  object-fit: cover;
+}
+
+.desktop-slider-actions .btn {
+  min-width: 82px;
+}
+
+.floating-cart {
+  position: fixed;
+  right: 18px;
+  bottom: 18px;
+  z-index: 30;
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 56px;
+  padding: 0 18px;
+  border-radius: 999px;
+  border: 1px solid rgba(34, 211, 238, 0.32);
+  background: linear-gradient(135deg, rgba(8, 16, 31, 0.96), rgba(11, 41, 64, 0.96));
+  box-shadow: 0 18px 44px rgba(0, 0, 0, 0.28);
+  color: var(--text);
+}
+
+.floating-cart:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 24px 48px rgba(0, 0, 0, 0.32);
+}
+
+.floating-cart-icon {
+  font-family: "Oxanium", sans-serif;
+  font-weight: 700;
+}
+
+.floating-cart-count {
+  min-width: 28px;
+  height: 28px;
+  padding: 0 8px;
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, var(--accent), var(--accent-2));
+  color: #042433;
+  font-weight: 800;
+}
+
 .auto-rail {
   display: grid;
   grid-auto-flow: column;
@@ -1504,6 +1590,10 @@ body.header-scroll-enabled .topbar.hidden-header {
     justify-content: center;
     text-align: center;
   }
+
+  .desktop-slider-actions {
+    display: none;
+  }
 }
 
 @media (max-width: 720px) {
@@ -1513,6 +1603,17 @@ body.header-scroll-enabled .topbar.hidden-header {
 
   .topbar {
     padding: 14px;
+  }
+
+  .game-slider-row {
+    grid-auto-columns: minmax(180px, 78vw);
+  }
+
+  .floating-cart {
+    right: 12px;
+    bottom: 12px;
+    min-height: 52px;
+    padding: 0 16px;
   }
 
   .hero h1 {
