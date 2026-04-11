@@ -48,22 +48,10 @@
         <section class="panel" id="adminPanel">
           <div class="section-head"><div><p class="eyebrow">admin</p><h2>Admin Panel</h2></div></div>
           <div id="adminLoginBox" class="stack-grid">
-            <input id="adminPasswordInput" type="password" placeholder="Admin password">
-            <button id="adminLoginBtn" class="btn btn-primary" type="button">Unlock Admin</button>
-            <button id="forgotPasswordBtn" class="btn btn-secondary" type="button">Forgot Password?</button>
+            <p class="status-text">Protected admin controls now live in the secure dashboard with two-step login and birthday-based recovery.</p>
+            <button id="adminLoginBtn" class="btn btn-primary" type="button">Open Secure Admin Login</button>
+            <button id="forgotPasswordBtn" class="btn btn-secondary" type="button">Recover Admin Passwords</button>
             <p id="adminLoginStatus" class="status-text"></p>
-            <div id="forgotPasswordPanel" class="stack-grid hidden">
-              <p class="status-text">Hint: it is S and A birthday. Enter both birthdays correctly in any order.</p>
-              <input id="birthdayCheckOne" type="date">
-              <input id="birthdayCheckTwo" type="date">
-              <button id="verifyBirthdaysBtn" class="btn btn-secondary" type="button">Verify Birthdays</button>
-              <p id="forgotPasswordStatus" class="status-text"></p>
-            </div>
-            <div id="changePasswordPanel" class="stack-grid hidden">
-              <input id="newAdminPasswordInput" type="password" placeholder="New admin password">
-              <button id="changeAdminPasswordBtn" class="btn btn-primary" type="button">Change Password</button>
-              <p id="changePasswordStatus" class="status-text"></p>
-            </div>
           </div>
           <div id="adminWorkspace" class="stack-grid hidden">
             <div class="card compact-card">

@@ -3,9 +3,6 @@ const CART_KEY = "gamers-arena-cart-v1";
 const TICKET_KEY = "gamers-arena-tickets-v1";
 const ADMIN_GAMES_KEY = "gamers-arena-admin-games-v1";
 const ADMIN_SETTINGS_KEY = "gamers-arena-admin-settings-v1";
-const ADMIN_PASSWORD_KEY = "gamers-arena-admin-password-v1";
-const DEFAULT_ADMIN_PASSWORD = "Aditisubhan";
-const ADMIN_BIRTHDAYS = ["2008-10-17", "2007-03-27"];
 const GAME_PRICE = 45;
 const DEFAULT_SUPPORT_PROMPT = "After payment, create a private ticket and keep your order code safe.";
 const defaultQr = `data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 320"><rect width="320" height="320" rx="24" fill="white"/><rect x="26" y="26" width="84" height="84" fill="black"/><rect x="44" y="44" width="48" height="48" fill="white"/><rect x="210" y="26" width="84" height="84" fill="black"/><rect x="228" y="44" width="48" height="48" fill="white"/><rect x="26" y="210" width="84" height="84" fill="black"/><rect x="44" y="228" width="48" height="48" fill="white"/><text x="160" y="302" font-size="18" font-family="Arial" text-anchor="middle" fill="#111">SCAN TO PAY</text></svg>`;
@@ -115,14 +112,6 @@ function saveAdminSettings() {
   syncAdminQrPreview();
 }
 
-function loadAdminPassword() {
-  return localStorage.getItem(ADMIN_PASSWORD_KEY) || DEFAULT_ADMIN_PASSWORD;
-}
-
-function saveAdminPassword(password) {
-  localStorage.setItem(ADMIN_PASSWORD_KEY, password);
-}
-
 function saveTickets() {
   localStorage.setItem(TICKET_KEY, JSON.stringify(state.tickets));
   updateCartUi();
@@ -160,6 +149,76 @@ async function optionalImage(inputId) {
   const input = document.getElementById(inputId);
   const [file] = input?.files || [];
   return file ? readFileAsDataUrl(file) : "";
+}
+
+function initResponsiveHeader() {
+  const topbar = document.querySelector(".topbar");
+  if (!topbar || topbar.dataset.headerReady === "1") return;
+  topbar.dataset.headerReady = "1";
+  let lastY = window.scrollY || 0;
+  let ticking = false;
+
+  function updateHeader() {
+    const currentY = window.scrollY || 0;
+    const delta = currentY - lastY;
+    if (currentY <= 20) {
+      topbar.classList.remove("header-hidden");
+      lastY = currentY;
+      ticking = false;
+      return;
+    }
+    if (Math.abs(delta) <= 6) {
+      ticking = false;
+      return;
+    }
+    if (delta > 0 && currentY > 90 && !topbar.classList.contains("nav-open")) {
+      topbar.classList.add("header-hidden");
+    } else if (delta < 0) {
+      topbar.classList.remove("header-hidden");
+    }
+    lastY = currentY;
+    ticking = false;
+  }
+
+  window.addEventListener("scroll", () => {
+    if (ticking) return;
+    ticking = true;
+    window.requestAnimationFrame(updateHeader);
+  }, { passive: true });
+}
+
+function initMobileNav() {
+  const topbar = document.querySelector(".topbar");
+  const navLinks = document.querySelector(".nav-links");
+  if (!topbar || !navLinks || topbar.querySelector(".nav-toggle")) return;
+
+  const toggle = document.createElement("button");
+  toggle.className = "nav-toggle";
+  toggle.type = "button";
+  toggle.setAttribute("aria-label", "Toggle navigation");
+  toggle.setAttribute("aria-expanded", "false");
+  toggle.innerHTML = "<span></span><span></span><span></span>";
+  topbar.appendChild(toggle);
+
+  function closeNav() {
+    topbar.classList.remove("nav-open");
+    toggle.setAttribute("aria-expanded", "false");
+  }
+
+  toggle.addEventListener("click", () => {
+    const next = !topbar.classList.contains("nav-open");
+    topbar.classList.toggle("nav-open", next);
+    topbar.classList.remove("header-hidden");
+    toggle.setAttribute("aria-expanded", String(next));
+  });
+
+  navLinks.querySelectorAll("a").forEach((link) => link.addEventListener("click", closeNav));
+  document.addEventListener("click", (event) => {
+    if (!topbar.contains(event.target)) closeNav();
+  });
+  window.addEventListener("resize", () => {
+    if (window.innerWidth > 720) closeNav();
+  });
 }
 
 function updateCartUi() {
@@ -613,7 +672,7 @@ async function loadGamePage() {
         <p>${state.adminSettings.supportPrompt}</p>
         <button id="singleGameAddCart" class="btn btn-primary" type="button">Add to Cart</button>
         <button id="singleGameBuyQr" class="btn btn-secondary" type="button">Buy with QR</button>
-        <div class="ad-slot blog">Header AdSense Placeholder</div>
+        <div class="ad-slot blog">Use this space for premium bundle promos, partner offers, or a Telegram-only weekend discount banner.</div>
       </aside>
     </section>
     <section class="layout-2" style="margin-top:22px;">
@@ -678,59 +737,20 @@ function switchAdminTab(tabName) {
 function bindAdminActions() {
   if (adminHandlersBound) return;
   adminHandlersBound = true;
+  const loginStatus = document.getElementById("adminLoginStatus");
+  if (loginStatus) {
+    loginStatus.textContent = "Use the secure admin dashboard to manage products, pages, media, and passwords.";
+  }
+  document.getElementById("forgotPasswordPanel")?.classList.add("hidden");
+  document.getElementById("changePasswordPanel")?.classList.add("hidden");
+  document.getElementById("adminWorkspace")?.classList.add("hidden");
   document.getElementById("adminLoginBtn")?.addEventListener("click", () => {
-    const password = document.getElementById("adminPasswordInput").value;
-    if (password !== loadAdminPassword()) {
-      document.getElementById("adminLoginStatus").textContent = "Wrong password.";
-      return;
-    }
-    state.adminUnlocked = true;
-    document.getElementById("adminLoginStatus").textContent = "";
-    renderAdminState();
-    switchAdminTab("dashboard");
+    window.location.href = "/login.html";
   });
-
-  document.querySelectorAll(".admin-tab-btn").forEach((button) => {
-    button.addEventListener("click", () => {
-      switchAdminTab(button.dataset.adminTab);
-    });
-  });
-
   document.getElementById("forgotPasswordBtn")?.addEventListener("click", () => {
-    document.getElementById("forgotPasswordPanel")?.classList.toggle("hidden");
-    document.getElementById("changePasswordPanel")?.classList.add("hidden");
-    document.getElementById("forgotPasswordStatus").textContent = "";
-    document.getElementById("changePasswordStatus").textContent = "";
+    window.location.href = "/login.html";
   });
-
-  document.getElementById("verifyBirthdaysBtn")?.addEventListener("click", () => {
-    const entered = [
-      document.getElementById("birthdayCheckOne").value,
-      document.getElementById("birthdayCheckTwo").value
-    ].filter(Boolean).sort();
-    const expected = [...ADMIN_BIRTHDAYS].sort();
-
-    if (entered.length !== 2 || entered[0] !== expected[0] || entered[1] !== expected[1]) {
-      document.getElementById("forgotPasswordStatus").textContent = "Birthdays do not match the recovery hint.";
-      document.getElementById("changePasswordPanel")?.classList.add("hidden");
-      return;
-    }
-
-    document.getElementById("forgotPasswordStatus").textContent = "Birthdays verified. You can now change the admin password.";
-    document.getElementById("changePasswordPanel")?.classList.remove("hidden");
-  });
-
-  document.getElementById("changeAdminPasswordBtn")?.addEventListener("click", () => {
-    const newPassword = document.getElementById("newAdminPasswordInput").value.trim();
-    if (!newPassword) {
-      document.getElementById("changePasswordStatus").textContent = "Enter a new password first.";
-      return;
-    }
-
-    saveAdminPassword(newPassword);
-    document.getElementById("changePasswordStatus").textContent = "Admin password updated successfully.";
-    document.getElementById("adminPasswordInput").value = newPassword;
-  });
+  return;
 
   document.getElementById("adminSaveSettingsBtn")?.addEventListener("click", async () => {
     state.adminSettings.homeEyebrow = document.getElementById("adminHomeEyebrow").value.trim() || "clean, fast, qr-ready";
@@ -1040,6 +1060,8 @@ async function loadPcBuilderPage() {
 
 async function init() {
   try {
+    initResponsiveHeader();
+    initMobileNav();
     updateCartUi();
     ensureCheckoutModal();
     if (page === "home") await loadHome();

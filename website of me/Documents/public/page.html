@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Page | Gamers Arena</title>
+  <meta name="description" content="Gamers Arena dynamic page">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Oxanium:wght@400;600;700&family=Manrope:wght@400;500;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/styles.css">
+</head>
+<body data-page="page">
+  <div class="shell">
+    <nav class="topbar">
+      <a class="brand" href="/"><span class="brand-mark">GA</span><span><strong data-site-title>Gamers Arena</strong><br><small class="muted">custom page</small></span></a>
+      <div class="nav-links">
+        <a class="nav-link" href="/">Home</a>
+        <a class="nav-link" href="/bundles.html">Bundles</a>
+        <a class="nav-link" href="/products.html">Products</a>
+        <a class="nav-link" href="/blog.html">Blog</a>
+      </div>
+      <div class="nav-actions">
+        <span class="muted" data-user-label>Guest</span>
+        <button class="btn btn-secondary" type="button" data-auth-action>Login</button>
+      </div>
+    </nav>
+
+    <main>
+      <section class="hero compact">
+        <p class="eyebrow" id="managedPageLabel">Page</p>
+        <h1 id="managedPageTitle">Loading page...</h1>
+        <p class="hero-copy" id="managedPageSummary">Please wait while this page loads.</p>
+      </section>
+
+      <section class="panel prose">
+        <div id="managedPageHeroWrap" class="hidden" style="margin-bottom:18px;">
+          <img id="managedPageHeroImage" class="detail-image" src="" alt="">
+        </div>
+        <div id="managedPageContent"></div>
+      </section>
+    </main>
+  </div>
+  <script src="/app.js"></script>
+</body>
+</html>

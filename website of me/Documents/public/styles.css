@@ -163,6 +163,12 @@ textarea {
   border-radius: 22px;
   backdrop-filter: blur(12px);
   animation: fadeUp 500ms ease both;
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+  will-change: transform;
+}
+
+.topbar.header-hidden {
+  transform: translateY(calc(-100% - 20px));
 }
 
 .topbar::before {
@@ -207,6 +213,39 @@ textarea {
   flex-wrap: wrap;
   gap: 10px;
   align-items: center;
+}
+
+.nav-toggle {
+  display: none;
+  width: 46px;
+  height: 46px;
+  border-radius: 14px;
+  border: 1px solid rgba(34, 211, 238, 0.24);
+  background: rgba(15, 23, 42, 0.78);
+  color: var(--text);
+  cursor: pointer;
+}
+
+.nav-toggle span {
+  display: block;
+  width: 18px;
+  height: 2px;
+  margin: 4px auto;
+  border-radius: 999px;
+  background: currentColor;
+  transition: transform 0.3s ease, opacity 0.3s ease;
+}
+
+.topbar.nav-open .nav-toggle span:nth-child(1) {
+  transform: translateY(6px) rotate(45deg);
+}
+
+.topbar.nav-open .nav-toggle span:nth-child(2) {
+  opacity: 0;
+}
+
+.topbar.nav-open .nav-toggle span:nth-child(3) {
+  transform: translateY(-6px) rotate(-45deg);
 }
 
 .toolbar .input {
@@ -1132,6 +1171,42 @@ textarea {
   gap: 12px;
 }
 
+.admin-manager-grid {
+  display: grid;
+  grid-template-columns: minmax(320px, 420px) minmax(0, 1fr);
+  gap: 18px;
+  align-items: start;
+}
+
+.admin-record {
+  display: grid;
+  gap: 12px;
+  padding: 16px;
+  border-radius: 18px;
+  border: 1px solid rgba(34, 211, 238, 0.12);
+  background: rgba(10, 18, 34, 0.42);
+}
+
+.admin-media-row {
+  display: flex;
+  gap: 14px;
+  align-items: center;
+}
+
+.admin-media-thumb {
+  width: 82px;
+  height: 82px;
+  object-fit: cover;
+  border-radius: 16px;
+  border: 1px solid rgba(34, 211, 238, 0.16);
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.danger-btn {
+  border-color: rgba(251, 113, 133, 0.34);
+  color: #fecdd3;
+}
+
 .empty {
   padding: 24px;
   text-align: center;
@@ -1329,6 +1404,7 @@ textarea {
   .bundle-layout,
   .cart-layout,
   .admin-grid,
+  .admin-manager-grid,
   .chat-layout,
   .two-col,
   .hero-grid,
@@ -1344,6 +1420,37 @@ textarea {
 
   .topbar {
     padding: 14px;
+  }
+
+  .nav-toggle {
+    display: inline-flex;
+    flex-direction: column;
+    justify-content: center;
+    order: 3;
+  }
+
+  .nav-links {
+    display: none;
+    width: 100%;
+    order: 4;
+    flex-direction: column;
+    align-items: stretch;
+    padding-top: 8px;
+  }
+
+  .topbar.nav-open .nav-links {
+    display: flex;
+  }
+
+  .nav-links .nav-link,
+  .nav-links .nav-item,
+  .nav-links a {
+    width: 100%;
+  }
+
+  .nav-actions {
+    flex: 1 1 auto;
+    justify-content: flex-end;
   }
 
   .hero h1 {

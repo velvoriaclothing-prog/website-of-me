@@ -30,7 +30,7 @@
       <section id="adminGate" class="panel hidden">
         <p class="eyebrow">admin only</p>
         <h1 class="section-title">Admin Login Required</h1>
-        <p class="hero-copy">Please login with admin credentials to manage games, chat, blogs, and settings.</p>
+        <p class="hero-copy">Please login with admin credentials to manage products, pages, media, games, orders, chat, blogs, and launch settings.</p>
         <button id="adminLoginRedirect" class="btn btn-primary" type="button">Go To Login</button>
       </section>
 
@@ -38,7 +38,7 @@
         <div class="panel">
           <p class="eyebrow">overview</p>
           <h1 class="section-title">Main Control</h1>
-          <p class="hero-copy">Manage the full store from one place: games, support settings, QR payment, blog posts, and homepage sections.</p>
+          <p class="hero-copy">Manage the full store from one place: products, pages, media, games, support settings, QR payment, blog posts, and homepage sections.</p>
           <div class="toolbar">
             <div class="card"><strong id="adminGamesCount">0</strong><p class="muted">Games</p></div>
             <div class="card"><strong id="adminUsersCount">0</strong><p class="muted">Users</p></div>
@@ -52,6 +52,10 @@
           <div class="tab-row">
             <button class="btn btn-secondary tab-btn active" type="button" data-admin-tab="adminGamesPanel">Games</button>
             <button class="btn btn-secondary tab-btn" type="button" data-admin-tab="adminBundlesPanel">Bundles</button>
+            <button class="btn btn-secondary tab-btn" type="button" data-admin-tab="adminProductsPanel">Products</button>
+            <button class="btn btn-secondary tab-btn" type="button" data-admin-tab="adminPagesPanel">Pages</button>
+            <button class="btn btn-secondary tab-btn" type="button" data-admin-tab="adminMediaPanel">Media</button>
+            <button class="btn btn-secondary tab-btn" type="button" data-admin-tab="adminContentPanel">Content</button>
             <button class="btn btn-secondary tab-btn" type="button" data-admin-tab="adminOrdersPanel">Orders</button>
             <button class="btn btn-secondary tab-btn" type="button" data-admin-tab="adminChatsPanel">Chats</button>
             <button class="btn btn-secondary tab-btn" type="button" data-admin-tab="adminBlogsPanel">Blog</button>
@@ -168,18 +172,155 @@
           <div id="blogList" class="blog-grid"></div>
         </section>
 
+        <section id="adminProductsPanel" data-admin-panel class="panel hidden">
+          <div class="section-head">
+            <div>
+              <p class="eyebrow">products</p>
+              <h2 class="section-title">Product Manager</h2>
+            </div>
+          </div>
+          <div class="admin-manager-grid">
+            <form id="adminProductForm" class="stack card">
+              <input id="adminProductId" class="input hidden" type="hidden">
+              <input id="adminProductName" class="input" placeholder="Product name">
+              <input id="adminProductCategory" class="input" placeholder="Category">
+              <input id="adminProductPrice" class="input" type="number" placeholder="Price">
+              <input id="adminProductImage" class="input" placeholder="Image URL">
+              <input id="adminProductImageFile" class="input" type="file" accept="image/*">
+              <textarea id="adminProductDescription" class="textarea" placeholder="Product description"></textarea>
+              <div class="toolbar">
+                <input id="adminProductBadge" class="input" placeholder="Badge (optional)">
+                <input id="adminProductCtaUrl" class="input" placeholder="Button URL">
+              </div>
+              <div class="toolbar">
+                <input id="adminProductCtaLabel" class="input" placeholder="Button text">
+                <label class="chip"><input id="adminProductFeatured" type="checkbox"> Featured</label>
+              </div>
+              <div class="toolbar">
+                <button class="btn btn-primary" type="submit">Save Product</button>
+                <button id="adminProductReset" class="btn btn-secondary" type="button">Reset</button>
+              </div>
+              <p id="adminProductsStatus" class="status"></p>
+            </form>
+            <div class="card">
+              <p class="eyebrow">live products</p>
+              <h3 class="card-title">Editable Catalog</h3>
+              <div id="adminProductsList" class="list"></div>
+            </div>
+          </div>
+        </section>
+
+        <section id="adminPagesPanel" data-admin-panel class="panel hidden">
+          <div class="section-head">
+            <div>
+              <p class="eyebrow">pages</p>
+              <h2 class="section-title">Dynamic Pages</h2>
+            </div>
+          </div>
+          <div class="admin-manager-grid">
+            <form id="adminPageForm" class="stack card">
+              <input id="adminPageId" class="input hidden" type="hidden">
+              <input id="adminPageTitle" class="input" placeholder="Page title">
+              <input id="adminPageSlug" class="input" placeholder="Page slug (example: about)">
+              <input id="adminPageSummary" class="input" placeholder="Short summary">
+              <input id="adminPageHeroImage" class="input" placeholder="Hero image URL">
+              <textarea id="adminPageContent" class="textarea" placeholder="Full page content"></textarea>
+              <input id="adminPageSeoTitle" class="input" placeholder="SEO title">
+              <textarea id="adminPageSeoDescription" class="textarea" placeholder="SEO description"></textarea>
+              <div class="toolbar">
+                <button class="btn btn-primary" type="submit">Save Page</button>
+                <button id="adminPageReset" class="btn btn-secondary" type="button">Reset</button>
+              </div>
+              <p id="adminPagesStatus" class="status"></p>
+            </form>
+            <div class="card">
+              <p class="eyebrow">published</p>
+              <h3 class="card-title">Slug-Based Pages</h3>
+              <div id="adminPagesList" class="list"></div>
+            </div>
+          </div>
+        </section>
+
+        <section id="adminMediaPanel" data-admin-panel class="panel hidden">
+          <div class="section-head">
+            <div>
+              <p class="eyebrow">media</p>
+              <h2 class="section-title">Media Library</h2>
+            </div>
+          </div>
+          <div class="admin-manager-grid">
+            <form id="adminMediaForm" class="stack card">
+              <input id="adminMediaId" class="input hidden" type="hidden">
+              <input id="adminMediaName" class="input" placeholder="Media name">
+              <input id="adminMediaAlt" class="input" placeholder="Alt text">
+              <input id="adminMediaUrl" class="input" placeholder="Media URL">
+              <input id="adminMediaFile" class="input" type="file" accept="image/*">
+              <select id="adminMediaKind" class="select">
+                <option value="image">Image</option>
+                <option value="logo">Logo</option>
+                <option value="banner">Banner</option>
+              </select>
+              <div class="toolbar">
+                <button class="btn btn-primary" type="submit">Save Media</button>
+                <button id="adminMediaReset" class="btn btn-secondary" type="button">Reset</button>
+              </div>
+              <p id="adminMediaStatus" class="status"></p>
+            </form>
+            <div class="card">
+              <p class="eyebrow">assets</p>
+              <h3 class="card-title">Saved Images</h3>
+              <div id="adminMediaList" class="list"></div>
+            </div>
+          </div>
+        </section>
+
+        <section id="adminContentPanel" data-admin-panel class="panel hidden">
+          <div class="section-head">
+            <div>
+              <p class="eyebrow">content</p>
+              <h2 class="section-title">Homepage And Section Copy</h2>
+            </div>
+          </div>
+          <div class="admin-manager-grid">
+            <form id="adminSectionForm" class="stack card">
+              <input id="adminSectionId" class="input hidden" type="hidden">
+              <input id="adminSectionPage" class="input" placeholder="Page key (home, about, deals)">
+              <input id="adminSectionLabel" class="input" placeholder="Internal label">
+              <input id="adminSectionHeading" class="input" placeholder="Section heading">
+              <textarea id="adminSectionBody" class="textarea" placeholder="Section body text"></textarea>
+              <div class="toolbar">
+                <input id="adminSectionButtonText" class="input" placeholder="Button text">
+                <input id="adminSectionButtonHref" class="input" placeholder="Button URL">
+              </div>
+              <input id="adminSectionImage" class="input" placeholder="Optional image URL">
+              <div class="toolbar">
+                <button class="btn btn-primary" type="submit">Save Section</button>
+                <button id="adminSectionReset" class="btn btn-secondary" type="button">Reset</button>
+              </div>
+              <p id="adminContentStatus" class="status"></p>
+            </form>
+            <div class="card">
+              <p class="eyebrow">editable copy</p>
+              <h3 class="card-title">Section Library</h3>
+              <div id="adminSectionsList" class="list"></div>
+            </div>
+          </div>
+        </section>
+
         <section id="adminSettingsPanel" data-admin-panel class="panel hidden">
           <div class="section-head">
             <div>
               <p class="eyebrow">settings</p>
-              <h2 class="section-title">Site Title And QR</h2>
+              <h2 class="section-title">Site, QR, And Admin Security</h2>
             </div>
           </div>
           <form id="settingsForm" class="stack">
             <input id="siteTitleInput" class="input" placeholder="Site title">
             <input id="adminEmailInput" class="input" placeholder="Admin email">
             <input id="adminPasswordInput" class="input" type="password" placeholder="New admin password (optional)">
+            <input id="adminSecondaryPasswordInput" class="input" type="password" placeholder="New second admin password (optional)">
             <p id="credentialsHint" class="status"></p>
+            <p class="muted">If you forget both admin passwords, use the secure recovery flow on the login screen and enter both recovery birthdays.</p>
             <input id="qrUrlInput" class="input" placeholder="QR image URL">
             <input id="qrFile" class="input" type="file" accept="image/*">
             <img id="qrPreview" class="qr-box" src="" alt="QR preview">
@@ -192,5 +333,6 @@
   </div>
   <script src="/socket.io/socket.io.js"></script>
   <script src="/app.js"></script>
+  <script src="/admin-content.js"></script>
 </body>
 </html>

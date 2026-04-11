@@ -382,7 +382,7 @@ function injectAdminAccess() {
           </div>
           <button id="closeAdminAccess" class="btn btn-secondary" type="button">Close</button>
         </div>
-        <p class="hero-copy">Admin login is separate from normal users. Enter your main admin password first, then your second admin password.</p>
+        <p class="hero-copy">Admin login is separate from normal users. Enter your main admin password first, then your second admin password. If both passwords are forgotten, use the recovery birthdays to reset them securely.</p>
         <form id="adminQuickLoginForm" class="stack" data-stage="primary">
           <input id="adminQuickEmail" class="input" type="email" placeholder="Admin email" value="admin@gamersarena.com">
           <input id="adminQuickPassword" class="input" type="password" placeholder="Admin password">
@@ -392,6 +392,18 @@ function injectAdminAccess() {
           <button id="adminQuickSubmit" class="btn btn-primary" type="submit">Continue</button>
         </form>
         <p id="adminQuickStatus" class="status"></p>
+        <button id="adminQuickForgotToggle" class="btn btn-secondary" type="button">Forgot Both Passwords?</button>
+        <div id="adminRecoveryPanel" class="stack hidden" style="margin-top:12px;">
+          <input id="adminRecoveryDob1" class="input" type="text" placeholder="Recovery birthday 1 (DD-MM-YYYY)">
+          <input id="adminRecoveryDob2" class="input" type="text" placeholder="Recovery birthday 2 (DD-MM-YYYY)">
+          <button id="adminRecoveryVerify" class="btn btn-secondary" type="button">Verify Recovery Birthdays</button>
+          <div id="adminRecoveryResetPanel" class="stack hidden">
+            <input id="adminRecoveryPrimaryPassword" class="input" type="password" placeholder="New primary admin password">
+            <input id="adminRecoverySecondaryPassword" class="input" type="password" placeholder="New second admin password">
+            <button id="adminRecoveryReset" class="btn btn-primary" type="button">Reset Admin Passwords</button>
+          </div>
+          <p id="adminRecoveryStatus" class="status"></p>
+        </div>
       </div>
     `;
     document.body.appendChild(modal);
@@ -422,11 +434,144 @@ function ensureExpandedNav() {
 function resetAdminAccessModal() {
   const form = qs("adminQuickLoginForm");
   if (form) form.dataset.stage = "primary";
+  if (form) form.dataset.challengeId = "";
   qs("adminQuickSecondWrap")?.classList.add("hidden");
+  qs("adminRecoveryPanel")?.classList.add("hidden");
+  qs("adminRecoveryResetPanel")?.classList.add("hidden");
   if (qs("adminQuickPassword")) qs("adminQuickPassword").value = "";
   if (qs("adminQuickPasscode")) qs("adminQuickPasscode").value = "";
+  if (qs("adminRecoveryDob1")) qs("adminRecoveryDob1").value = "";
+  if (qs("adminRecoveryDob2")) qs("adminRecoveryDob2").value = "";
+  if (qs("adminRecoveryPrimaryPassword")) qs("adminRecoveryPrimaryPassword").value = "";
+  if (qs("adminRecoverySecondaryPassword")) qs("adminRecoverySecondaryPassword").value = "";
   if (qs("adminQuickSubmit")) qs("adminQuickSubmit").textContent = "Continue";
   setStatus("adminQuickStatus", "");
+  setStatus("adminRecoveryStatus", "");
+}
+
+function initResponsiveHeader() {
+  const topbar = document.querySelector(".topbar");
+  if (!topbar || topbar.dataset.headerReady === "1") return;
+  topbar.dataset.headerReady = "1";
+  let lastY = window.scrollY || 0;
+  let ticking = false;
+
+  function updateHeader() {
+    const currentY = window.scrollY || 0;
+    const delta = currentY - lastY;
+    if (currentY <= 20) {
+      topbar.classList.remove("header-hidden");
+      lastY = currentY;
+      ticking = false;
+      return;
+    }
+    if (Math.abs(delta) <= 6) {
+      ticking = false;
+      return;
+    }
+    if (delta > 0 && currentY > 90 && !topbar.classList.contains("nav-open")) {
+      topbar.classList.add("header-hidden");
+    } else if (delta < 0) {
+      topbar.classList.remove("header-hidden");
+    }
+    lastY = currentY;
+    ticking = false;
+  }
+
+  window.addEventListener("scroll", () => {
+    if (ticking) return;
+    ticking = true;
+    window.requestAnimationFrame(updateHeader);
+  }, { passive: true });
+}
+
+function initMobileNav() {
+  const topbar = document.querySelector(".topbar");
+  const navLinks = document.querySelector(".nav-links");
+  if (!topbar || !navLinks || topbar.querySelector(".nav-toggle")) return;
+
+  const toggle = document.createElement("button");
+  toggle.className = "nav-toggle";
+  toggle.type = "button";
+  toggle.setAttribute("aria-label", "Toggle navigation");
+  toggle.setAttribute("aria-expanded", "false");
+  toggle.innerHTML = "<span></span><span></span><span></span>";
+  const insertionTarget = topbar.querySelector(".nav-actions");
+  topbar.insertBefore(toggle, insertionTarget || navLinks);
+
+  function closeNav() {
+    topbar.classList.remove("nav-open");
+    toggle.setAttribute("aria-expanded", "false");
+  }
+
+  toggle.addEventListener("click", () => {
+    const next = !topbar.classList.contains("nav-open");
+    topbar.classList.toggle("nav-open", next);
+    topbar.classList.remove("header-hidden");
+    toggle.setAttribute("aria-expanded", String(next));
+  });
+
+  navLinks.querySelectorAll("a").forEach((link) => {
+    link.addEventListener("click", closeNav);
+  });
+
+  window.addEventListener("resize", () => {
+    if (window.innerWidth > 720) closeNav();
+  });
+
+  document.addEventListener("click", (event) => {
+    if (!topbar.contains(event.target)) closeNav();
+  });
+}
+
+function applyManagedSections() {
+  const sections = Array.isArray(state.settings?.contentSections) ? state.settings.contentSections : [];
+  if (!sections.length) return;
+
+  if (page === "home") {
+    const heroSection = sections.find((item) => item.page === "home") || sections[0];
+    if (heroSection) {
+      const heroTitle = document.querySelector(".hero h1");
+      const heroCopy = document.querySelector(".hero .hero-copy");
+      const heroEyebrow = document.querySelector(".hero .eyebrow");
+      if (heroTitle) heroTitle.textContent = heroSection.heading || heroTitle.textContent;
+      if (heroCopy) heroCopy.textContent = heroSection.body || heroCopy.textContent;
+      if (heroEyebrow) heroEyebrow.textContent = heroSection.label || heroEyebrow.textContent;
+    }
+  }
+
+  if (page === "deals") {
+    const dealSection = sections.find((item) => item.page === "deals");
+    if (dealSection) {
+      const heroTitle = document.querySelector(".hero h1");
+      const heroCopy = document.querySelector(".hero .hero-copy");
+      if (heroTitle) heroTitle.textContent = dealSection.heading || heroTitle.textContent;
+      if (heroCopy) heroCopy.textContent = dealSection.body || heroCopy.textContent;
+    }
+  }
+}
+
+async function loadManagedPage() {
+  const slug = window.location.pathname.split("/").filter(Boolean).slice(-1)[0] || getQuery("slug");
+  if (!slug) throw new Error("Page not found.");
+  const item = await api(`/api/pages/${slug}`);
+  document.title = item.seoTitle || `${item.title} | Gamers Arena`;
+  const description = document.querySelector('meta[name="description"]');
+  if (description && item.seoDescription) description.setAttribute("content", item.seoDescription);
+  if (qs("managedPageLabel")) qs("managedPageLabel").textContent = item.slug;
+  if (qs("managedPageTitle")) qs("managedPageTitle").textContent = item.title;
+  if (qs("managedPageSummary")) qs("managedPageSummary").textContent = item.summary || "";
+  if (qs("managedPageContent")) {
+    qs("managedPageContent").innerHTML = String(item.content || "")
+      .split(/\n{2,}/)
+      .map((paragraph) => `<p>${escapeHtml(paragraph)}</p>`)
+      .join("");
+  }
+  if (item.heroImage && qs("managedPageHeroWrap") && qs("managedPageHeroImage")) {
+    qs("managedPageHeroWrap").classList.remove("hidden");
+    qs("managedPageHeroImage").src = item.heroImage;
+    qs("managedPageHeroImage").alt = item.title;
+  }
 }
 
 async function bootstrap() {
@@ -1587,11 +1732,18 @@ async function initAdmin() {
       ? "Managed by Render environment variables"
       : "New admin password (optional)";
   }
+  const adminSecondaryPasswordInput = qs("adminSecondaryPasswordInput");
+  if (adminSecondaryPasswordInput) {
+    adminSecondaryPasswordInput.disabled = Boolean(state.settings.adminSecondaryManagedByEnv);
+    adminSecondaryPasswordInput.placeholder = state.settings.adminSecondaryManagedByEnv
+      ? "Managed by Render environment variables"
+      : "New second admin password (optional)";
+  }
   const credentialsHint = qs("credentialsHint");
   if (credentialsHint) {
     credentialsHint.textContent = state.settings.credentialsManagedByEnv
       ? "Admin login credentials are managed by deployment environment variables on this server."
-      : "";
+      : "Admin login uses two steps: first password, then second password. Recovery requires both birthdays on the login modal.";
   }
   const qrPreview = qs("qrPreview");
   if (qrPreview) qrPreview.src = state.settings.qrImage;
@@ -1975,22 +2127,32 @@ document.addEventListener("submit", async (event) => {
         setStatus("adminQuickStatus", "Enter admin email and password first.", true);
         return;
       }
-      qs("adminQuickSecondWrap")?.classList.remove("hidden");
-      form.dataset.stage = "secondary";
-      if (qs("adminQuickSubmit")) qs("adminQuickSubmit").textContent = "Login As Admin";
-      setStatus("adminQuickStatus", "Enter the second admin password to continue.");
-      qs("adminQuickPasscode")?.focus();
+      try {
+        const result = await api("/auth/admin/primary", {
+          method: "POST",
+          body: JSON.stringify({
+            contact: qs("adminQuickEmail").value,
+            password: qs("adminQuickPassword").value
+          })
+        });
+        form.dataset.challengeId = result.challengeId;
+        qs("adminQuickSecondWrap")?.classList.remove("hidden");
+        form.dataset.stage = "secondary";
+        if (qs("adminQuickSubmit")) qs("adminQuickSubmit").textContent = "Login As Admin";
+        setStatus("adminQuickStatus", "Primary password verified. Enter the second admin password.");
+        qs("adminQuickPasscode")?.focus();
+      } catch (error) {
+        setStatus("adminQuickStatus", error.message, true);
+      }
       return;
     }
 
     try {
-      await api("/auth/login", {
+      await api("/auth/admin/secondary", {
         method: "POST",
         body: JSON.stringify({
-          contact: qs("adminQuickEmail").value,
-          password: qs("adminQuickPassword").value,
-          adminPasscode: qs("adminQuickPasscode").value,
-          role: "admin"
+          challengeId: form.dataset.challengeId || "",
+          adminPasscode: qs("adminQuickPasscode").value
         })
       });
       window.location.href = "/admin.html";
@@ -2117,7 +2279,8 @@ document.addEventListener("submit", async (event) => {
           homeLayout: state.settings.homeLayout,
           bundles: state.bundles,
           adminEmail: qs("adminEmailInput").value,
-          adminPassword: qs("adminPasswordInput").value
+          adminPassword: qs("adminPasswordInput").value,
+          adminSecondaryPassword: qs("adminSecondaryPasswordInput")?.value || ""
         })
       });
       await bootstrap();
@@ -2238,6 +2401,53 @@ async function bindPageActions() {
     };
   }
 
+  if (qs("adminQuickForgotToggle")) {
+    qs("adminQuickForgotToggle").onclick = () => {
+      qs("adminRecoveryPanel")?.classList.toggle("hidden");
+      qs("adminRecoveryResetPanel")?.classList.add("hidden");
+      setStatus("adminRecoveryStatus", "");
+    };
+  }
+
+  if (qs("adminRecoveryVerify")) {
+    qs("adminRecoveryVerify").onclick = async () => {
+      try {
+        const result = await api("/auth/admin/recovery", {
+          method: "POST",
+          body: JSON.stringify({
+            dob1: qs("adminRecoveryDob1").value,
+            dob2: qs("adminRecoveryDob2").value
+          })
+        });
+        qs("adminRecoveryPanel").dataset.recoveryId = result.recoveryId;
+        qs("adminRecoveryResetPanel")?.classList.remove("hidden");
+        setStatus("adminRecoveryStatus", "Birthdays verified. Set both new admin passwords.");
+      } catch (error) {
+        setStatus("adminRecoveryStatus", error.message, true);
+      }
+    };
+  }
+
+  if (qs("adminRecoveryReset")) {
+    qs("adminRecoveryReset").onclick = async () => {
+      try {
+        await api("/auth/admin/reset", {
+          method: "POST",
+          body: JSON.stringify({
+            recoveryId: qs("adminRecoveryPanel")?.dataset.recoveryId || "",
+            primaryPassword: qs("adminRecoveryPrimaryPassword").value,
+            secondaryPassword: qs("adminRecoverySecondaryPassword").value
+          })
+        });
+        if (qs("adminQuickPassword")) qs("adminQuickPassword").value = qs("adminRecoveryPrimaryPassword").value;
+        if (qs("adminQuickPasscode")) qs("adminQuickPasscode").value = qs("adminRecoverySecondaryPassword").value;
+        setStatus("adminRecoveryStatus", "Admin passwords reset. You can now log in with the new passwords.");
+      } catch (error) {
+        setStatus("adminRecoveryStatus", error.message, true);
+      }
+    };
+  }
+
   if (qs("paidBtn")) {
     qs("paidBtn").onclick = async () => {
       try {
@@ -2303,7 +2513,11 @@ async function bindPageActions() {
   if (qs("addImageBlock")) {
     qs("addImageBlock").onclick = async () => {
       const current = await api("/editor-layout");
-      renderEditorBlocks([...current, { id: `block-${Date.now()}`, type: "image", content: "https://via.placeholder.com/1200x630?text=Gamers+Arena" }]);
+      renderEditorBlocks([...current, {
+        id: `block-${Date.now()}`,
+        type: "image",
+        content: "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1200 630'><rect width='1200' height='630' fill='%230b1220'/><rect x='48' y='48' width='1104' height='534' rx='32' fill='none' stroke='%2322d3ee' stroke-width='4'/><text x='600' y='300' text-anchor='middle' font-family='Arial' font-size='54' fill='white'>Gamers Arena Banner</text><text x='600' y='364' text-anchor='middle' font-family='Arial' font-size='28' fill='%2394a3b8'>Replace this image in the editor.</text></svg>"
+      }]);
     };
   }
 
@@ -2337,7 +2551,10 @@ async function bindPageActions() {
 
 async function init() {
   try {
+    initResponsiveHeader();
+    initMobileNav();
     await bootstrap();
+    applyManagedSections();
     await refreshCart();
     await bindPageActions();
     if (page === "home") await initHome();
@@ -2353,6 +2570,7 @@ async function init() {
     if (page === "reviews") await initReviews();
     if (page === "wishlist") await initWishlist();
     if (page === "post") await loadPost();
+    if (page === "page") await loadManagedPage();
     if (page === "editor") await initEditor();
   } catch (error) {
     const target = qs("pageStatus") || document.querySelector("main") || document.body;
