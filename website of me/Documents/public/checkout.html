@@ -26,39 +26,54 @@
     </nav>
 
     <main class="layout">
-      <section class="panel">
+      <section class="panel checkout-stage">
         <div class="section-head">
           <div>
             <p class="eyebrow">payment</p>
             <h1 class="section-title">QR Payment</h1>
           </div>
         </div>
-        <img id="checkoutQr" class="qr-box" src="" alt="Payment QR">
-        <div class="feature-grid">
-          <article class="card feature-item">
-            <h3 class="card-title">Scan</h3>
-            <p class="hero-copy">Use any supported payment app to scan the QR and complete payment safely.</p>
-          </article>
-          <article class="card feature-item">
-            <h3 class="card-title">Pay</h3>
-            <p class="hero-copy">Make sure the total matches your cart before you continue to support.</p>
-          </article>
-          <article class="card feature-item">
-            <h3 class="card-title">Send Proof</h3>
-            <p class="hero-copy">After clicking `I Paid`, you will be redirected to Telegram to share screenshot and order details.</p>
-          </article>
+        <div class="checkout-stage-grid">
+          <div class="checkout-qr-shell">
+            <img id="checkoutQr" class="qr-box checkout-qr-box" src="" alt="Payment QR">
+            <div class="checkout-qr-note">
+              <span class="hero-note">Secure order route</span>
+              <p class="hero-copy">Scan the code, confirm the amount, and keep your screenshot ready for support.</p>
+            </div>
+          </div>
+          <div class="checkout-step-grid">
+            <article class="checkout-step-card">
+              <span class="checkout-step-number">01</span>
+              <h3 class="card-title">Scan</h3>
+              <p class="hero-copy">Use any supported payment app to open the QR and start the transfer.</p>
+            </article>
+            <article class="checkout-step-card">
+              <span class="checkout-step-number">02</span>
+              <h3 class="card-title">Pay</h3>
+              <p class="hero-copy">Check that the final amount matches your cart total before you complete the payment.</p>
+            </article>
+            <article class="checkout-step-card">
+              <span class="checkout-step-number">03</span>
+              <h3 class="card-title">Send Proof</h3>
+              <p class="hero-copy">After clicking I Paid, continue to Telegram and share the screenshot plus order details.</p>
+            </article>
+          </div>
         </div>
-        <div id="checkoutItems" class="list"></div>
+        <div id="checkoutItems" class="list checkout-item-list"></div>
       </section>
 
-      <aside class="panel">
-        <h2 class="card-title">Complete Order</h2>
-        <p class="muted">Scan the QR, finish payment, then click the button below. We will redirect you to Telegram support.</p>
+      <aside class="panel checkout-summary">
+        <p class="eyebrow">final step</p>
+        <h2 class="card-title checkout-summary-title">Complete Order</h2>
+        <p class="muted">Scan the QR, finish payment, then click the button below. We will redirect you to Telegram support with your order context.</p>
         <input id="checkoutName" class="input" placeholder="Your name">
         <input id="checkoutContact" class="input" placeholder="Email or mobile">
         <input id="checkoutNote" class="input" placeholder="Payment note or UTR (optional)">
         <input id="checkoutScreenshot" class="input" type="file" accept="image/*">
-        <p class="price" id="checkoutTotal">₹0</p>
+        <div class="checkout-total-card">
+          <span class="metric-label">Cart total</span>
+          <p class="price" id="checkoutTotal">Rs 0</p>
+        </div>
         <button id="paidBtn" class="btn btn-primary" type="button">I Paid</button>
         <a id="telegramSupportLink" class="btn btn-secondary" href="https://t.me/gamersarena_shop" target="_blank" rel="noreferrer">Open Telegram Support</a>
         <p id="checkoutStatus" class="status"></p>
@@ -71,8 +86,3 @@
   <script src="/app.js"></script>
 </body>
 </html>
-
-
-
-
-

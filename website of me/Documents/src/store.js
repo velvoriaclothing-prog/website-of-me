@@ -7,7 +7,7 @@ const seedStorePath = process.env.STORE_SEED_PATH ? path.resolve(process.env.STO
 const defaultAdminEmail = process.env.ADMIN_EMAIL || "admin@gamersarena.com";
 const defaultAdminPassword = process.env.ADMIN_PASSWORD || "change-me";
 const defaultAdminSecondaryPassword = process.env.ADMIN_SECONDARY_PASSWORD || "change-me";
-const defaultQr = "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 320 320'><rect width='320' height='320' rx='24' fill='white'/><rect x='26' y='26' width='84' height='84' fill='black'/><rect x='44' y='44' width='48' height='48' fill='white'/><rect x='210' y='26' width='84' height='84' fill='black'/><rect x='228' y='44' width='48' height='48' fill='white'/><rect x='26' y='210' width='84' height='84' fill='black'/><rect x='44' y='228' width='48' height='48' fill='white'/><text x='160' y='302' font-size='18' font-family='Arial' text-anchor='middle' fill='%23111'>SCAN TO PAY</text></svg>";
+const defaultQr = "/assets/payment-qr.jpeg";
 let cachedStore = null;
 let cachedMtimeMs = 0;
 

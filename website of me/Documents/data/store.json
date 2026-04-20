@@ -6,7 +6,7 @@
               },
     "settings":  {
                      "siteTitle":  "Gamers Arena",
-                     "qrImage":  "",
+                     "qrImage":  "/assets/payment-qr.jpeg",
                      "homeLayout":  [
                                         {
                                             "id":  "block-1",

@@ -5,7 +5,7 @@ const ADMIN_GAMES_KEY = "gamers-arena-admin-games-v1";
 const ADMIN_SETTINGS_KEY = "gamers-arena-admin-settings-v1";
 const GAME_PRICE = 45;
 const DEFAULT_SUPPORT_PROMPT = "After payment, create a private ticket and keep your order code safe.";
-const defaultQr = `data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 320"><rect width="320" height="320" rx="24" fill="white"/><rect x="26" y="26" width="84" height="84" fill="black"/><rect x="44" y="44" width="48" height="48" fill="white"/><rect x="210" y="26" width="84" height="84" fill="black"/><rect x="228" y="44" width="48" height="48" fill="white"/><rect x="26" y="210" width="84" height="84" fill="black"/><rect x="44" y="228" width="48" height="48" fill="white"/><text x="160" y="302" font-size="18" font-family="Arial" text-anchor="middle" fill="#111">SCAN TO PAY</text></svg>`;
+const defaultQr = "/assets/payment-qr.jpeg";
 
 const state = {
   cart: loadCart(),
