@@ -59,6 +59,20 @@ function normalizeMediaItem(item = {}) {
   };
 }
 
+function normalizeConsoleGame(item = {}) {
+  const name = String(item.name || "").trim();
+  const platform = String(item.platform || "PS5").trim().toUpperCase() || "PS5";
+  return {
+    id: item.id || `console-${Date.now()}`,
+    slug: String(item.slug || slugify(`${platform}-${name}`) || "").trim(),
+    name,
+    platform: ["PS4", "PS5"].includes(platform) ? platform : "PS5",
+    image: String(item.image || "").trim(),
+    createdAt: item.createdAt || new Date().toISOString(),
+    updatedAt: item.updatedAt || new Date().toISOString()
+  };
+}
+
 function normalizeSection(item = {}) {
   return {
     id: item.id || `section-${Date.now()}`,
@@ -74,11 +88,18 @@ function normalizeSection(item = {}) {
   };
 }
 
+function ensureSection(sections, section) {
+  if (sections.some((entry) => entry.key === section.key)) return sections;
+  sections.push(normalizeSection(section));
+  return sections;
+}
+
 function normalizeStore(store) {
   const next = store || {};
   const hadPages = Array.isArray(next.pages);
   const hadMedia = Array.isArray(next.media);
   const hadSections = Array.isArray(next.contentSections);
+  const hadConsoleGames = Array.isArray(next.consoleGames);
   next.admin = next.admin || {};
   next.admin.email = next.admin.email || defaultAdminEmail;
   next.admin.password = next.admin.password || defaultAdminPassword;
@@ -88,6 +109,7 @@ function normalizeStore(store) {
   next.games = Array.isArray(next.games) ? next.games.map(normalizeGame) : [];
   next.pages = Array.isArray(next.pages) ? next.pages.map(normalizePage) : [];
   next.media = Array.isArray(next.media) ? next.media.map(normalizeMediaItem) : [];
+  next.consoleGames = Array.isArray(next.consoleGames) ? next.consoleGames.map(normalizeConsoleGame) : [];
   next.contentSections = Array.isArray(next.contentSections) ? next.contentSections.map(normalizeSection) : [];
   next.users = Array.isArray(next.users) ? next.users : [];
   next.carts = next.carts && typeof next.carts === "object" ? next.carts : {};
@@ -130,6 +152,46 @@ function normalizeStore(store) {
   if (!hadMedia && !next.media.length) {
     next.media = [];
   }
+  if (!hadConsoleGames && !next.consoleGames.length) {
+    next.consoleGames = [
+      normalizeConsoleGame({
+        id: "console-ps5-1",
+        name: "Marvel's Spider-Man 2",
+        platform: "PS5",
+        image: "https://images.unsplash.com/photo-1606144042614-b2417e99c4e3?auto=format&fit=crop&w=1200&q=80"
+      }),
+      normalizeConsoleGame({
+        id: "console-ps5-2",
+        name: "God of War Ragnarok",
+        platform: "PS5",
+        image: "https://images.unsplash.com/photo-1542751371-adc38448a05e?auto=format&fit=crop&w=1200&q=80"
+      }),
+      normalizeConsoleGame({
+        id: "console-ps5-3",
+        name: "Gran Turismo 7",
+        platform: "PS5",
+        image: "https://images.unsplash.com/photo-1511512578047-dfb367046420?auto=format&fit=crop&w=1200&q=80"
+      }),
+      normalizeConsoleGame({
+        id: "console-ps4-1",
+        name: "The Last of Us Remastered",
+        platform: "PS4",
+        image: "https://images.unsplash.com/photo-1493711662062-fa541adb3fc8?auto=format&fit=crop&w=1200&q=80"
+      }),
+      normalizeConsoleGame({
+        id: "console-ps4-2",
+        name: "Ghost of Tsushima",
+        platform: "PS4",
+        image: "https://images.unsplash.com/photo-1550745165-9bc0b252726f?auto=format&fit=crop&w=1200&q=80"
+      }),
+      normalizeConsoleGame({
+        id: "console-ps4-3",
+        name: "Uncharted 4",
+        platform: "PS4",
+        image: "https://images.unsplash.com/photo-1579373903781-fd5c0c30c4cd?auto=format&fit=crop&w=1200&q=80"
+      })
+    ];
+  }
   if (!hadSections && !next.contentSections.length) {
     next.contentSections = [
       normalizeSection({
@@ -164,6 +226,26 @@ function normalizeStore(store) {
       })
     ];
   }
+  ensureSection(next.contentSections, {
+    id: "section-home-ps5",
+    key: "home-ps5",
+    title: "PS5 Game Library",
+    subtitle: "console picks",
+    body: "Premium PS5 titles with rich artwork, quick Telegram buying, and the same dark neon storefront feel as the PC catalog.",
+    buttonLabel: "",
+    buttonHref: "",
+    image: ""
+  });
+  ensureSection(next.contentSections, {
+    id: "section-home-ps4",
+    key: "home-ps4",
+    title: "PS4 Game Library",
+    subtitle: "console picks",
+    body: "Popular PS4 titles for players who still want a strong catalog, smooth browsing, and a simple direct-buy flow.",
+    buttonLabel: "",
+    buttonHref: "",
+    image: ""
+  });
   return next;
 }
 
@@ -207,6 +289,32 @@ function createInitialStore() {
       }
     ],
     media: [],
+    consoleGames: [
+      {
+        id: "console-ps5-1",
+        name: "Marvel's Spider-Man 2",
+        platform: "PS5",
+        image: "https://images.unsplash.com/photo-1606144042614-b2417e99c4e3?auto=format&fit=crop&w=1200&q=80"
+      },
+      {
+        id: "console-ps5-2",
+        name: "God of War Ragnarok",
+        platform: "PS5",
+        image: "https://images.unsplash.com/photo-1542751371-adc38448a05e?auto=format&fit=crop&w=1200&q=80"
+      },
+      {
+        id: "console-ps4-1",
+        name: "The Last of Us Remastered",
+        platform: "PS4",
+        image: "https://images.unsplash.com/photo-1493711662062-fa541adb3fc8?auto=format&fit=crop&w=1200&q=80"
+      },
+      {
+        id: "console-ps4-2",
+        name: "Ghost of Tsushima",
+        platform: "PS4",
+        image: "https://images.unsplash.com/photo-1550745165-9bc0b252726f?auto=format&fit=crop&w=1200&q=80"
+      }
+    ],
     contentSections: [
       {
         id: "section-home-hero",
@@ -236,6 +344,26 @@ function createInitialStore() {
         body: "Use search first. If it is not listed, the store shows a Telegram request button so customers can still place a demand quickly.",
         buttonLabel: "Ask On Telegram",
         buttonHref: "https://t.me/gamersarena_shop",
+        image: ""
+      },
+      {
+        id: "section-home-ps5",
+        key: "home-ps5",
+        title: "PS5 Game Library",
+        subtitle: "console picks",
+        body: "Premium PS5 titles with rich artwork, quick Telegram buying, and the same dark neon storefront feel as the PC catalog.",
+        buttonLabel: "",
+        buttonHref: "",
+        image: ""
+      },
+      {
+        id: "section-home-ps4",
+        key: "home-ps4",
+        title: "PS4 Game Library",
+        subtitle: "console picks",
+        body: "Popular PS4 titles for players who still want a strong catalog, smooth browsing, and a simple direct-buy flow.",
+        buttonLabel: "",
+        buttonHref: "",
         image: ""
       }
     ],
@@ -321,5 +449,6 @@ module.exports = {
   writeStore,
   updateStore,
   createId,
-  slugify
+  slugify,
+  normalizeConsoleGame
 };

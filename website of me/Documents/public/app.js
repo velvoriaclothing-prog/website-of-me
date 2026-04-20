@@ -15,6 +15,7 @@ const state = {
   categories: [],
   cart: { items: [], total: 0 },
   cartLoaded: false,
+  consoleGames: { PS4: [], PS5: [] },
   blogs: [],
   filteredBlogs: [],
   blogQuery: "",
@@ -143,6 +144,10 @@ const DEFAULT_EDITOR_IMAGE = `data:image/svg+xml;utf8,${encodeURIComponent(`
 
 function telegramMessageLink(message) {
   return `${TELEGRAM_URL}?text=${encodeURIComponent(message)}`;
+}
+
+function consoleBuyLink(game) {
+  return telegramMessageLink(`Hello, I want to buy ${game.name} for ${game.platform}. Please help me continue the order.`);
 }
 
 function qs(id) {
@@ -464,22 +469,39 @@ function updateCartBadges() {
   document.querySelectorAll("[data-cart-count]").forEach((element) => {
     element.textContent = String(count);
   });
+  const floatingButton = qs("floatingCartButton");
   const floatingCount = qs("floatingCartCount");
-  if (floatingCount) floatingCount.textContent = String(count);
+  if (floatingCount) {
+    floatingCount.textContent = String(count);
+    floatingCount.classList.toggle("is-empty", count === 0);
+  }
+  if (floatingButton) {
+    floatingButton.setAttribute("aria-label", count ? `Open cart with ${count} item${count === 1 ? "" : "s"}` : "Open cart");
+  }
 }
 
 function injectFloatingCart() {
-  if (page === "cart" || page === "checkout") return;
   if (document.getElementById("floatingCartButton")) return;
   const cachedCart = readLocalCart();
   const button = document.createElement("button");
   button.id = "floatingCartButton";
   button.className = "floating-cart";
   button.type = "button";
-  button.setAttribute("aria-label", "Open cart");
+  const initialCount = Number(cachedCart.items.length || 0);
+  button.setAttribute("aria-label", initialCount ? `Open cart with ${initialCount} item${initialCount === 1 ? "" : "s"}` : "Open cart");
   button.innerHTML = `
-    <span class="floating-cart-icon">Cart</span>
-    <span id="floatingCartCount" class="floating-cart-count">${Number(cachedCart.items.length || 0)}</span>
+    <span class="floating-cart-controller" aria-hidden="true">
+      <svg class="floating-cart-pad" viewBox="0 0 72 48" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <path d="M18 12C11.373 12 6 17.373 6 24C6 30.627 11.373 36 18 36H54C60.627 36 66 30.627 66 24C66 17.373 60.627 12 54 12H18Z" fill="currentColor"/>
+        <path d="M23 18V30" stroke="#071521" stroke-width="3.4" stroke-linecap="round"/>
+        <path d="M17 24H29" stroke="#071521" stroke-width="3.4" stroke-linecap="round"/>
+        <circle cx="48" cy="21" r="3.3" fill="#071521"/>
+        <circle cx="55" cy="27" r="3.3" fill="#071521"/>
+        <circle cx="38" cy="24" r="2.2" fill="#0EA5E9" opacity="0.95"/>
+      </svg>
+    </span>
+    <span class="sr-only">Cart</span>
+    <span id="floatingCartCount" class="floating-cart-count ${initialCount === 0 ? "is-empty" : ""}">${initialCount}</span>
   `;
   button.onclick = () => {
     window.location.href = "/cart.html";
@@ -623,10 +645,14 @@ function readFileAsDataUrl(file) {
   });
 }
 
-async function inputToDataUrl(inputId) {
-  const input = qs(inputId);
+function fileInputToDataUrl(input) {
   const [file] = input?.files || [];
   return file ? readFileAsDataUrl(file) : "";
+}
+
+async function inputToDataUrl(inputId) {
+  const input = qs(inputId);
+  return fileInputToDataUrl(input);
 }
 
 function setStatus(id, text, isError = false) {
@@ -879,6 +905,18 @@ async function loadGames(options = {}) {
   return state.games;
 }
 
+async function loadConsoleGames() {
+  const [ps4, ps5] = await Promise.all([
+    api("/console-games?platform=PS4"),
+    api("/console-games?platform=PS5")
+  ]);
+  state.consoleGames = {
+    PS4: ps4.items || [],
+    PS5: ps5.items || []
+  };
+  return state.consoleGames;
+}
+
 async function loadSearchSuggestions(query) {
   const value = String(query || "").trim();
   if (value.length < 2) {
@@ -977,6 +1015,33 @@ async function refreshCart() {
   state.cartLoaded = true;
   writeLocalCart(state.cart);
   updateCartBadges();
+}
+
+function renderConsoleSection(platform, wrapId, statusId) {
+  const wrap = qs(wrapId);
+  if (!wrap) return;
+  const items = Array.isArray(state.consoleGames?.[platform]) ? state.consoleGames[platform] : [];
+  if (qs(statusId)) {
+    qs(statusId).textContent = items.length ? `${items.length} ${platform} game${items.length === 1 ? "" : "s"} live right now.` : "";
+  }
+  wrap.innerHTML = items.length
+    ? items.map((game) => `
+      <article class="console-game-card">
+        ${game.image ? `<img class="console-game-bg" src="${escapeHtml(game.image)}" alt="${escapeHtml(game.name)}" loading="lazy">` : `<div class="console-game-bg console-game-bg-fallback" aria-hidden="true"></div>`}
+        <div class="console-game-overlay"></div>
+        <div class="console-game-content">
+          <span class="console-platform-pill">${platform}</span>
+          <h3 class="console-game-title">${escapeHtml(game.name)}</h3>
+          <a class="btn btn-primary console-buy-btn" href="${consoleBuyLink(game)}" target="_blank" rel="noreferrer">Buy Now</a>
+        </div>
+      </article>
+    `).join("")
+    : `<div class="empty">No ${platform} games added yet. You can publish them from the admin panel.</div>`;
+}
+
+function renderConsoleSections() {
+  renderConsoleSection("PS5", "ps5GamesGrid", "ps5Status");
+  renderConsoleSection("PS4", "ps4GamesGrid", "ps4Status");
 }
 
 function renderCartPage() {
@@ -1654,6 +1719,7 @@ async function loadAdminOverview() {
   const data = await api("/admin/overview");
   state.admin = data;
   if (qs("adminGamesCount")) qs("adminGamesCount").textContent = String(data.stats.games || 0);
+  if (qs("adminConsoleGamesCount")) qs("adminConsoleGamesCount").textContent = String(data.stats.consoleGames || 0);
   if (qs("adminUsersCount")) qs("adminUsersCount").textContent = String(data.stats.users || 0);
   if (qs("adminChatsCount")) qs("adminChatsCount").textContent = String(data.stats.chats || 0);
   if (qs("adminBlogsCount")) qs("adminBlogsCount").textContent = String(data.stats.blogs || 0);
@@ -1834,6 +1900,38 @@ function renderAdminChatThread() {
   renderMessages(state.activeChat.messages || [], "adminChatThread");
 }
 
+function renderAdminConsoleGames() {
+  const wrap = qs("consoleGamesAdminList");
+  if (!wrap) return;
+  const items = [...(state.consoleGames?.PS5 || []), ...(state.consoleGames?.PS4 || [])];
+  wrap.innerHTML = items.length
+    ? items.map((game) => `
+      <article class="card console-admin-card">
+        <div class="section-head">
+          <div>
+            <p class="eyebrow">${escapeHtml(game.platform)}</p>
+            <h3 class="card-title">${escapeHtml(game.name)}</h3>
+          </div>
+          <a class="btn btn-secondary" href="${consoleBuyLink(game)}" target="_blank" rel="noreferrer">Telegram</a>
+        </div>
+        ${game.image ? `<img class="console-admin-preview" src="${escapeHtml(game.image)}" alt="${escapeHtml(game.name)}" loading="lazy">` : ""}
+        <div class="stack">
+          <input id="console-name-${game.id}" class="input" value="${escapeHtml(game.name)}" placeholder="Game name">
+          <select id="console-platform-${game.id}" class="select">
+            ${["PS5", "PS4"].map((platform) => `<option value="${platform}" ${game.platform === platform ? "selected" : ""}>${platform}</option>`).join("")}
+          </select>
+          <input id="console-image-${game.id}" class="input" value="${escapeHtml(game.image || "")}" placeholder="Image URL">
+          <input id="console-image-upload-${game.id}" class="input" type="file" accept="image/*">
+          <div class="inline-actions">
+            <button class="btn btn-secondary" type="button" data-save-console-game="${game.id}">Save</button>
+            <button class="btn btn-danger" type="button" data-delete-console-game="${game.id}">Delete</button>
+          </div>
+        </div>
+      </article>
+    `).join("")
+    : `<div class="empty">No PS4 or PS5 games added yet.</div>`;
+}
+
 function renderEditorBlocks(blocks) {
   const wrap = qs("editorBlocks");
   if (!wrap) return;
@@ -1855,6 +1953,7 @@ function renderEditorBlocks(blocks) {
 async function initHome() {
   await loadPublicContent();
   applyManagedSections();
+  await loadConsoleGames();
   const homePageContent = await loadPageContent("home");
   if (homePageContent?.title && qs("managedHomeTitle")) qs("managedHomeTitle").textContent = homePageContent.title;
   if (homePageContent?.description && qs("managedHomeDescription")) qs("managedHomeDescription").textContent = homePageContent.description;
@@ -1865,6 +1964,7 @@ async function initHome() {
   await loadGames({ reset: true, query: initialQuery, category: initialCategory });
   hydrateGameFilters();
   renderGameCards();
+  renderConsoleSections();
   renderSlidingRows();
   renderBundleSection();
   renderHomeCollectionLoading();
@@ -1985,6 +2085,7 @@ async function initAdmin() {
   qs("adminApp").classList.remove("hidden");
   await Promise.all([
     loadGames({ reset: true }),
+    loadConsoleGames(),
     loadBlogs(),
     loadBundles(),
     loadAdminOrders(),
@@ -1994,6 +2095,7 @@ async function initAdmin() {
   await loadAdminContent();
   hydrateGameFilters();
   renderGameCards();
+  renderAdminConsoleGames();
   renderBlogList();
   renderAdminBundles();
   renderBundleGameChecklist();
@@ -2234,6 +2336,42 @@ document.addEventListener("click", async (event) => {
       setStatus("adminGamesStatus", "Game deleted.");
     } catch (error) {
       setStatus("adminGamesStatus", error.message, true);
+    }
+  }
+
+  const saveConsoleGame = event.target.closest("[data-save-console-game]");
+  if (saveConsoleGame) {
+    try {
+      const consoleImageUpload = await fileInputToDataUrl(qs(`console-image-upload-${saveConsoleGame.dataset.saveConsoleGame}`));
+      await api(`/console-games/${saveConsoleGame.dataset.saveConsoleGame}`, {
+        method: "PUT",
+        body: JSON.stringify({
+          name: qs(`console-name-${saveConsoleGame.dataset.saveConsoleGame}`).value,
+          platform: qs(`console-platform-${saveConsoleGame.dataset.saveConsoleGame}`).value,
+          image: consoleImageUpload || qs(`console-image-${saveConsoleGame.dataset.saveConsoleGame}`).value
+        })
+      });
+      await loadConsoleGames();
+      renderConsoleSections();
+      renderAdminConsoleGames();
+      await loadAdminOverview();
+      setStatus("adminConsoleGamesStatus", "Console game updated.");
+    } catch (error) {
+      setStatus("adminConsoleGamesStatus", error.message, true);
+    }
+  }
+
+  const deleteConsoleGame = event.target.closest("[data-delete-console-game]");
+  if (deleteConsoleGame) {
+    try {
+      await api(`/console-games/${deleteConsoleGame.dataset.deleteConsoleGame}`, { method: "DELETE" });
+      await loadConsoleGames();
+      renderConsoleSections();
+      renderAdminConsoleGames();
+      await loadAdminOverview();
+      setStatus("adminConsoleGamesStatus", "Console game deleted.");
+    } catch (error) {
+      setStatus("adminConsoleGamesStatus", error.message, true);
     }
   }
 
@@ -2771,6 +2909,30 @@ document.addEventListener("submit", async (event) => {
       setStatus("adminBundlesStatus", "Bundle added.");
     } catch (error) {
       setStatus("adminBundlesStatus", error.message, true);
+    }
+  }
+
+  if (event.target.id === "createConsoleGameForm") {
+    event.preventDefault();
+    try {
+      const consoleImageUpload = await inputToDataUrl("newConsoleGameImage");
+      await api("/console-games", {
+        method: "POST",
+        body: JSON.stringify({
+          name: qs("newConsoleGameName").value,
+          platform: qs("newConsoleGamePlatform").value,
+          image: consoleImageUpload || qs("newConsoleGameImageUrl").value || ""
+        })
+      });
+      event.target.reset();
+      if (qs("newConsoleGamePlatform")) qs("newConsoleGamePlatform").value = "PS5";
+      await loadConsoleGames();
+      renderConsoleSections();
+      renderAdminConsoleGames();
+      await loadAdminOverview();
+      setStatus("adminConsoleGamesStatus", "Console game added.");
+    } catch (error) {
+      setStatus("adminConsoleGamesStatus", error.message, true);
     }
   }
 

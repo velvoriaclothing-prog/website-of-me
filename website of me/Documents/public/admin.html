@@ -41,6 +41,7 @@
           <p class="hero-copy">Manage the full store from one place: games, support settings, QR payment, blog posts, and homepage sections.</p>
           <div class="toolbar">
             <div class="card"><strong id="adminGamesCount">0</strong><p class="muted">Games</p></div>
+            <div class="card"><strong id="adminConsoleGamesCount">0</strong><p class="muted">Console Games</p></div>
             <div class="card"><strong id="adminUsersCount">0</strong><p class="muted">Users</p></div>
             <div class="card"><strong id="adminChatsCount">0</strong><p class="muted">Chats</p></div>
             <div class="card"><strong id="adminBlogsCount">0</strong><p class="muted">Blogs</p></div>
@@ -51,6 +52,7 @@
         <div class="panel">
           <div class="tab-row">
             <button class="btn btn-secondary tab-btn active" type="button" data-admin-tab="adminGamesPanel">Games</button>
+            <button class="btn btn-secondary tab-btn" type="button" data-admin-tab="adminConsolePanel">PS4 / PS5</button>
             <button class="btn btn-secondary tab-btn" type="button" data-admin-tab="adminBundlesPanel">Bundles</button>
             <button class="btn btn-secondary tab-btn" type="button" data-admin-tab="adminContentPanel">Content</button>
             <button class="btn btn-secondary tab-btn" type="button" data-admin-tab="adminPagesPanel">Pages</button>
@@ -99,6 +101,27 @@
           <div id="loadMoreWrap" class="load-more-wrap hidden">
             <button id="loadMoreGames" class="btn btn-secondary" type="button">Load More Games</button>
           </div>
+        </section>
+
+        <section id="adminConsolePanel" data-admin-panel class="panel hidden">
+          <div class="section-head">
+            <div>
+              <p class="eyebrow">console games</p>
+              <h2 class="section-title">Manage PS4 And PS5 Games</h2>
+            </div>
+          </div>
+          <form id="createConsoleGameForm" class="two-col">
+            <input id="newConsoleGameName" class="input" placeholder="Console game name">
+            <select id="newConsoleGamePlatform" class="select">
+              <option value="PS5">PS5</option>
+              <option value="PS4">PS4</option>
+            </select>
+            <input id="newConsoleGameImageUrl" class="input" placeholder="Console game image URL">
+            <input id="newConsoleGameImage" class="input" type="file" accept="image/*">
+            <button class="btn btn-primary" type="submit">Add Console Game</button>
+          </form>
+          <p id="adminConsoleGamesStatus" class="status"></p>
+          <div id="consoleGamesAdminList" class="console-admin-grid"></div>
         </section>
 
         <section id="adminBundlesPanel" data-admin-panel class="panel hidden">

@@ -2,7 +2,7 @@ const fs = require("fs");
 const express = require("express");
 const compression = require("compression");
 const path = require("path");
-const { readStore, updateStore, createId, slugify, defaultQr } = require("./store");
+const { readStore, updateStore, createId, slugify, defaultQr, normalizeConsoleGame } = require("./store");
 const { attachSession, getSession, setSession, clearSession } = require("./sessionManager");
 const { getMergedBlogs, getBlogBySlug } = require("./blogEngine");
 const { ensureBundleDrafts, getBundleBySlug, getBundles, normalizeBundle } = require("./bundleCatalog");
@@ -50,6 +50,18 @@ function sanitizeBlog(blog) {
     source: String(blog.source || "manual").trim(),
     createdAt: blog.createdAt,
     updatedAt: blog.updatedAt
+  };
+}
+
+function sanitizeConsoleGame(item) {
+  return {
+    id: item.id,
+    slug: item.slug,
+    name: String(item.name || "").trim(),
+    platform: String(item.platform || "PS5").trim(),
+    image: String(item.image || "").trim(),
+    createdAt: item.createdAt,
+    updatedAt: item.updatedAt
   };
 }
 
@@ -142,6 +154,14 @@ function createApp(io) {
     return res.type("html").send(injectSeo(html, seo, resolveBaseUrl(req)));
   }
 
+  function sendProtectedSeoPage(req, res, fileName, seoPath) {
+    const session = getSession(req);
+    if (!session?.isAdmin) {
+      return res.redirect(`/login.html?redirect=${encodeURIComponent(seoPath)}`);
+    }
+    return sendSeoPage(req, res, fileName, seoPath);
+  }
+
   app.use(compression());
   app.use(express.json({ limit: "25mb" }));
   app.use((req, res, next) => {
@@ -158,6 +178,12 @@ function createApp(io) {
     if (!["GET", "HEAD"].includes(req.method)) return next();
     const pagePath = req.path === "/" ? "/index.html" : req.path;
     if (!pagePath.endsWith(".html")) return next();
+    if (["/admin.html", "/editor.html"].includes(pagePath)) {
+      const session = getSession(req);
+      if (!session?.isAdmin) {
+        return res.redirect(`/login.html?redirect=${encodeURIComponent(pagePath)}`);
+      }
+    }
     const fileName = pagePath === "/index.html" ? "index.html" : pagePath.slice(1);
     const filePath = path.join(publicDir, fileName);
     if (!fs.existsSync(filePath)) return next();
@@ -659,6 +685,65 @@ function createApp(io) {
     res.json({ ok: true });
   });
 
+  app.get("/console-games", (req, res) => {
+    const store = readStore();
+    const platform = String(req.query?.platform || "").trim().toUpperCase();
+    let items = Array.isArray(store.consoleGames) ? store.consoleGames : [];
+    if (platform) {
+      items = items.filter((item) => String(item.platform || "").toUpperCase() === platform);
+    }
+    res.json({
+      items: items.map(sanitizeConsoleGame),
+      total: items.length
+    });
+  });
+
+  app.post("/console-games", requireAdmin, (req, res) => {
+    const name = String(req.body?.name || "").trim();
+    const image = String(req.body?.image || "").trim();
+    const platform = String(req.body?.platform || "PS5").trim().toUpperCase() || "PS5";
+    if (!name) return res.status(400).json({ error: "Console game name is required." });
+    const store = updateStore((draft) => {
+      draft.consoleGames = Array.isArray(draft.consoleGames) ? draft.consoleGames : [];
+      draft.consoleGames.unshift(normalizeConsoleGame({
+        id: createId("console"),
+        name,
+        platform,
+        image
+      }));
+      return draft;
+    });
+    res.status(201).json(sanitizeConsoleGame(store.consoleGames[0]));
+  });
+
+  app.put("/console-games/:id", requireAdmin, (req, res) => {
+    const name = String(req.body?.name || "").trim();
+    const image = String(req.body?.image || "").trim();
+    const platform = String(req.body?.platform || "PS5").trim().toUpperCase() || "PS5";
+    const store = updateStore((draft) => {
+      draft.consoleGames = Array.isArray(draft.consoleGames) ? draft.consoleGames : [];
+      const target = draft.consoleGames.find((item) => item.id === req.params.id);
+      if (!target) throw new Error("Console game not found.");
+      if (!name) throw new Error("Console game name is required.");
+      target.name = name;
+      target.platform = ["PS4", "PS5"].includes(platform) ? platform : "PS5";
+      target.slug = slugify(`${target.platform}-${name}`);
+      target.image = image;
+      target.updatedAt = new Date().toISOString();
+      return draft;
+    });
+    const updated = store.consoleGames.find((item) => item.id === req.params.id);
+    res.json(sanitizeConsoleGame(updated));
+  });
+
+  app.delete("/console-games/:id", requireAdmin, (req, res) => {
+    updateStore((draft) => {
+      draft.consoleGames = (draft.consoleGames || []).filter((item) => item.id !== req.params.id);
+      return draft;
+    });
+    res.json({ ok: true });
+  });
+
   app.get("/cart", (req, res) => {
     const store = readStore();
     const ownerKey = getOwnerKey(getSession(req));
@@ -1024,6 +1109,7 @@ function createApp(io) {
     res.json({
       stats: {
         games: store.games.length,
+        consoleGames: Array.isArray(store.consoleGames) ? store.consoleGames.length : 0,
         users: store.users.length,
         chats: store.chats.length,
         blogs: mergedBlogs.length,
@@ -1126,12 +1212,12 @@ function createApp(io) {
   app.get("/checkout.html", (req, res) => sendSeoPage(req, res, "checkout.html", "/checkout.html"));
   app.get("/chat.html", (req, res) => sendSeoPage(req, res, "chat.html", "/chat.html"));
   app.get("/login.html", (req, res) => sendSeoPage(req, res, "login.html", "/login.html"));
-  app.get("/admin.html", (req, res) => sendSeoPage(req, res, "admin.html", "/admin.html"));
+  app.get("/admin.html", (req, res) => sendProtectedSeoPage(req, res, "admin.html", "/admin.html"));
   app.get("/blog.html", (req, res) => sendSeoPage(req, res, "blog.html", "/blog.html"));
   app.get("/post.html", (req, res) => sendSeoPage(req, res, "post.html", "/post.html"));
   app.get("/bundle.html", (req, res) => sendSeoPage(req, res, "bundle.html", "/bundle.html"));
   app.get("/bundle/:slug", (req, res) => sendSeoPage(req, res, "bundle.html", "/bundle.html"));
-  app.get("/editor.html", (req, res) => sendSeoPage(req, res, "editor.html", "/editor.html"));
+  app.get("/editor.html", (req, res) => sendProtectedSeoPage(req, res, "editor.html", "/editor.html"));
   app.get("/page.html", (req, res) => sendSeoPage(req, res, "page.html", "/page.html"));
 
   app.use((error, _req, res, _next) => {
