@@ -1,4 +1,4 @@
-const CONSOLE_CATALOG_VERSION = "console-catalog-ps4-ps5-200-v1";
+const CONSOLE_CATALOG_VERSION = "console-catalog-ps4-ps5-200-v2";
 
 const consoleImagePools = {
   PS5: [

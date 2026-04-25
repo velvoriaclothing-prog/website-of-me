@@ -43,8 +43,11 @@ const state = {
 };
 const TELEGRAM_HANDLE = "gamersarena_shop";
 const TELEGRAM_URL = `https://t.me/${TELEGRAM_HANDLE}`;
+const TELEGRAM_SHARE_URL = "https://t.me/share/url";
 const WISHLIST_KEY = "ga-wishlist";
 const LOCAL_CART_KEY = "ga-cart-cache";
+const CART_API_BASE = "/api/cart";
+const ORDERS_API_BASE = "/api/orders";
 const faqEntries = [
   {
     question: "How long does delivery usually take after payment?",
@@ -150,7 +153,7 @@ const DEFAULT_EDITOR_IMAGE = `data:image/svg+xml;utf8,${encodeURIComponent(`
 `)}`;
 
 function telegramMessageLink(message) {
-  return `${TELEGRAM_URL}?text=${encodeURIComponent(message)}`;
+  return `${TELEGRAM_SHARE_URL}?url=${encodeURIComponent(TELEGRAM_URL)}&text=${encodeURIComponent(message)}`;
 }
 
 function consoleBuyLink(game) {
@@ -1212,7 +1215,7 @@ function renderGameCards() {
 }
 
 async function refreshCart() {
-  state.cart = await api("/cart");
+  state.cart = await api(CART_API_BASE);
   state.cartLoaded = true;
   writeLocalCart(state.cart);
   updateCartBadges();
@@ -2735,7 +2738,7 @@ document.addEventListener("click", async (event) => {
   const addCart = event.target.closest("[data-add-cart]");
   if (addCart) {
     try {
-      await api("/cart/items", {
+      await api(`${CART_API_BASE}/items`, {
         method: "POST",
         body: JSON.stringify({ gameId: addCart.dataset.addCart })
       });
@@ -2749,7 +2752,7 @@ document.addEventListener("click", async (event) => {
   const addBundle = event.target.closest("[data-add-bundle]");
   if (addBundle) {
     try {
-      await api("/cart/bundles", {
+      await api(`${CART_API_BASE}/bundles`, {
         method: "POST",
         body: JSON.stringify({ bundleId: addBundle.dataset.addBundle })
       });
@@ -2767,7 +2770,7 @@ document.addEventListener("click", async (event) => {
     try {
       const bundle = state.bundles.find((item) => item.slug === addBundleBySlug.dataset.addBundleBySlug);
       if (!bundle) throw new Error("Bundle not found.");
-      await api("/cart/bundles", {
+      await api(`${CART_API_BASE}/bundles`, {
         method: "POST",
         body: JSON.stringify({ bundleId: bundle.id })
       });
@@ -2840,7 +2843,7 @@ document.addEventListener("click", async (event) => {
 
   const removeCart = event.target.closest("[data-remove-cart]");
   if (removeCart) {
-    await api(`/cart/items/${removeCart.dataset.removeCart}`, { method: "DELETE" });
+    await api(`${CART_API_BASE}/items/${removeCart.dataset.removeCart}`, { method: "DELETE" });
     await refreshCart();
     renderCartPage();
     renderCheckoutPage();
@@ -3729,7 +3732,7 @@ async function bindPageActions() {
     qs("addBundleToCart").onclick = async () => {
       if (!state.activeBundle) return;
       try {
-        await api("/cart/bundles", {
+        await api(`${CART_API_BASE}/bundles`, {
           method: "POST",
           body: JSON.stringify({ bundleId: state.activeBundle.id })
         });
@@ -3745,7 +3748,7 @@ async function bindPageActions() {
     qs("buyBundleNow").onclick = async () => {
       if (!state.activeBundle) return;
       try {
-        await api("/cart/bundles", {
+        await api(`${CART_API_BASE}/bundles`, {
           method: "POST",
           body: JSON.stringify({ bundleId: state.activeBundle.id })
         });
@@ -3787,11 +3790,11 @@ async function bindPageActions() {
   if (qs("paidBtn")) {
     qs("paidBtn").onclick = async () => {
       try {
-        const cart = await api("/cart");
+        const cart = await api(CART_API_BASE);
         const gameNames = cart.items.map((item) => item.name).join(", ");
         const total = currency(cart.total);
         const screenshot = await inputToDataUrl("checkoutScreenshot");
-        const order = await api("/orders", {
+        const order = await api(ORDERS_API_BASE, {
           method: "POST",
           body: JSON.stringify({
             customerName: qs("checkoutName")?.value || "",
@@ -3802,7 +3805,7 @@ async function bindPageActions() {
         });
         localStorage.setItem("ga-last-paid-game", gameNames);
         localStorage.setItem("ga-last-order-id", order.orderId);
-        await api("/cart/clear", { method: "DELETE" });
+        await api(`${CART_API_BASE}/clear`, { method: "DELETE" });
         window.location.href = telegramMessageLink(`Hello, I paid for: ${gameNames || "General Order"} | Total: ${total} | Order ID: ${order.orderId}. I will send my payment screenshot here.`);
       } catch (error) {
         setStatus("checkoutStatus", error.message, true);

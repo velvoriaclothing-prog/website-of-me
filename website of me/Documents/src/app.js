@@ -854,7 +854,7 @@ function createApp(io) {
     res.json({ ok: true });
   });
 
-  app.get("/cart", (req, res) => {
+  app.get("/api/cart", (req, res) => {
     const store = readStore();
     const ownerKey = getOwnerKey(getSession(req));
     const cartItems = buildCartItems(store, ownerKey);
@@ -864,7 +864,7 @@ function createApp(io) {
     });
   });
 
-  app.post("/cart/items", (req, res) => {
+  app.post("/api/cart/items", (req, res) => {
     const gameId = String(req.body?.gameId || "").trim();
     const store = readStore();
     const game = store.games.find((item) => item.id === gameId);
@@ -887,7 +887,7 @@ function createApp(io) {
     res.status(201).json({ items });
   });
 
-  app.post("/cart/bundles", (req, res) => {
+  app.post("/api/cart/bundles", (req, res) => {
     const bundleId = String(req.body?.bundleId || "").trim();
     const store = readStore();
     const bundle = getBundles(store).find((item) => item.id === bundleId || item.slug === bundleId);
@@ -911,7 +911,7 @@ function createApp(io) {
     res.status(201).json({ items: next.carts[ownerKey] || [] });
   });
 
-  app.delete("/cart/items/:id", (req, res) => {
+  app.delete("/api/cart/items/:id", (req, res) => {
     const ownerKey = getOwnerKey(getSession(req));
     updateStore((draft) => {
       draft.carts[ownerKey] = (draft.carts[ownerKey] || []).filter((item) => item.id !== req.params.id);
@@ -920,7 +920,7 @@ function createApp(io) {
     res.json({ ok: true });
   });
 
-  app.delete("/cart/clear", (req, res) => {
+  app.delete("/api/cart/clear", (req, res) => {
     const ownerKey = getOwnerKey(getSession(req));
     updateStore((draft) => {
       draft.carts[ownerKey] = [];
@@ -929,7 +929,7 @@ function createApp(io) {
     res.json({ ok: true });
   });
 
-  app.post("/orders", (req, res) => {
+  app.post("/api/orders", (req, res) => {
     const session = getSession(req);
     const store = readStore();
     const ownerKey = getOwnerKey(session);
