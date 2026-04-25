@@ -2,21 +2,27 @@ const fs = require("fs");
 const express = require("express");
 const compression = require("compression");
 const path = require("path");
-const { readStore, updateStore, createId, slugify, defaultQr, normalizeConsoleGame } = require("./store");
+const { readStore, updateStore, createId, slugify, defaultQr, defaultLogo, normalizeAiTool, normalizeConsoleGame } = require("./store");
 const { attachSession, getSession, setSession, clearSession } = require("./sessionManager");
 const { getMergedBlogs, getBlogBySlug } = require("./blogEngine");
 const { ensureBundleDrafts, getBundleBySlug, getBundles, normalizeBundle } = require("./bundleCatalog");
-const { buildRobotsTxt, buildSitemapXml, getSeoForPath, injectSeo } = require("./seo");
+const { buildLlmsTxt, buildRobotsTxt, buildSitemapXml, getSeoForPath, injectSeo } = require("./seo");
 const createContentController = require("./controllers/contentController");
 const createContentRoutes = require("./routes/contentRoutes");
 
 const ADMIN_EMAIL = process.env.ADMIN_EMAIL || "admin@gamersarena.com";
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || null;
 const ADMIN_SECONDARY_PASSWORD = process.env.ADMIN_SECONDARY_PASSWORD || "change-me";
+const ADMIN_EMAIL_MANAGED_BY_ENV = Boolean(process.env.ADMIN_EMAIL);
+const ADMIN_PASSWORD_MANAGED_BY_ENV = Boolean(process.env.ADMIN_PASSWORD);
+const ADMIN_SECONDARY_MANAGED_BY_ENV = Boolean(process.env.ADMIN_SECONDARY_PASSWORD);
 const ADMIN_RECOVERY_DOB1 = process.env.ADMIN_RECOVERY_DOB1 || "27-03-2007";
 const ADMIN_RECOVERY_DOB2 = process.env.ADMIN_RECOVERY_DOB2 || "17-10-2008";
 const ADMIN_PRIMARY_WINDOW_MS = 5 * 60 * 1000;
 const ADMIN_RECOVERY_WINDOW_MS = 10 * 60 * 1000;
+const AUTH_WINDOW_MS = 15 * 60 * 1000;
+const AUTH_ATTEMPT_LIMIT = 20;
+const authAttempts = new Map();
 
 function sanitizeGame(game) {
   const name = String(game.name || "").trim();
@@ -60,6 +66,20 @@ function sanitizeConsoleGame(item) {
     name: String(item.name || "").trim(),
     platform: String(item.platform || "PS5").trim(),
     image: String(item.image || "").trim(),
+    createdAt: item.createdAt,
+    updatedAt: item.updatedAt
+  };
+}
+
+function sanitizeAiTool(item) {
+  return {
+    id: item.id,
+    slug: item.slug,
+    name: String(item.name || "").trim(),
+    category: String(item.category || "AI").trim(),
+    description: String(item.description || "").trim(),
+    url: String(item.url || "").trim(),
+    featured: item.featured === true,
     createdAt: item.createdAt,
     updatedAt: item.updatedAt
   };
@@ -110,6 +130,11 @@ function stripHtmlText(value) {
   return String(value || "").replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim();
 }
 
+function normalizeRateLimitKey(req) {
+  const forwarded = String(req.headers["x-forwarded-for"] || "").split(",")[0].trim();
+  return `${req.path}:${forwarded || req.ip || "local"}`;
+}
+
 function createApp(io) {
   const app = express();
   const publicDir = path.join(__dirname, "..", "public");
@@ -121,10 +146,10 @@ function createApp(io) {
       email: store.admin.email || ADMIN_EMAIL,
       password: store.admin.password || ADMIN_PASSWORD || "change-me",
       secondaryPassword: store.admin.secondaryPassword || ADMIN_SECONDARY_PASSWORD || "change-me",
-      emailManagedByEnv: false,
-      passwordManagedByEnv: false,
-      secondaryManagedByEnv: false,
-      managedByEnv: false
+      emailManagedByEnv: ADMIN_EMAIL_MANAGED_BY_ENV,
+      passwordManagedByEnv: ADMIN_PASSWORD_MANAGED_BY_ENV,
+      secondaryManagedByEnv: ADMIN_SECONDARY_MANAGED_BY_ENV,
+      managedByEnv: ADMIN_EMAIL_MANAGED_BY_ENV || ADMIN_PASSWORD_MANAGED_BY_ENV || ADMIN_SECONDARY_MANAGED_BY_ENV
     };
   }
 
@@ -150,8 +175,9 @@ function createApp(io) {
     const filePath = path.join(publicDir, fileName);
     if (!fs.existsSync(filePath)) return res.sendStatus(404);
     const html = fs.readFileSync(filePath, "utf8");
-    const seo = getSeoForPath(seoPath);
-    return res.type("html").send(injectSeo(html, seo, resolveBaseUrl(req)));
+    const store = readStore();
+    const seo = getSeoForPath(seoPath, store);
+    return res.type("html").send(injectSeo(html, seo, resolveBaseUrl(req), store));
   }
 
   function sendProtectedSeoPage(req, res, fileName, seoPath) {
@@ -168,11 +194,37 @@ function createApp(io) {
     attachSession(req, res);
     next();
   });
+  app.use((req, res, next) => {
+    res.setHeader("Referrer-Policy", "strict-origin-when-cross-origin");
+    res.setHeader("X-Content-Type-Options", "nosniff");
+    res.setHeader("X-Frame-Options", "SAMEORIGIN");
+    res.setHeader("Permissions-Policy", "camera=(), microphone=(), geolocation=()");
+    next();
+  });
+  app.use((req, res, next) => {
+    if (!req.path.startsWith("/auth/")) return next();
+    const key = normalizeRateLimitKey(req);
+    const now = Date.now();
+    const current = authAttempts.get(key);
+    if (!current || now > current.expiresAt) {
+      authAttempts.set(key, { count: 1, expiresAt: now + AUTH_WINDOW_MS });
+      return next();
+    }
+    if (current.count >= AUTH_ATTEMPT_LIMIT) {
+      return res.status(429).json({ error: "Too many authentication attempts. Please wait before trying again." });
+    }
+    current.count += 1;
+    authAttempts.set(key, current);
+    next();
+  });
   app.get("/robots.txt", (req, res) => {
     res.type("text/plain").send(buildRobotsTxt(resolveBaseUrl(req)));
   });
   app.get("/sitemap.xml", (req, res) => {
-    res.type("application/xml").send(buildSitemapXml(resolveBaseUrl(req)));
+    res.type("application/xml").send(buildSitemapXml(resolveBaseUrl(req), readStore()));
+  });
+  app.get("/llms.txt", (req, res) => {
+    res.type("text/plain").send(buildLlmsTxt(resolveBaseUrl(req), readStore()));
   });
   app.use((req, res, next) => {
     if (!["GET", "HEAD"].includes(req.method)) return next();
@@ -279,9 +331,17 @@ function createApp(io) {
       } : null,
       settings: {
         siteTitle: settings.siteTitle || "Gamers Arena",
+        siteTagline: settings.siteTagline || "PC Games Accounts Store",
+        siteDescription: settings.siteDescription || "Premium gaming storefront",
+        logoUrl: settings.logoUrl || defaultLogo,
+        faviconUrl: settings.faviconUrl || settings.logoUrl || defaultLogo,
         qrImage: includeQr ? (settings.qrImage || defaultQr) : "",
         homeLayout: Array.isArray(settings.homeLayout) ? settings.homeLayout : [],
         bundles: getBundles(store).map((bundle) => sanitizeBundle(bundle, { includeImages: false })),
+        socialLinks: settings.socialLinks || {},
+        business: settings.business || {},
+        analytics: settings.analytics || {},
+        emailAuthentication: settings.emailAuthentication || {},
         adminEmail: admin.email,
         adminEmailManagedByEnv: admin.emailManagedByEnv,
         adminPasswordManagedByEnv: admin.passwordManagedByEnv,
@@ -846,10 +906,14 @@ function createApp(io) {
     updateStore((draft) => {
       draft.orders = Array.isArray(draft.orders) ? draft.orders : [];
       draft.orders.unshift(order);
+      draft.carts[ownerKey] = [];
       return draft;
     });
 
-    res.status(201).json(order);
+    res.status(201).json({
+      ...order,
+      telegramMessage: `Hello, I paid for order ${orderId}. Amount: Rs ${order.total}. Please help me continue the delivery.`
+    });
   });
 
   app.get("/admin/orders", requireAdmin, (_req, res) => {
@@ -953,14 +1017,100 @@ function createApp(io) {
     res.json({ ok: true });
   });
 
+  app.get("/api/ai-tools", (req, res) => {
+    const store = readStore();
+    const query = normalizeSearchValue(req.query?.q || "");
+    const category = String(req.query?.category || "").trim().toLowerCase();
+    const featuredOnly = String(req.query?.featured || "") === "1";
+    const limit = Math.max(0, Number(req.query?.limit || 0));
+    let items = (store.aiTools || []).map(sanitizeAiTool);
+
+    if (query) {
+      items = items.filter((tool) => normalizeSearchValue(`${tool.name} ${tool.description} ${tool.category}`).includes(query));
+    }
+    if (category) {
+      items = items.filter((tool) => String(tool.category || "").trim().toLowerCase() === category);
+    }
+    if (featuredOnly) {
+      items = items.filter((tool) => tool.featured);
+    }
+    if (limit) {
+      items = items.slice(0, limit);
+    }
+
+    const categories = [...new Set((store.aiTools || []).map((tool) => String(tool.category || "").trim()).filter(Boolean))].sort();
+    res.json({
+      items,
+      total: items.length,
+      categories
+    });
+  });
+
+  app.post("/api/ai-tools", requireAdmin, (req, res) => {
+    const store = updateStore((draft) => {
+      draft.aiTools = Array.isArray(draft.aiTools) ? draft.aiTools : [];
+      const normalized = normalizeAiTool({
+        id: createId("tool"),
+        ...req.body
+      });
+      if (!normalized.name || !normalized.description || !normalized.url) {
+        throw new Error("Tool name, description, and URL are required.");
+      }
+      if (draft.aiTools.some((tool) => tool.slug === normalized.slug)) {
+        normalized.slug = `${normalized.slug}-${Date.now().toString().slice(-4)}`;
+      }
+      draft.aiTools.unshift(normalized);
+      return draft;
+    });
+    res.status(201).json(sanitizeAiTool(store.aiTools[0]));
+  });
+
+  app.put("/api/ai-tools/:id", requireAdmin, (req, res) => {
+    const store = updateStore((draft) => {
+      draft.aiTools = Array.isArray(draft.aiTools) ? draft.aiTools : [];
+      const tool = draft.aiTools.find((item) => item.id === req.params.id);
+      if (!tool) throw new Error("AI tool not found.");
+      const normalized = normalizeAiTool({
+        ...tool,
+        ...req.body,
+        id: tool.id,
+        createdAt: tool.createdAt,
+        updatedAt: new Date().toISOString()
+      });
+      if (!normalized.name || !normalized.description || !normalized.url) {
+        throw new Error("Tool name, description, and URL are required.");
+      }
+      Object.assign(tool, normalized);
+      return draft;
+    });
+    res.json(sanitizeAiTool(store.aiTools.find((item) => item.id === req.params.id)));
+  });
+
+  app.delete("/api/ai-tools/:id", requireAdmin, (req, res) => {
+    updateStore((draft) => {
+      draft.aiTools = (draft.aiTools || []).filter((item) => item.id !== req.params.id);
+      return draft;
+    });
+    res.json({ ok: true });
+  });
+
   app.get("/settings", (_req, res) => {
     const store = readStore();
     const admin = getAdminCredentials(store);
     res.json({
         siteTitle: store.settings.siteTitle || "Gamers Arena",
+        siteTagline: store.settings.siteTagline || "PC Games Accounts Store",
+        siteDescription: store.settings.siteDescription || "",
+        logoUrl: store.settings.logoUrl || defaultLogo,
+        faviconUrl: store.settings.faviconUrl || store.settings.logoUrl || defaultLogo,
         qrImage: store.settings.qrImage || defaultQr,
         homeLayout: Array.isArray(store.settings.homeLayout) ? store.settings.homeLayout : [],
         bundles: getBundles(store).map((bundle) => sanitizeBundle(bundle, { includeImages: false })),
+        socialLinks: store.settings.socialLinks || {},
+        business: store.settings.business || {},
+        analytics: store.settings.analytics || {},
+        emailAuthentication: store.settings.emailAuthentication || {},
+        aiToolsCount: Array.isArray(store.aiTools) ? store.aiTools.length : 0,
         adminEmail: admin.email,
       adminEmailManagedByEnv: admin.emailManagedByEnv,
       adminPasswordManagedByEnv: admin.passwordManagedByEnv,
@@ -973,15 +1123,53 @@ function createApp(io) {
     const currentStore = readStore();
     const admin = getAdminCredentials(currentStore);
     const siteTitle = String(req.body?.siteTitle || "").trim() || "Gamers Arena";
+    const siteTagline = String(req.body?.siteTagline || "").trim() || "PC Games Accounts Store";
+    const siteDescription = String(req.body?.siteDescription || "").trim() || "Premium gaming storefront";
+    const logoUrl = String(req.body?.logoUrl || "").trim() || currentStore.settings.logoUrl || defaultLogo;
+    const faviconUrl = String(req.body?.faviconUrl || "").trim() || logoUrl || defaultLogo;
     const qrImage = String(req.body?.qrImage || "").trim() || defaultQr;
     const homeLayout = Array.isArray(req.body?.homeLayout) ? req.body.homeLayout : [];
     const bundles = Array.isArray(req.body?.bundles) ? req.body.bundles : null;
+    const socialLinks = req.body?.socialLinks && typeof req.body.socialLinks === "object" ? req.body.socialLinks : {};
+    const business = req.body?.business && typeof req.body.business === "object" ? req.body.business : {};
+    const analytics = req.body?.analytics && typeof req.body.analytics === "object" ? req.body.analytics : {};
+    const emailAuthentication = req.body?.emailAuthentication && typeof req.body.emailAuthentication === "object" ? req.body.emailAuthentication : {};
     const adminEmail = String(req.body?.adminEmail || "").trim();
     const adminPassword = String(req.body?.adminPassword || "").trim();
     const adminSecondaryPassword = String(req.body?.adminSecondaryPassword || "").trim();
     const store = updateStore((draft) => {
       draft.settings.siteTitle = siteTitle;
+      draft.settings.siteTagline = siteTagline;
+      draft.settings.siteDescription = siteDescription;
+      draft.settings.logoUrl = logoUrl;
+      draft.settings.faviconUrl = faviconUrl;
       draft.settings.qrImage = qrImage;
+      draft.settings.socialLinks = {
+        ...(draft.settings.socialLinks || {}),
+        ...Object.fromEntries(Object.entries(socialLinks).map(([key, value]) => [key, String(value || "").trim()]))
+      };
+      draft.settings.business = {
+        ...(draft.settings.business || {}),
+        ...Object.fromEntries(Object.entries(business).map(([key, value]) => [key, String(value || "").trim()]))
+      };
+      draft.settings.analytics = {
+        ...(draft.settings.analytics || {}),
+        googleAnalyticsId: Object.prototype.hasOwnProperty.call(analytics, "googleAnalyticsId")
+          ? String(analytics.googleAnalyticsId || "").trim()
+          : String(draft.settings.analytics?.googleAnalyticsId || "").trim(),
+        facebookPixelId: Object.prototype.hasOwnProperty.call(analytics, "facebookPixelId")
+          ? String(analytics.facebookPixelId || "").trim()
+          : String(draft.settings.analytics?.facebookPixelId || "").trim()
+      };
+      draft.settings.emailAuthentication = {
+        ...(draft.settings.emailAuthentication || {}),
+        spfRecord: Object.prototype.hasOwnProperty.call(emailAuthentication, "spfRecord")
+          ? String(emailAuthentication.spfRecord || "").trim()
+          : String(draft.settings.emailAuthentication?.spfRecord || "").trim(),
+        dmarcRecord: Object.prototype.hasOwnProperty.call(emailAuthentication, "dmarcRecord")
+          ? String(emailAuthentication.dmarcRecord || "").trim()
+          : String(draft.settings.emailAuthentication?.dmarcRecord || "").trim()
+      };
       draft.settings.homeLayout = homeLayout
         .filter((block) => block && ["text", "image", "video"].includes(block.type))
         .map((block, index) => ({
@@ -1002,9 +1190,18 @@ function createApp(io) {
     const activeAdmin = getAdminCredentials(store);
     res.json({
         siteTitle: store.settings.siteTitle,
+        siteTagline: store.settings.siteTagline,
+        siteDescription: store.settings.siteDescription,
+        logoUrl: store.settings.logoUrl,
+        faviconUrl: store.settings.faviconUrl,
         qrImage: store.settings.qrImage,
         homeLayout: store.settings.homeLayout,
         bundles: getBundles(store).map((bundle) => sanitizeBundle(bundle, { includeImages: false })),
+        socialLinks: store.settings.socialLinks || {},
+        business: store.settings.business || {},
+        analytics: store.settings.analytics || {},
+        emailAuthentication: store.settings.emailAuthentication || {},
+        aiToolsCount: Array.isArray(store.aiTools) ? store.aiTools.length : 0,
         adminEmail: activeAdmin.email,
       adminEmailManagedByEnv: activeAdmin.emailManagedByEnv,
       adminPasswordManagedByEnv: activeAdmin.passwordManagedByEnv,
@@ -1113,6 +1310,7 @@ function createApp(io) {
         users: store.users.length,
         chats: store.chats.length,
         blogs: mergedBlogs.length,
+        aiTools: Array.isArray(store.aiTools) ? store.aiTools.length : 0,
         orders: Array.isArray(store.orders) ? store.orders.length : 0
       },
       users: store.users.map((user) => ({
@@ -1186,21 +1384,7 @@ function createApp(io) {
   });
 
   app.get("/pages/:slug", (req, res) => {
-    const store = readStore();
-    const pageRecord = (store.pages || []).find((item) => item.slug === req.params.slug);
-    if (!pageRecord) return res.sendStatus(404);
-    const filePath = path.join(publicDir, "page.html");
-    if (!fs.existsSync(filePath)) return res.sendStatus(404);
-    const html = fs.readFileSync(filePath, "utf8");
-    const description = String(pageRecord.seoDescription || pageRecord.summary || stripHtmlText(pageRecord.content).slice(0, 160)).trim();
-    const seo = {
-      title: String(pageRecord.seoTitle || `${pageRecord.title} | Gamers Arena`).trim(),
-      description,
-      ogTitle: String(pageRecord.seoTitle || pageRecord.title || "Gamers Arena").trim(),
-      ogDescription: description,
-      ogType: "article"
-    };
-    return res.type("html").send(injectSeo(html, seo, resolveBaseUrl(req)));
+    return sendSeoPage(req, res, "page.html", req.path);
   });
 
   app.get("/health", (_req, res) => {
@@ -1208,15 +1392,32 @@ function createApp(io) {
   });
 
   app.get("/", (req, res) => sendSeoPage(req, res, "index.html", "/index.html"));
+  app.get("/pc-games", (req, res) => sendSeoPage(req, res, "pc-games.html", "/pc-games"));
+  app.get("/ps4-games", (req, res) => sendSeoPage(req, res, "ps4-games.html", "/ps4-games"));
+  app.get("/ps5-games", (req, res) => sendSeoPage(req, res, "ps5-games.html", "/ps5-games"));
+  app.get("/deals", (req, res) => sendSeoPage(req, res, "deals.html", "/deals"));
+  app.get("/blog", (req, res) => sendSeoPage(req, res, "blog.html", "/blog"));
+  app.get("/blog/:slug", (req, res) => sendSeoPage(req, res, "post.html", req.path));
+  app.get("/ai-tools", (req, res) => sendSeoPage(req, res, "ai-tools.html", "/ai-tools"));
+  app.get("/cart", (req, res) => sendSeoPage(req, res, "cart.html", "/cart"));
+  app.get("/checkout", (req, res) => sendSeoPage(req, res, "checkout.html", "/checkout"));
+  app.get("/login", (req, res) => sendSeoPage(req, res, "login.html", "/login"));
+  app.get("/admin", (req, res) => sendProtectedSeoPage(req, res, "admin.html", "/admin"));
   app.get("/cart.html", (req, res) => sendSeoPage(req, res, "cart.html", "/cart.html"));
   app.get("/checkout.html", (req, res) => sendSeoPage(req, res, "checkout.html", "/checkout.html"));
   app.get("/chat.html", (req, res) => sendSeoPage(req, res, "chat.html", "/chat.html"));
+  app.get("/games.html", (req, res) => sendSeoPage(req, res, "pc-games.html", "/pc-games"));
   app.get("/login.html", (req, res) => sendSeoPage(req, res, "login.html", "/login.html"));
   app.get("/admin.html", (req, res) => sendProtectedSeoPage(req, res, "admin.html", "/admin.html"));
   app.get("/blog.html", (req, res) => sendSeoPage(req, res, "blog.html", "/blog.html"));
+  app.get("/deals.html", (req, res) => sendSeoPage(req, res, "deals.html", "/deals"));
+  app.get("/ai-tools.html", (req, res) => sendSeoPage(req, res, "ai-tools.html", "/ai-tools"));
+  app.get("/pc-games.html", (req, res) => sendSeoPage(req, res, "pc-games.html", "/pc-games"));
+  app.get("/ps4-games.html", (req, res) => sendSeoPage(req, res, "ps4-games.html", "/ps4-games"));
+  app.get("/ps5-games.html", (req, res) => sendSeoPage(req, res, "ps5-games.html", "/ps5-games"));
   app.get("/post.html", (req, res) => sendSeoPage(req, res, "post.html", "/post.html"));
   app.get("/bundle.html", (req, res) => sendSeoPage(req, res, "bundle.html", "/bundle.html"));
-  app.get("/bundle/:slug", (req, res) => sendSeoPage(req, res, "bundle.html", "/bundle.html"));
+  app.get("/bundle/:slug", (req, res) => sendSeoPage(req, res, "bundle.html", req.path));
   app.get("/editor.html", (req, res) => sendProtectedSeoPage(req, res, "editor.html", "/editor.html"));
   app.get("/page.html", (req, res) => sendSeoPage(req, res, "page.html", "/page.html"));
 

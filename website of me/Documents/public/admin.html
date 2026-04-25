@@ -7,7 +7,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Oxanium:wght@400;600;700&family=Manrope:wght@400;500;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="/styles.css">
+  <link rel="stylesheet" href="/styles.min.css">
 </head>
 <body data-page="admin">
   <div class="shell">
@@ -45,6 +45,7 @@
             <div class="card"><strong id="adminUsersCount">0</strong><p class="muted">Users</p></div>
             <div class="card"><strong id="adminChatsCount">0</strong><p class="muted">Chats</p></div>
             <div class="card"><strong id="adminBlogsCount">0</strong><p class="muted">Blogs</p></div>
+            <div class="card"><strong id="adminAiToolsCount">0</strong><p class="muted">AI Tools</p></div>
             <div class="card"><strong id="adminOrdersCount">0</strong><p class="muted">Orders</p></div>
           </div>
         </div>
@@ -60,6 +61,7 @@
             <button class="btn btn-secondary tab-btn" type="button" data-admin-tab="adminOrdersPanel">Orders</button>
             <button class="btn btn-secondary tab-btn" type="button" data-admin-tab="adminChatsPanel">Chats</button>
             <button class="btn btn-secondary tab-btn" type="button" data-admin-tab="adminBlogsPanel">Blog</button>
+            <button class="btn btn-secondary tab-btn" type="button" data-admin-tab="adminAiToolsPanel">AI Tools</button>
             <button class="btn btn-secondary tab-btn" type="button" data-admin-tab="adminSettingsPanel">Settings</button>
           </div>
         </div>
@@ -286,15 +288,38 @@
           <div id="blogList" class="blog-grid"></div>
         </section>
 
+        <section id="adminAiToolsPanel" data-admin-panel class="panel hidden">
+          <div class="section-head">
+            <div>
+              <p class="eyebrow">ai tools</p>
+              <h2 class="section-title">AI Tools Directory Manager</h2>
+            </div>
+          </div>
+          <form id="createAiToolForm" class="stack" style="margin-bottom:18px;">
+            <input id="newAiToolName" class="input" placeholder="Tool name">
+            <input id="newAiToolCategory" class="input" placeholder="Category">
+            <input id="newAiToolUrl" class="input" placeholder="Tool URL">
+            <textarea id="newAiToolDescription" class="textarea" placeholder="Short description"></textarea>
+            <label class="muted"><input id="newAiToolFeatured" type="checkbox"> Mark as featured</label>
+            <button class="btn btn-primary" type="submit">Add AI Tool</button>
+          </form>
+          <p id="adminAiToolsStatus" class="status"></p>
+          <div id="adminAiToolsList" class="blog-grid"></div>
+        </section>
+
         <section id="adminSettingsPanel" data-admin-panel class="panel hidden">
           <div class="section-head">
             <div>
               <p class="eyebrow">settings</p>
-              <h2 class="section-title">Site Title, QR And Admin Access</h2>
+              <h2 class="section-title">Brand, Business, Tracking, And Admin Access</h2>
             </div>
           </div>
           <form id="settingsForm" class="stack">
             <input id="siteTitleInput" class="input" placeholder="Site title">
+            <input id="siteTaglineInput" class="input" placeholder="Site tagline">
+            <textarea id="siteDescriptionInput" class="textarea" placeholder="Site description"></textarea>
+            <input id="logoUrlInput" class="input" placeholder="Logo image URL">
+            <input id="faviconUrlInput" class="input" placeholder="Favicon image URL">
             <input id="adminEmailInput" class="input" placeholder="Admin email">
             <input id="adminPasswordInput" class="input" type="password" placeholder="New first admin password (optional)">
             <input id="adminSecondaryPasswordInput" class="input" type="password" placeholder="New second admin password (optional)">
@@ -302,17 +327,40 @@
             <input id="qrUrlInput" class="input" placeholder="QR image URL">
             <input id="qrFile" class="input" type="file" accept="image/*">
             <img id="qrPreview" class="qr-box" src="" alt="QR preview">
+            <div class="two-col">
+              <input id="businessNameInput" class="input" placeholder="Business name">
+              <input id="businessPhoneInput" class="input" placeholder="Business phone">
+              <input id="businessEmailInput" class="input" placeholder="Business email">
+              <input id="businessAddressInput" class="input" placeholder="Address line 1">
+              <input id="businessCityInput" class="input" placeholder="City">
+              <input id="businessStateInput" class="input" placeholder="State">
+            </div>
+            <div class="two-col">
+              <input id="instagramUrlInput" class="input" placeholder="Instagram URL">
+              <input id="facebookUrlInput" class="input" placeholder="Facebook URL">
+              <input id="youtubeUrlInput" class="input" placeholder="YouTube URL">
+              <input id="twitterUrlInput" class="input" placeholder="Twitter / X URL">
+              <input id="linkedinUrlInput" class="input" placeholder="LinkedIn URL">
+              <input id="telegramUrlInput" class="input" placeholder="Telegram URL">
+            </div>
+            <div class="two-col">
+              <input id="googleAnalyticsIdInput" class="input" placeholder="Google Analytics measurement ID">
+              <input id="facebookPixelIdInput" class="input" placeholder="Facebook Pixel ID">
+            </div>
+            <textarea id="spfRecordInput" class="textarea" placeholder="SPF record guidance"></textarea>
+            <textarea id="dmarcRecordInput" class="textarea" placeholder="DMARC record guidance"></textarea>
+            <p class="hero-copy">SPF and DMARC fields are informational notes for your DNS setup. They do not publish records automatically.</p>
             <button class="btn btn-primary" type="submit">Save Settings</button>
+            <p id="settingsStatus" class="status"></p>
           </form>
-          <p id="settingsStatus" class="status"></p>
         </section>
       </section>
     </main>
   </div>
   <script src="/socket.io/socket.io.js"></script>
-  <script src="/mobile-nav.js"></script>
-  <script src="/header-scroll.js"></script>
-  <script src="/app.js"></script>
+  <script src="/mobile-nav.min.js"></script>
+  <script src="/header-scroll.min.js"></script>
+  <script src="/app.min.js"></script>
 </body>
 </html>
 

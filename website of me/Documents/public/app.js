@@ -21,6 +21,10 @@ const state = {
   blogQuery: "",
   blogCategory: "",
   bundles: [],
+  aiTools: [],
+  filteredAiTools: [],
+  aiToolQuery: "",
+  aiToolCategory: "",
   suggestedItems: [],
   bundleCandidates: [],
   wishlist: [],
@@ -504,7 +508,7 @@ function injectFloatingCart() {
     <span id="floatingCartCount" class="floating-cart-count ${initialCount === 0 ? "is-empty" : ""}">${initialCount}</span>
   `;
   button.onclick = () => {
-    window.location.href = "/cart.html";
+    window.location.href = "/cart";
   };
   document.body.appendChild(button);
 }
@@ -670,8 +674,120 @@ function injectSiteBanner() {
   const banner = document.createElement("div");
   banner.id = "siteNoticeBanner";
   banner.className = "site-banner";
-  banner.innerHTML = `All games may not be updated here yet. If your favourite game is missing, message us on <a href="${TELEGRAM_URL}" target="_blank" rel="noreferrer">Telegram</a>.`;
+  banner.innerHTML = `Fast QR checkout, responsive browsing, and direct order help on <a href="${TELEGRAM_URL}" target="_blank" rel="noreferrer">Telegram</a>.`;
   shell.insertBefore(banner, topbar.nextSibling);
+}
+
+function enhanceBranding() {
+  document.querySelectorAll(".brand").forEach((brand) => {
+    if (!brand || brand.querySelector(".brand-logo")) return;
+    const mark = brand.querySelector(".brand-mark");
+    const image = document.createElement("img");
+    image.className = "brand-logo";
+    image.src = state.settings?.logoUrl || "/assets/gamers-arena-logo.png";
+    image.alt = `${state.settings?.siteTitle || "Gamers Arena"} logo`;
+    image.loading = "eager";
+    if (mark) {
+      mark.replaceWith(image);
+    } else {
+      brand.prepend(image);
+    }
+  });
+}
+
+function injectSiteFooter() {
+  const shell = document.querySelector(".shell");
+  const main = document.querySelector("main");
+  if (!shell || !main || document.getElementById("siteFooter")) return;
+  const business = state.settings?.business || {};
+  const social = state.settings?.socialLinks || {};
+  const footer = document.createElement("footer");
+  footer.id = "siteFooter";
+  footer.className = "panel site-footer";
+  footer.innerHTML = `
+    <div class="site-footer-grid">
+      <div class="site-footer-brand">
+        <a class="brand brand-footer" href="/">
+          <img class="brand-logo" src="${escapeHtml(state.settings?.logoUrl || "/assets/gamers-arena-logo.png")}" alt="${escapeHtml(state.settings?.siteTitle || "Gamers Arena")} logo" loading="lazy">
+          <span>
+            <strong>${escapeHtml(state.settings?.siteTitle || "Gamers Arena")}</strong><br>
+            <small class="muted">${escapeHtml(state.settings?.siteTagline || "PC Games Accounts Store")}</small>
+          </span>
+        </a>
+        <p class="hero-copy">${escapeHtml(state.settings?.siteDescription || "Premium gaming storefront")}</p>
+        <div class="chip-row">
+          <span class="chip">Global admin updates</span>
+          <span class="chip">SEO-ready content</span>
+          <span class="chip">QR payment flow</span>
+        </div>
+      </div>
+      <div>
+        <p class="eyebrow">explore</p>
+        <div class="site-footer-links">
+          <a href="/pc-games">PC Games</a>
+          <a href="/ps4-games">PS4 Games</a>
+          <a href="/ps5-games">PS5 Games</a>
+          <a href="/deals">Deals</a>
+          <a href="/blog">Blog</a>
+          <a href="/ai-tools">AI Tools</a>
+        </div>
+      </div>
+      <div>
+        <p class="eyebrow">business</p>
+        <div class="site-footer-links">
+          <span>${escapeHtml(business.name || "Gamers Arena")}</span>
+          <span>${escapeHtml([business.addressLine1, business.city, business.state].filter(Boolean).join(", "))}</span>
+          <span>${escapeHtml(business.phone || "+91 00000 00000")}</span>
+          <span>${escapeHtml(business.email || "support@gamersarena.com")}</span>
+        </div>
+      </div>
+      <div>
+        <p class="eyebrow">social</p>
+        <div class="social-links">
+          <a class="social-link" href="${escapeHtml(social.instagram || "/")}" target="_blank" rel="noreferrer" aria-label="Instagram">IG</a>
+          <a class="social-link" href="${escapeHtml(social.facebook || "/")}" target="_blank" rel="noreferrer" aria-label="Facebook">FB</a>
+          <a class="social-link" href="${escapeHtml(social.youtube || "/")}" target="_blank" rel="noreferrer" aria-label="YouTube">YT</a>
+          <a class="social-link" href="${escapeHtml(social.twitter || "/")}" target="_blank" rel="noreferrer" aria-label="Twitter X">X</a>
+          <a class="social-link" href="${escapeHtml(social.linkedin || "/")}" target="_blank" rel="noreferrer" aria-label="LinkedIn">IN</a>
+          <a class="social-link social-link-telegram" href="${escapeHtml(social.telegram || TELEGRAM_URL)}" target="_blank" rel="noreferrer" aria-label="Telegram">TG</a>
+        </div>
+        <p class="footer-note">SPF and DMARC guidance can be managed from admin settings before connecting branded email sending.</p>
+      </div>
+    </div>
+  `;
+  shell.appendChild(footer);
+}
+
+function injectBreadcrumbs() {
+  if (["home", "admin", "login"].includes(page) || document.getElementById("siteBreadcrumbs")) return;
+  const main = document.querySelector("main");
+  if (!main) return;
+  const labels = {
+    "pc-games": "PC Games",
+    games: "PC Games",
+    "ps4-games": "PS4 Games",
+    "ps5-games": "PS5 Games",
+    deals: "Deals",
+    blog: "Blog",
+    "ai-tools": "AI Tools",
+    cart: "Cart",
+    checkout: "Checkout",
+    bundle: "Bundle",
+    post: "Article",
+    wishlist: "Wishlist"
+  };
+  const currentLabel = labels[page];
+  if (!currentLabel) return;
+  const nav = document.createElement("nav");
+  nav.id = "siteBreadcrumbs";
+  nav.className = "panel breadcrumb-bar";
+  nav.setAttribute("aria-label", "Breadcrumb");
+  nav.innerHTML = `
+    <a href="/">Home</a>
+    <span>/</span>
+    <span aria-current="page">${escapeHtml(currentLabel)}</span>
+  `;
+  main.prepend(nav);
 }
 
 function injectAdminAccess() {
@@ -736,24 +852,48 @@ function injectAdminAccess() {
 }
 
 function ensureExpandedNav() {
+  if (["admin", "editor"].includes(page)) return;
   const navLinks = document.querySelector(".nav-links");
   if (!navLinks) return;
   const desiredLinks = [
-    { href: "/bundles.html", label: "Bundles", pageKey: "bundles" },
-    { href: "/wishlist.html", label: `Wishlist (<span data-wishlist-count>0</span>)`, pageKey: "wishlist" },
-    { href: "/reviews.html", label: "Reviews", pageKey: "reviews" },
-    { href: "/faq.html", label: "FAQ", pageKey: "faq" }
+    { href: "/", label: "Home", pageKey: "home" },
+    { href: "/pc-games", label: "PC Games", pageKey: "pc-games" },
+    { href: "/ps4-games", label: "PS4", pageKey: "ps4-games" },
+    { href: "/ps5-games", label: "PS5", pageKey: "ps5-games" },
+    { href: "/deals", label: "Deals", pageKey: "deals" },
+    { href: "/blog", label: "Blog", pageKey: "blog" },
+    { href: "/ai-tools", label: "AI Tools", pageKey: "ai-tools" }
   ];
 
-  desiredLinks.forEach((link) => {
-    if (navLinks.querySelector(`[href="${link.href}"]`)) return;
-    const anchor = document.createElement("a");
-    anchor.className = "nav-link";
-    anchor.href = link.href;
-    anchor.dataset.navLink = link.pageKey;
-    anchor.innerHTML = link.label;
-    navLinks.appendChild(anchor);
-  });
+  navLinks.innerHTML = desiredLinks.map((link) => `
+    <a class="nav-link" href="${link.href}" data-nav-link="${link.pageKey}">${link.label}</a>
+  `).join("");
+
+  const navActions = document.querySelector(".nav-actions");
+  if (navActions && !document.getElementById("headerStoreSearch")) {
+    const searchForm = document.createElement("form");
+    searchForm.id = "headerStoreSearch";
+    searchForm.className = "header-search";
+    searchForm.innerHTML = `
+      <input class="input header-search-input" type="search" name="q" placeholder="Search games" aria-label="Search games">
+      <button class="btn btn-secondary" type="submit">Search</button>
+    `;
+    searchForm.onsubmit = (event) => {
+      event.preventDefault();
+      const query = searchForm.querySelector("input")?.value?.trim() || "";
+      window.location.href = query ? `/pc-games?q=${encodeURIComponent(query)}` : "/pc-games";
+    };
+    navActions.prepend(searchForm);
+  }
+
+  if (navActions && !document.getElementById("headerCartLink")) {
+    const cartLink = document.createElement("a");
+    cartLink.id = "headerCartLink";
+    cartLink.className = "btn btn-secondary";
+    cartLink.href = "/cart";
+    cartLink.innerHTML = `Cart <span data-cart-count>0</span>`;
+    navActions.appendChild(cartLink);
+  }
 }
 
 function resetAdminAccessModal() {
@@ -794,6 +934,9 @@ async function bootstrap() {
   injectAdminAccess();
   injectFloatingCart();
   ensureExpandedNav();
+  enhanceBranding();
+  injectBreadcrumbs();
+  injectSiteFooter();
   updateNav();
   updateWishlistBadges();
   updateCartBadges();
@@ -813,7 +956,7 @@ function updateNav() {
         await api("/auth/logout", { method: "POST" });
         window.location.href = "/";
       } else {
-        window.location.href = "/login.html";
+        window.location.href = "/login";
       }
     };
   });
@@ -1088,7 +1231,7 @@ function renderBundleSection() {
             ${names.length ? names.map((name) => `<span class="chip">${escapeHtml(name)}</span>`).join("") : `<span class="chip">Add games later from admin</span>`}
           </div>
           <div class="inline-actions">
-            <a class="btn btn-secondary" href="/bundle.html?slug=${encodeURIComponent(bundle.slug)}">View Bundle</a>
+          <a class="btn btn-secondary" href="/bundle/${encodeURIComponent(bundle.slug)}">View Bundle</a>
             <button class="btn btn-secondary" type="button" data-save-item="bundle" data-save-key="${bundle.slug}" data-save-name="${escapeHtml(bundle.name)}" data-save-price="${bundle.price}" data-save-count="${bundle.itemCount || 0}">${isWishlisted("bundle", bundle.slug) ? "Saved" : "Save"}</button>
             <button class="btn btn-primary" type="button" data-add-bundle="${bundle.id}">Add Bundle</button>
           </div>
@@ -1118,7 +1261,7 @@ function renderBundleCatalogPage() {
           <span class="chip">QR checkout</span>
         </div>
         <div class="inline-actions">
-          <a class="btn btn-secondary" href="/bundle.html?slug=${encodeURIComponent(bundle.slug)}">Open Bundle</a>
+          <a class="btn btn-secondary" href="/bundle/${encodeURIComponent(bundle.slug)}">Open Bundle</a>
           <button class="btn btn-secondary" type="button" data-save-item="bundle" data-save-key="${bundle.slug}" data-save-name="${escapeHtml(bundle.name)}" data-save-price="${bundle.price}" data-save-count="${bundle.itemCount || 0}">${isWishlisted("bundle", bundle.slug) ? "Saved" : "Save"}</button>
           <button class="btn btn-primary" type="button" data-add-bundle="${bundle.id}">Add To Cart</button>
         </div>
@@ -1293,7 +1436,7 @@ function renderWishlistPreview() {
         </div>
         <div class="inline-actions">
           ${item.type === "bundle"
-            ? `<a class="btn btn-secondary" href="/bundle.html?slug=${encodeURIComponent(item.key)}">Open Bundle</a>`
+      ? `<a class="btn btn-secondary" href="/bundle/${encodeURIComponent(item.key)}">Open Bundle</a>`
             : `<button class="btn btn-secondary" type="button" data-quick-search="${escapeHtml(item.name)}">Find Game</button>`}
           <button class="btn btn-danger" type="button" data-remove-wishlist="${item.type}" data-remove-key="${item.key}">Remove</button>
         </div>
@@ -1321,7 +1464,7 @@ function renderWishlistPage() {
         </div>
         <div class="inline-actions">
           ${item.type === "bundle"
-            ? `<a class="btn btn-secondary" href="/bundle.html?slug=${encodeURIComponent(item.key)}">Open Bundle</a>
+      ? `<a class="btn btn-secondary" href="/bundle/${encodeURIComponent(item.key)}">Open Bundle</a>
                <button class="btn btn-primary" type="button" data-add-bundle-by-slug="${item.key}">Add To Cart</button>`
             : `<button class="btn btn-secondary" type="button" data-quick-search="${escapeHtml(item.name)}">Find Game</button>`}
           <button class="btn btn-danger" type="button" data-remove-wishlist="${item.type}" data-remove-key="${item.key}">Remove</button>
@@ -1595,6 +1738,139 @@ function hydrateBlogFilters() {
   }
 }
 
+async function loadAiTools() {
+  const data = await api("/api/ai-tools");
+  state.aiTools = data.items || [];
+  state.filteredAiTools = [...state.aiTools];
+  state.aiToolCategories = data.categories || [];
+  return state.aiTools;
+}
+
+function applyAiToolFilters() {
+  const searchValue = normalizeSearchText(qs("toolSearchInput")?.value || "");
+  const categoryValue = String(qs("toolFilter")?.value || "").trim();
+  state.aiToolQuery = searchValue;
+  state.aiToolCategory = categoryValue;
+  state.filteredAiTools = state.aiTools.filter((tool) => {
+    const haystack = normalizeSearchText(`${tool.name} ${tool.description} ${tool.category}`);
+    const matchesSearch = !searchValue || haystack.includes(searchValue);
+    const matchesCategory = !categoryValue || tool.category === categoryValue;
+    return matchesSearch && matchesCategory;
+  });
+  renderAiToolGrid();
+}
+
+function hydrateAiToolFilters() {
+  const search = qs("toolSearchInput");
+  const category = qs("toolFilter");
+  if (!search && !category) return;
+
+  const categories = [...new Set(state.aiTools.map((tool) => tool.category).filter(Boolean))].sort();
+  if (category) {
+    category.innerHTML = `<option value="">All categories</option>${categories.map((item) => `<option value="${item}">${item}</option>`).join("")}`;
+    category.value = state.aiToolCategory;
+    category.onchange = applyAiToolFilters;
+  }
+
+  if (search) {
+    let searchTimer;
+    search.oninput = () => {
+      clearTimeout(searchTimer);
+      searchTimer = setTimeout(applyAiToolFilters, 140);
+    };
+  }
+}
+
+function renderAiToolGrid() {
+  const wrap = qs("toolsGrid") || qs("aiToolsGrid");
+  if (!wrap) return;
+  const items = state.filteredAiTools || [];
+  const meta = qs("toolsMeta");
+  if (meta) {
+    meta.textContent = items.length
+      ? `Showing ${items.length} of ${state.aiTools.length} AI tools${state.aiToolQuery ? ` for "${qs("toolSearchInput")?.value || ""}"` : ""}.`
+      : "No AI tools matched this search.";
+  }
+  wrap.innerHTML = items.length
+    ? items.map((tool, index) => `
+      <article class="card blog-card ai-tool-card" style="animation-delay:${Math.min(index, 10) * 50}ms;">
+        <div class="blog-card-glow"></div>
+        <div class="section-head">
+          <div>
+            <p class="eyebrow">${escapeHtml(tool.category)}</p>
+            <h3 class="card-title">${escapeHtml(tool.name)}</h3>
+          </div>
+          ${tool.featured ? `<span class="chip">Featured</span>` : ""}
+        </div>
+        <p class="muted">${escapeHtml(tool.description)}</p>
+        <div class="inline-actions">
+          <a class="btn btn-primary" href="${escapeHtml(tool.url)}" target="_blank" rel="noreferrer">Open Tool</a>
+          <a class="btn btn-secondary" href="/blog">Read Related Guides</a>
+        </div>
+      </article>
+    `).join("")
+    : `<div class="empty">No AI tools matched your search right now.</div>`;
+}
+
+function renderHomeAiToolsPreview() {
+  const wrap = qs("homeAiToolsGrid");
+  if (!wrap) return;
+  wrap.innerHTML = state.aiTools.slice(0, 4).map((tool) => `
+    <article class="card feature-item ai-tool-card">
+      <p class="eyebrow">${escapeHtml(tool.category)}</p>
+      <h3 class="card-title">${escapeHtml(tool.name)}</h3>
+      <p class="hero-copy">${escapeHtml(tool.description)}</p>
+      <a class="btn btn-secondary" href="/ai-tools">View Directory</a>
+    </article>
+  `).join("");
+}
+
+function renderHomeBlogPreview() {
+  const wrap = qs("homeBlogGrid");
+  if (!wrap) return;
+  wrap.innerHTML = state.blogs.slice(0, 3).map((blog) => `
+    <article class="card feature-item">
+      <p class="eyebrow">${escapeHtml(blog.category || "Guide")}</p>
+      <h3 class="card-title">${escapeHtml(blog.title)}</h3>
+      <p class="hero-copy">${escapeHtml(blog.summary)}</p>
+      <a class="btn btn-secondary" href="/blog/${encodeURIComponent(blog.slug)}">Read Article</a>
+    </article>
+  `).join("");
+}
+
+function renderAdminAiTools() {
+  const wrap = qs("adminAiToolsList");
+  if (!wrap) return;
+  wrap.innerHTML = state.aiTools.length
+    ? state.aiTools.map((tool) => `
+      <article class="card blog-card">
+        <div class="section-head">
+          <div>
+            <p class="eyebrow">${escapeHtml(tool.category)}</p>
+            <h3 class="card-title">${escapeHtml(tool.name)}</h3>
+          </div>
+          ${tool.featured ? `<span class="chip">Featured</span>` : ""}
+        </div>
+        <p class="muted">${escapeHtml(tool.description)}</p>
+        <div class="inline-actions">
+          <a class="btn btn-secondary" href="${escapeHtml(tool.url)}" target="_blank" rel="noreferrer">Open Tool</a>
+        </div>
+        <div class="stack" style="margin-top:12px;">
+          <input class="input" id="ai-tool-name-${tool.id}" value="${escapeHtml(tool.name)}">
+          <input class="input" id="ai-tool-category-${tool.id}" value="${escapeHtml(tool.category)}">
+          <input class="input" id="ai-tool-url-${tool.id}" value="${escapeHtml(tool.url)}">
+          <textarea class="textarea" id="ai-tool-description-${tool.id}">${escapeHtml(tool.description)}</textarea>
+          <label class="muted"><input id="ai-tool-featured-${tool.id}" type="checkbox" ${tool.featured ? "checked" : ""}> Featured</label>
+          <div class="inline-actions">
+            <button class="btn btn-secondary" type="button" data-save-ai-tool="${tool.id}">Save</button>
+            <button class="btn btn-danger" type="button" data-delete-ai-tool="${tool.id}">Delete</button>
+          </div>
+        </div>
+      </article>
+    `).join("")
+    : `<div class="empty">No AI tools available yet.</div>`;
+}
+
 function renderBlogList() {
   const wrap = qs("blogList");
   if (!wrap) return;
@@ -1625,7 +1901,7 @@ function renderBlogList() {
           ${(blog.keywords || []).slice(0, 4).map((keyword) => `<span class="chip">${keyword}</span>`).join("") || `<span class="chip">SEO article</span>`}
         </div>
         <div class="inline-actions">
-          <a class="btn btn-primary" href="/post.html?slug=${encodeURIComponent(blog.slug)}">Read Full Post</a>
+          <a class="btn btn-primary" href="/blog/${encodeURIComponent(blog.slug)}">Read Full Post</a>
           ${state.session?.isAdmin && blog.editable !== false ? `<button class="btn btn-secondary" type="button" data-edit-blog="${blog.id}">Edit</button>` : ""}
         </div>
         ${state.session?.isAdmin && blog.editable !== false ? `
@@ -1649,7 +1925,7 @@ function renderBlogList() {
 }
 
 async function loadPost() {
-  const slug = getQuery("slug");
+  const slug = getQuery("slug") || window.location.pathname.split("/blog/")[1] || "";
   if (!slug) throw new Error("Missing post slug.");
   const blog = await api(`/blogs/${encodeURIComponent(slug)}`);
   const title = blog.metaTitle || `${blog.title} | Gamers Arena`;
@@ -1712,6 +1988,22 @@ async function loadPost() {
   } else {
     image.classList.add("hidden");
   }
+
+  await loadBlogs();
+  const relatedWrap = qs("relatedPosts");
+  if (relatedWrap) {
+    relatedWrap.innerHTML = state.blogs
+      .filter((item) => item.slug !== blog.slug)
+      .slice(0, 3)
+      .map((item) => `
+        <article class="card feature-item">
+          <p class="eyebrow">${escapeHtml(item.category || "Guide")}</p>
+          <h3 class="card-title">${escapeHtml(item.title)}</h3>
+          <p class="hero-copy">${escapeHtml(item.summary)}</p>
+          <a class="btn btn-secondary" href="/blog/${encodeURIComponent(item.slug)}">Read Article</a>
+        </article>
+      `).join("");
+  }
 }
 
 async function loadAdminOverview() {
@@ -1723,6 +2015,7 @@ async function loadAdminOverview() {
   if (qs("adminUsersCount")) qs("adminUsersCount").textContent = String(data.stats.users || 0);
   if (qs("adminChatsCount")) qs("adminChatsCount").textContent = String(data.stats.chats || 0);
   if (qs("adminBlogsCount")) qs("adminBlogsCount").textContent = String(data.stats.blogs || 0);
+  if (qs("adminAiToolsCount")) qs("adminAiToolsCount").textContent = String(data.stats.aiTools || 0);
   if (qs("adminOrdersCount")) qs("adminOrdersCount").textContent = String(data.stats.orders || 0);
   renderAdminChats();
 }
@@ -1856,7 +2149,7 @@ function renderAdminBundles() {
           </div>
           <div class="chip-row">
             <span class="chip">${(bundle.itemCount || 0).toLocaleString("en-IN")} games</span>
-            <a class="btn btn-secondary" href="/bundle.html?slug=${encodeURIComponent(bundle.slug)}" target="_blank" rel="noreferrer">Open Page</a>
+          <a class="btn btn-secondary" href="/bundle/${encodeURIComponent(bundle.slug)}" target="_blank" rel="noreferrer">Open Page</a>
           </div>
           <input class="input" id="bundle-name-${bundle.id}" value="${bundle.name}" placeholder="Bundle name">
           <input class="input" id="bundle-count-${bundle.id}" type="number" value="${bundle.itemCount || 0}" placeholder="How many games are in this bundle">
@@ -1977,6 +2270,10 @@ async function initHome() {
       renderFaqCards("faqPreview", useCompactMode() ? 3 : 4);
       renderReviews("reviewPreview", useCompactMode() ? 4 : 6);
       renderWishlistPreview();
+      await loadBlogs();
+      await loadAiTools();
+      renderHomeBlogPreview();
+      renderHomeAiToolsPreview();
       await loadHomeShowcase();
       renderFeaturedSections();
       renderUpcomingPreview();
@@ -1987,6 +2284,8 @@ async function initHome() {
       renderFaqCards("faqPreview", useCompactMode() ? 3 : 4);
       renderReviews("reviewPreview", useCompactMode() ? 4 : 6);
       renderWishlistPreview();
+      renderHomeBlogPreview();
+      renderHomeAiToolsPreview();
       renderFeaturedSections();
       renderUpcomingPreview();
     }
@@ -2008,6 +2307,88 @@ async function initGamesCatalog() {
   renderWishlistPreview();
   renderFaqCards("faqPreview", useCompactMode() ? 3 : 5);
   initRevealAnimations();
+}
+
+async function initPcGamesPage() {
+  return initGamesCatalog();
+}
+
+async function initConsoleCatalogPage(platform, pageKey) {
+  const pageContent = await loadPageContent(pageKey);
+  if (pageContent?.title && qs("managedConsoleTitle")) qs("managedConsoleTitle").textContent = pageContent.title;
+  if (pageContent?.description && qs("managedConsoleDescription")) qs("managedConsoleDescription").textContent = pageContent.description;
+  if (pageContent?.buttonLabel && qs("managedConsoleButton")) qs("managedConsoleButton").textContent = pageContent.buttonLabel;
+  if (pageContent?.buttonHref && qs("managedConsoleButton")) qs("managedConsoleButton").setAttribute("href", safeHref(pageContent.buttonHref, `/${pageKey}-games`));
+  await loadConsoleGames();
+  renderConsoleSection(platform, "consoleCatalogGrid", "consoleCatalogStatus");
+  await loadBlogs();
+  const relatedWrap = qs("relatedBlogCards");
+  if (relatedWrap) {
+    relatedWrap.innerHTML = state.blogs.slice(0, 3).map((blog) => `
+      <article class="card feature-item">
+        <p class="eyebrow">${escapeHtml(blog.category || "Guide")}</p>
+        <h3 class="card-title">${escapeHtml(blog.title)}</h3>
+        <p class="hero-copy">${escapeHtml(blog.summary)}</p>
+        <a class="btn btn-secondary" href="/blog/${encodeURIComponent(blog.slug)}">Read Guide</a>
+      </article>
+    `).join("");
+  }
+}
+
+async function initDealsPage() {
+  const dealsContent = await loadPageContent("deals");
+  if (dealsContent?.title && qs("managedDealsTitle")) qs("managedDealsTitle").textContent = dealsContent.title;
+  if (dealsContent?.description && qs("managedDealsDescription")) qs("managedDealsDescription").textContent = dealsContent.description;
+  await Promise.all([loadGames({ reset: true }), loadBundles(), loadBlogs()]);
+  const dealWrap = qs("dealsList");
+  if (dealWrap) {
+    const bundles = state.bundles.slice(0, 4).map((bundle) => ({
+      type: "bundle",
+      name: bundle.name,
+      description: bundle.description,
+      price: bundle.price,
+      href: `/bundle/${encodeURIComponent(bundle.slug)}`,
+      badge: `${bundle.itemCount} games`
+    }));
+    const games = state.games.filter((game) => game.category !== "Upcoming").slice(0, 8).map((game) => ({
+      type: "game",
+      name: game.name,
+      description: game.description,
+      price: game.price,
+      href: `/pc-games?q=${encodeURIComponent(game.name)}`,
+      badge: game.category
+    }));
+    dealWrap.innerHTML = [...bundles, ...games].map((item, index) => `
+      <article class="card blog-card" style="animation-delay:${Math.min(index, 10) * 50}ms;">
+        <div class="blog-card-glow"></div>
+        <p class="eyebrow">${escapeHtml(item.badge)}</p>
+        <h3 class="card-title">${escapeHtml(item.name)}</h3>
+        <p class="muted">${escapeHtml(item.description)}</p>
+        <div class="inline-actions">
+          <a class="btn btn-primary" href="${item.href}">${item.type === "bundle" ? "Open Bundle" : "View Deal"}</a>
+          <span class="chip">${currency(item.price)}</span>
+        </div>
+      </article>
+    `).join("");
+  }
+  const relatedWrap = qs("dealsRelatedLinks");
+  if (relatedWrap) {
+    relatedWrap.innerHTML = `
+      <a class="btn btn-secondary" href="/pc-games">Explore PC Games</a>
+      <a class="btn btn-secondary" href="/ps5-games">Browse PS5 Deals</a>
+      <a class="btn btn-secondary" href="/blog">Read Buying Guides</a>
+      <a class="btn btn-secondary" href="/ai-tools">Open AI Tools</a>
+    `;
+  }
+}
+
+async function initAiTools() {
+  const aiToolsContent = await loadPageContent("aiTools");
+  if (aiToolsContent?.title && qs("managedAiToolsTitle")) qs("managedAiToolsTitle").textContent = aiToolsContent.title;
+  if (aiToolsContent?.description && qs("managedAiToolsDescription")) qs("managedAiToolsDescription").textContent = aiToolsContent.description;
+  await loadAiTools();
+  hydrateAiToolFilters();
+  renderAiToolGrid();
 }
 
 async function initManagedPage() {
@@ -2087,6 +2468,7 @@ async function initAdmin() {
     loadGames({ reset: true }),
     loadConsoleGames(),
     loadBlogs(),
+    loadAiTools(),
     loadBundles(),
     loadAdminOrders(),
     loadAdminOverview(),
@@ -2097,10 +2479,15 @@ async function initAdmin() {
   renderGameCards();
   renderAdminConsoleGames();
   renderBlogList();
+  renderAdminAiTools();
   renderAdminBundles();
   renderBundleGameChecklist();
   renderEditorBlocks(state.settings.homeLayout || []);
   if (qs("siteTitleInput")) qs("siteTitleInput").value = state.settings.siteTitle || "Gamers Arena";
+  if (qs("siteTaglineInput")) qs("siteTaglineInput").value = state.settings.siteTagline || "";
+  if (qs("siteDescriptionInput")) qs("siteDescriptionInput").value = state.settings.siteDescription || "";
+  if (qs("logoUrlInput")) qs("logoUrlInput").value = state.settings.logoUrl || "";
+  if (qs("faviconUrlInput")) qs("faviconUrlInput").value = state.settings.faviconUrl || "";
   const adminEmailInput = qs("adminEmailInput");
   if (adminEmailInput) {
     adminEmailInput.value = state.settings.adminEmail || state.session.contact || "admin@gamersarena.com";
@@ -2128,6 +2515,22 @@ async function initAdmin() {
   }
   const qrPreview = qs("qrPreview");
   if (qrPreview) qrPreview.src = state.settings.qrImage;
+  if (qs("businessNameInput")) qs("businessNameInput").value = state.settings.business?.name || "";
+  if (qs("businessPhoneInput")) qs("businessPhoneInput").value = state.settings.business?.phone || "";
+  if (qs("businessEmailInput")) qs("businessEmailInput").value = state.settings.business?.email || "";
+  if (qs("businessAddressInput")) qs("businessAddressInput").value = state.settings.business?.addressLine1 || "";
+  if (qs("businessCityInput")) qs("businessCityInput").value = state.settings.business?.city || "";
+  if (qs("businessStateInput")) qs("businessStateInput").value = state.settings.business?.state || "";
+  if (qs("instagramUrlInput")) qs("instagramUrlInput").value = state.settings.socialLinks?.instagram || "";
+  if (qs("facebookUrlInput")) qs("facebookUrlInput").value = state.settings.socialLinks?.facebook || "";
+  if (qs("youtubeUrlInput")) qs("youtubeUrlInput").value = state.settings.socialLinks?.youtube || "";
+  if (qs("twitterUrlInput")) qs("twitterUrlInput").value = state.settings.socialLinks?.twitter || "";
+  if (qs("linkedinUrlInput")) qs("linkedinUrlInput").value = state.settings.socialLinks?.linkedin || "";
+  if (qs("telegramUrlInput")) qs("telegramUrlInput").value = state.settings.socialLinks?.telegram || "";
+  if (qs("googleAnalyticsIdInput")) qs("googleAnalyticsIdInput").value = state.settings.analytics?.googleAnalyticsId || "";
+  if (qs("facebookPixelIdInput")) qs("facebookPixelIdInput").value = state.settings.analytics?.facebookPixelId || "";
+  if (qs("spfRecordInput")) qs("spfRecordInput").value = state.settings.emailAuthentication?.spfRecord || "";
+  if (qs("dmarcRecordInput")) qs("dmarcRecordInput").value = state.settings.emailAuthentication?.dmarcRecord || "";
   connectSocket();
 }
 
@@ -2175,7 +2578,7 @@ document.addEventListener("click", async (event) => {
     const name = suggestion.dataset.suggestionName || "";
     const slug = suggestion.dataset.suggestionSlug || "";
     if (type === "bundle" && slug) {
-      window.location.href = `/bundle.html?slug=${encodeURIComponent(slug)}`;
+    window.location.href = `/bundle/${encodeURIComponent(slug)}`;
       return;
     }
     const searchInput = qs("gameSearch");
@@ -2547,6 +2950,43 @@ document.addEventListener("click", async (event) => {
     }
   }
 
+  const saveAiTool = event.target.closest("[data-save-ai-tool]");
+  if (saveAiTool) {
+    try {
+      await api(`/api/ai-tools/${saveAiTool.dataset.saveAiTool}`, {
+        method: "PUT",
+        body: JSON.stringify({
+          name: qs(`ai-tool-name-${saveAiTool.dataset.saveAiTool}`).value,
+          category: qs(`ai-tool-category-${saveAiTool.dataset.saveAiTool}`).value,
+          url: qs(`ai-tool-url-${saveAiTool.dataset.saveAiTool}`).value,
+          description: qs(`ai-tool-description-${saveAiTool.dataset.saveAiTool}`).value,
+          featured: Boolean(qs(`ai-tool-featured-${saveAiTool.dataset.saveAiTool}`)?.checked)
+        })
+      });
+      await loadAiTools();
+      renderAdminAiTools();
+      renderAiToolGrid();
+      await loadAdminOverview();
+      setStatus("adminAiToolsStatus", "AI tool updated.");
+    } catch (error) {
+      setStatus("adminAiToolsStatus", error.message, true);
+    }
+  }
+
+  const deleteAiTool = event.target.closest("[data-delete-ai-tool]");
+  if (deleteAiTool) {
+    try {
+      await api(`/api/ai-tools/${deleteAiTool.dataset.deleteAiTool}`, { method: "DELETE" });
+      await loadAiTools();
+      renderAdminAiTools();
+      renderAiToolGrid();
+      await loadAdminOverview();
+      setStatus("adminAiToolsStatus", "AI tool deleted.");
+    } catch (error) {
+      setStatus("adminAiToolsStatus", error.message, true);
+    }
+  }
+
   const openAdminChat = event.target.closest("[data-open-admin-chat]");
   if (openAdminChat) {
     state.activeChat = await api(`/admin/chats/${openAdminChat.dataset.openAdminChat}`);
@@ -2886,6 +3326,30 @@ document.addEventListener("submit", async (event) => {
     }
   }
 
+  if (event.target.id === "createAiToolForm") {
+    event.preventDefault();
+    try {
+      await api("/api/ai-tools", {
+        method: "POST",
+        body: JSON.stringify({
+          name: qs("newAiToolName").value,
+          category: qs("newAiToolCategory").value,
+          url: qs("newAiToolUrl").value,
+          description: qs("newAiToolDescription").value,
+          featured: Boolean(qs("newAiToolFeatured")?.checked)
+        })
+      });
+      event.target.reset();
+      await loadAiTools();
+      renderAdminAiTools();
+      renderAiToolGrid();
+      await loadAdminOverview();
+      setStatus("adminAiToolsStatus", "AI tool created.");
+    } catch (error) {
+      setStatus("adminAiToolsStatus", error.message, true);
+    }
+  }
+
   if (event.target.id === "addBundleForm") {
     event.preventDefault();
     try {
@@ -2944,9 +3408,37 @@ document.addEventListener("submit", async (event) => {
         method: "PUT",
         body: JSON.stringify({
           siteTitle: qs("siteTitleInput").value,
+          siteTagline: qs("siteTaglineInput")?.value || "",
+          siteDescription: qs("siteDescriptionInput")?.value || "",
+          logoUrl: qs("logoUrlInput")?.value || "",
+          faviconUrl: qs("faviconUrlInput")?.value || "",
           qrImage: qrUpload || qs("qrUrlInput").value || state.settings.qrImage,
           homeLayout: state.settings.homeLayout,
           bundles: state.bundles,
+          socialLinks: {
+            instagram: qs("instagramUrlInput")?.value || "/",
+            facebook: qs("facebookUrlInput")?.value || "/",
+            youtube: qs("youtubeUrlInput")?.value || "/",
+            twitter: qs("twitterUrlInput")?.value || "/",
+            linkedin: qs("linkedinUrlInput")?.value || "/",
+            telegram: qs("telegramUrlInput")?.value || TELEGRAM_URL
+          },
+          business: {
+            name: qs("businessNameInput")?.value || "",
+            phone: qs("businessPhoneInput")?.value || "",
+            email: qs("businessEmailInput")?.value || "",
+            addressLine1: qs("businessAddressInput")?.value || "",
+            city: qs("businessCityInput")?.value || "",
+            state: qs("businessStateInput")?.value || ""
+          },
+          analytics: {
+            googleAnalyticsId: qs("googleAnalyticsIdInput")?.value || "",
+            facebookPixelId: qs("facebookPixelIdInput")?.value || ""
+          },
+          emailAuthentication: {
+            spfRecord: qs("spfRecordInput")?.value || "",
+            dmarcRecord: qs("dmarcRecordInput")?.value || ""
+          },
           adminEmail: qs("adminEmailInput").value,
           adminPassword: qs("adminPasswordInput").value,
           adminSecondaryPassword: qs("adminSecondaryPasswordInput")?.value || ""
@@ -3062,7 +3554,7 @@ document.addEventListener("submit", async (event) => {
 async function bindPageActions() {
   if (qs("goCheckoutBtn")) {
     qs("goCheckoutBtn").onclick = () => {
-      window.location.href = "/checkout.html";
+    window.location.href = "/checkout";
     };
   }
 
@@ -3118,7 +3610,7 @@ async function bindPageActions() {
           body: JSON.stringify({ bundleId: state.activeBundle.id })
         });
         await refreshCart();
-        window.location.href = "/checkout.html";
+    window.location.href = "/checkout";
       } catch (error) {
         setStatus("bundleStatus", error.message, true);
       }
@@ -3191,19 +3683,19 @@ async function bindPageActions() {
 
   if (qs("chatLoginBtn")) {
     qs("chatLoginBtn").onclick = () => {
-      window.location.href = "/login.html?redirect=/chat.html";
+      window.location.href = "/login?redirect=/chat.html";
     };
   }
 
   if (qs("adminLoginRedirect")) {
     qs("adminLoginRedirect").onclick = () => {
-      window.location.href = "/login.html";
+      window.location.href = "/login";
     };
   }
 
   if (qs("editorLoginRedirect")) {
     qs("editorLoginRedirect").onclick = () => {
-      window.location.href = "/login.html";
+      window.location.href = "/login";
     };
   }
 
@@ -3256,6 +3748,11 @@ async function init() {
     await bindPageActions();
     if (page === "home") await initHome();
     if (page === "games") await initGamesCatalog();
+    if (page === "pc-games") await initPcGamesPage();
+    if (page === "ps4-games") await initConsoleCatalogPage("PS4", "ps4");
+    if (page === "ps5-games") await initConsoleCatalogPage("PS5", "ps5");
+    if (page === "deals") await initDealsPage();
+    if (page === "ai-tools") await initAiTools();
     if (page === "cart") await initCart();
     if (page === "checkout") await initCheckout();
     if (page === "bundle") await initBundle();

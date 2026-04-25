@@ -3,29 +3,75 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Gaming Discounts & Bundle Offers | Gamers Arena</title>
-  <meta name="description" content="See current gaming discounts, featured bundle offers, and budget-friendly buyer picks curated by Gamers Arena.">
+  <title>Deals | Gamers Arena</title>
+  <meta name="description" content="Browse gaming deals, bundles, and budget picks on Gamers Arena.">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Oxanium:wght@400;600;700&family=Manrope:wght@400;500;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="/styles.css">
+  <link rel="stylesheet" href="/styles.min.css">
 </head>
 <body data-page="deals">
-  <div class="bg-grid"></div>
-  <div class="site-shell">
+  <div class="shell">
     <nav class="topbar">
-      <a class="brand" href="/"><span class="brand-mark">GA</span><span><strong>Gamers Arena</strong><small>deals</small></span></a>
-      <div class="nav-links"><div class="nav-item"><a href="/products.html">Products</a></div><div class="nav-item"><a href="/pc-builder.html">PC Builder</a></div><div class="nav-item"><a href="/blog.html">Blog</a></div></div>
+      <a class="brand" href="/"><span class="brand-mark">GA</span><span><strong data-site-title>Gamers Arena</strong><br><small class="muted">deals</small></span></a>
+      <div class="nav-links"></div>
+      <div class="nav-actions">
+        <span class="muted" data-user-label>Guest</span>
+        <button class="btn btn-secondary" type="button" data-auth-action>Login</button>
+      </div>
     </nav>
-    <header class="hero compact"><section class="hero-card"><p class="eyebrow">offers</p><h1>Gaming Deals &amp; Bundle Offers</h1><p class="hero-copy">Explore current gaming discounts, bundle highlights, and quick buyer picks curated for budget-focused gamers.</p></section></header>
-    <main class="layout-2">
-      <section class="panel"><div id="dealsList" class="card-grid"></div></section>
-      <aside class="panel"><div class="ad-slot">Featured deal blocks can highlight flash sales, weekend drops, and trusted bundle picks.</div><div class="ad-slot blog">Use this sidebar for partner links, limited-time offers, or your strongest conversion banner.</div></aside>
+
+    <header class="hero reveal" data-reveal>
+      <div class="hero-grid">
+        <div class="hero-main">
+          <div class="hero-badge-row">
+            <span class="hero-badge">bundle promotions</span>
+            <span class="hero-badge hero-badge-soft">internal linking hub</span>
+          </div>
+          <p class="eyebrow">deals page</p>
+          <h1 id="managedDealsTitle">Gaming Deals, Bundles, And Budget Picks</h1>
+          <p id="managedDealsDescription" class="hero-copy">Highlight featured offers, lower-priced bundle tiers, and quick entry points into the rest of the storefront from one SEO-friendly deals page.</p>
+          <div class="cta-row">
+            <a class="btn btn-primary" href="/pc-games">Browse PC Games</a>
+            <a class="btn btn-secondary" href="/blog">Read Buying Guides</a>
+          </div>
+        </div>
+        <aside class="hero-side">
+          <div class="hero-note">Conversion-focused deal layout</div>
+          <div class="route-steps">
+            <div class="route-step"><span>01</span> Show bundles and offers first</div>
+            <div class="route-step"><span>02</span> Link into related categories</div>
+            <div class="route-step"><span>03</span> Move shoppers into checkout</div>
+          </div>
+        </aside>
+      </div>
+    </header>
+
+    <main>
+      <section class="panel reveal" data-reveal>
+        <div class="section-head">
+          <div>
+            <p class="eyebrow">curated offers</p>
+            <h2 class="section-title">Featured Deal Cards</h2>
+          </div>
+        </div>
+        <div id="dealsList" class="blog-grid"></div>
+      </section>
+
+      <section class="panel reveal" data-reveal>
+        <div class="section-head">
+          <div>
+            <p class="eyebrow">related links</p>
+            <h2 class="section-title">Explore The Rest Of The Store</h2>
+          </div>
+        </div>
+        <div id="dealsRelatedLinks" class="inline-actions"></div>
+      </section>
     </main>
   </div>
-  <script src="/mobile-nav.js"></script>
-  <script src="/header-scroll.js"></script>
-  <script src="/site.js"></script>
+  <script src="/mobile-nav.min.js"></script>
+  <script src="/header-scroll.min.js"></script>
+  <script src="/app.min.js"></script>
 </body>
 </html>
 

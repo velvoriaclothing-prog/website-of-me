@@ -3,25 +3,18 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>All Game Deals | Gamers Arena</title>
-  <meta name="description" content="Browse all Gamers Arena game deals, bundles, and saved picks with a faster mobile-ready storefront.">
+  <title>PC Games | Gamers Arena</title>
+  <meta name="description" content="Browse PC game deals, bundles, and responsive card layouts on Gamers Arena.">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Oxanium:wght@400;600;700&family=Manrope:wght@400;500;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/styles.min.css">
 </head>
-<body data-page="games">
+<body data-page="pc-games">
   <div class="shell">
     <nav class="topbar">
-      <a class="brand" href="/"><span class="brand-mark">GA</span><span><strong data-site-title>Gamers Arena</strong><br><small class="muted">all game deals</small></span></a>
-      <div class="nav-links">
-        <a class="nav-link" href="/">Home</a>
-        <a class="nav-link" data-nav-link="games" href="/games.html">Games</a>
-        <a class="nav-link" href="/bundles.html">Bundles</a>
-        <a class="nav-link" href="/wishlist.html">Wishlist</a>
-        <a class="nav-link" href="/cart.html">Cart (<span data-cart-count>0</span>)</a>
-        <a class="nav-link" href="/chat.html">Support</a>
-      </div>
+      <a class="brand" href="/"><span class="brand-mark">GA</span><span><strong data-site-title>Gamers Arena</strong><br><small class="muted">pc games</small></span></a>
+      <div class="nav-links"></div>
       <div class="nav-actions">
         <span class="muted" data-user-label>Guest</span>
         <button class="btn btn-secondary" type="button" data-auth-action>Login</button>
@@ -31,26 +24,30 @@
     <header class="hero reveal" data-reveal>
       <div class="hero-grid">
         <div class="hero-main">
-          <p class="eyebrow">catalog</p>
-          <h1 id="managedGamesTitle">Browse All Game Deals</h1>
-          <p id="managedGamesDescription" class="hero-copy">The full Gamers Arena catalog now loads through the same faster responsive storefront as the homepage, with search, filters, bundles, and touch-friendly cards for mobile shoppers.</p>
+          <div class="hero-badge-row">
+            <span class="hero-badge">PC game accounts</span>
+            <span class="hero-badge hero-badge-soft">responsive storefront</span>
+          </div>
+          <p class="eyebrow">pc catalog</p>
+          <h1 id="managedGamesTitle">PC Game Deals And Account Catalog</h1>
+          <p id="managedGamesDescription" class="hero-copy">Browse responsive PC game cards, search the full catalog, compare bundle options, and move to QR checkout with a clean mobile-first flow.</p>
           <div class="chip-row hero-chip-row">
-            <span class="chip">Mobile-ready cards</span>
-            <span class="chip">Fast filters</span>
-            <span class="chip">Lazy images</span>
-            <span class="chip">Bundle access</span>
+            <span class="chip">2-up mobile cards</span>
+            <span class="chip">Fast search</span>
+            <span class="chip">Bundle cross-links</span>
+            <span class="chip">Telegram handoff</span>
           </div>
           <div class="cta-row">
             <a id="managedGamesButton" class="btn btn-primary" href="#gamesSection">Start Browsing</a>
-            <a class="btn btn-secondary" href="/bundles.html">Open Bundles</a>
+            <a class="btn btn-secondary" href="/deals">View Deals</a>
           </div>
         </div>
         <aside class="hero-side">
-          <div class="hero-note">Mobile-first catalog</div>
+          <div class="hero-note">SEO-ready collection page</div>
           <div class="route-steps">
-            <div class="route-step"><span>01</span> Search and filter on any phone</div>
-            <div class="route-step"><span>02</span> Save games or add to cart</div>
-            <div class="route-step"><span>03</span> Checkout and continue on Telegram</div>
+            <div class="route-step"><span>01</span> Search or filter the live PC catalog</div>
+            <div class="route-step"><span>02</span> Add games or bundles to your cart</div>
+            <div class="route-step"><span>03</span> Continue to QR checkout and Telegram</div>
           </div>
         </aside>
       </div>
@@ -60,19 +57,19 @@
       <section id="gamesSection" class="panel reveal store-panel" data-reveal>
         <div class="store-stage-top">
           <div class="store-stage-copy">
-            <p class="eyebrow">game store</p>
-            <h2 class="section-title">All Available Games</h2>
-            <p class="hero-copy">Use search or category filters to find fast-moving deals, low-end picks, racing games, shooters, RPGs, and upcoming titles in one clean catalog.</p>
+            <p class="eyebrow">pc storefront</p>
+            <h2 class="section-title">Search Across The Main PC Catalog</h2>
+            <p class="hero-copy">Use internal filters, category browsing, and deal-focused cards to help visitors move deeper into the site instead of bouncing after one search.</p>
           </div>
           <aside class="store-note-card">
-            <p class="eyebrow">help</p>
-            <strong>Missing a title?</strong>
-            <p class="hero-copy">If the game is not listed, use the Telegram support button from the homepage or chat page and request it directly.</p>
+            <p class="eyebrow">internal links</p>
+            <strong>Need more than one entry point?</strong>
+            <p class="hero-copy">Every product card can lead visitors into deals, bundles, blog content, and checkout without leaving the Gamers Arena ecosystem.</p>
           </aside>
         </div>
         <div class="toolbar">
           <div class="search-suggestions-shell">
-            <input id="gameSearch" class="input" placeholder="Search games">
+            <input id="gameSearch" class="input" placeholder="Search PC games">
             <div id="searchSuggestions" class="search-suggestions hidden"></div>
           </div>
           <select id="gameCategory" class="select">
@@ -91,10 +88,10 @@
       <section class="panel reveal" data-reveal>
         <div class="section-head">
           <div>
-            <p class="eyebrow">bundles</p>
-            <h2 class="section-title">Bundle Deals</h2>
+            <p class="eyebrow">related deals</p>
+            <h2 class="section-title">Bundle Offers And Related Buying Paths</h2>
           </div>
-          <a class="btn btn-secondary" href="/bundles.html">View All Bundles</a>
+          <a class="btn btn-secondary" href="/deals">Open Deals</a>
         </div>
         <div id="bundleList" class="bundle-grid"></div>
       </section>
@@ -102,10 +99,10 @@
       <section class="panel reveal" data-reveal>
         <div class="section-head">
           <div>
-            <p class="eyebrow">saved</p>
+            <p class="eyebrow">saved items</p>
             <h2 class="section-title">Wishlist Preview</h2>
           </div>
-          <a class="btn btn-secondary" href="/wishlist.html">Open Wishlist</a>
+          <a class="btn btn-secondary" href="/cart">Open Cart</a>
         </div>
         <div id="wishlistPreview" class="bundle-grid"></div>
       </section>
@@ -113,10 +110,10 @@
       <section class="panel reveal" data-reveal>
         <div class="section-head">
           <div>
-            <p class="eyebrow">help center</p>
-            <h2 class="section-title">Quick FAQ</h2>
+            <p class="eyebrow">quick answers</p>
+            <h2 class="section-title">FAQ For Buyers And Search Visitors</h2>
           </div>
-          <a class="btn btn-secondary" href="/faq.html">Full FAQ</a>
+          <a class="btn btn-secondary" href="/blog">Read Guides</a>
         </div>
         <div id="faqPreview" class="feature-grid"></div>
       </section>

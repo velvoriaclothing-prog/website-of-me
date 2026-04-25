@@ -1,5 +1,6 @@
 const fs = require("fs");
 const path = require("path");
+const { aiTools: seededAiTools } = require("./data/aiTools");
 
 const bundledStorePath = path.join(__dirname, "..", "data", "store.json");
 const storePath = process.env.STORE_PATH ? path.resolve(process.env.STORE_PATH) : bundledStorePath;
@@ -8,6 +9,7 @@ const defaultAdminEmail = process.env.ADMIN_EMAIL || "admin@gamersarena.com";
 const defaultAdminPassword = process.env.ADMIN_PASSWORD || "change-me";
 const defaultAdminSecondaryPassword = process.env.ADMIN_SECONDARY_PASSWORD || "change-me";
 const defaultQr = "/assets/payment-qr.jpeg";
+const defaultLogo = "/assets/gamers-arena-logo.png";
 let cachedStore = null;
 let cachedMtimeMs = 0;
 
@@ -15,33 +17,65 @@ function cloneStore(value) {
   return JSON.parse(JSON.stringify(value));
 }
 
+function slugify(value) {
+  return String(value || "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+}
+
+function normalizeUrl(value) {
+  return String(value || "").trim();
+}
+
+function normalizeText(value, fallback = "") {
+  return String(value || fallback).trim();
+}
+
+function stripHtml(value) {
+  return String(value || "").replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim();
+}
+
+function normalizePageContent(value = {}, fallback = {}) {
+  return {
+    title: normalizeText(value.title, fallback.title),
+    description: normalizeText(value.description, fallback.description),
+    buttonLabel: normalizeText(value.buttonLabel, fallback.buttonLabel),
+    buttonHref: normalizeUrl(value.buttonHref || fallback.buttonHref || ""),
+    heroImage: normalizeUrl(value.heroImage || fallback.heroImage || "")
+  };
+}
+
 function normalizeGame(game = {}) {
-  const name = String(game.name || "").trim();
-  const category = String(game.category || "Action").trim() || "Action";
+  const name = normalizeText(game.name);
+  const category = normalizeText(game.category, "Action") || "Action";
   return {
     id: game.id || `game-${Date.now()}`,
-    slug: String(game.slug || slugify(name) || "").trim(),
+    slug: normalizeText(game.slug, slugify(name)),
     name,
     price: Number(game.price || 45),
     category,
-    description: String(game.description || `${name || "Game"} is available through Gamers Arena with fast Telegram support and QR checkout.`).trim(),
-    image: String(game.image || "").trim(),
+    description: normalizeText(
+      game.description,
+      `${name || "Game"} is available through Gamers Arena with fast Telegram support and QR checkout.`
+    ),
+    image: normalizeUrl(game.image),
     createdAt: game.createdAt || new Date().toISOString(),
     updatedAt: game.updatedAt || new Date().toISOString()
   };
 }
 
 function normalizePage(page = {}) {
-  const title = String(page.title || "").trim();
+  const title = normalizeText(page.title);
   return {
     id: page.id || `page-${Date.now()}`,
-    slug: String(page.slug || slugify(title) || "").trim(),
+    slug: normalizeText(page.slug, slugify(title)),
     title,
-    summary: String(page.summary || "").trim(),
-    heroImage: String(page.heroImage || "").trim(),
-    content: String(page.content || "").trim(),
-    seoTitle: String(page.seoTitle || "").trim(),
-    seoDescription: String(page.seoDescription || "").trim(),
+    summary: normalizeText(page.summary),
+    heroImage: normalizeUrl(page.heroImage),
+    content: normalizeText(page.content),
+    seoTitle: normalizeText(page.seoTitle),
+    seoDescription: normalizeText(page.seoDescription),
     createdAt: page.createdAt || new Date().toISOString(),
     updatedAt: page.updatedAt || new Date().toISOString()
   };
@@ -50,24 +84,24 @@ function normalizePage(page = {}) {
 function normalizeMediaItem(item = {}) {
   return {
     id: item.id || `media-${Date.now()}`,
-    name: String(item.name || "").trim(),
-    url: String(item.url || "").trim(),
-    alt: String(item.alt || "").trim(),
-    placement: String(item.placement || "").trim(),
+    name: normalizeText(item.name),
+    url: normalizeUrl(item.url),
+    alt: normalizeText(item.alt),
+    placement: normalizeText(item.placement),
     createdAt: item.createdAt || new Date().toISOString(),
     updatedAt: item.updatedAt || new Date().toISOString()
   };
 }
 
 function normalizeConsoleGame(item = {}) {
-  const name = String(item.name || "").trim();
-  const platform = String(item.platform || "PS5").trim().toUpperCase() || "PS5";
+  const name = normalizeText(item.name);
+  const platform = normalizeText(item.platform, "PS5").toUpperCase() || "PS5";
   return {
     id: item.id || `console-${Date.now()}`,
-    slug: String(item.slug || slugify(`${platform}-${name}`) || "").trim(),
+    slug: normalizeText(item.slug, slugify(`${platform}-${name}`)),
     name,
     platform: ["PS4", "PS5"].includes(platform) ? platform : "PS5",
-    image: String(item.image || "").trim(),
+    image: normalizeUrl(item.image),
     createdAt: item.createdAt || new Date().toISOString(),
     updatedAt: item.updatedAt || new Date().toISOString()
   };
@@ -76,15 +110,206 @@ function normalizeConsoleGame(item = {}) {
 function normalizeSection(item = {}) {
   return {
     id: item.id || `section-${Date.now()}`,
-    key: String(item.key || "").trim(),
-    title: String(item.title || "").trim(),
-    subtitle: String(item.subtitle || "").trim(),
-    body: String(item.body || "").trim(),
-    buttonLabel: String(item.buttonLabel || "").trim(),
-    buttonHref: String(item.buttonHref || "").trim(),
-    image: String(item.image || "").trim(),
+    key: normalizeText(item.key),
+    title: normalizeText(item.title),
+    subtitle: normalizeText(item.subtitle),
+    body: normalizeText(item.body),
+    buttonLabel: normalizeText(item.buttonLabel),
+    buttonHref: normalizeUrl(item.buttonHref),
+    image: normalizeUrl(item.image),
     createdAt: item.createdAt || new Date().toISOString(),
     updatedAt: item.updatedAt || new Date().toISOString()
+  };
+}
+
+function normalizeAiTool(item = {}) {
+  const name = normalizeText(item.name);
+  return {
+    id: item.id || `tool-${Date.now()}`,
+    slug: normalizeText(item.slug, slugify(name)),
+    name,
+    category: normalizeText(item.category, "AI"),
+    description: normalizeText(
+      item.description,
+      `${name || "This tool"} helps streamline modern AI workflows for creators, gamers, and digital teams.`
+    ),
+    url: normalizeUrl(item.url || "https://example.com"),
+    featured: item.featured === true,
+    createdAt: item.createdAt || new Date().toISOString(),
+    updatedAt: item.updatedAt || new Date().toISOString()
+  };
+}
+
+function defaultSocialLinks() {
+  return {
+    telegram: "https://t.me/gamersarena_shop",
+    instagram: "/",
+    facebook: "/",
+    youtube: "/",
+    twitter: "/",
+    linkedin: "/"
+  };
+}
+
+function defaultBusiness() {
+  return {
+    name: "Gamers Arena",
+    addressLine1: "Business Address Line 1",
+    addressLine2: "Business Address Line 2",
+    city: "Your City",
+    state: "Your State",
+    postalCode: "000000",
+    country: "India",
+    phone: "+91 00000 00000",
+    email: "support@gamersarena.com"
+  };
+}
+
+function defaultAnalytics() {
+  return {
+    googleAnalyticsId: "",
+    facebookPixelId: ""
+  };
+}
+
+function defaultEmailAuthentication() {
+  return {
+    spfRecord: "v=spf1 include:_spf.google.com ~all",
+    dmarcRecord: "v=DMARC1; p=none; rua=mailto:dmarc@example.com"
+  };
+}
+
+function defaultSettings() {
+  return {
+    siteTitle: "Gamers Arena",
+    siteTagline: "PC Games Accounts Store",
+    siteDescription: "A premium gaming storefront for PC games, console deals, bundles, blogs, AI tools, and QR-first checkout.",
+    logoUrl: defaultLogo,
+    faviconUrl: defaultLogo,
+    qrImage: defaultQr,
+    homeLayout: [
+      {
+        id: "block-1",
+        type: "text",
+        content: "Discover premium gaming deals, platform-specific storefronts, and a cleaner QR payment flow across every device."
+      },
+      {
+        id: "block-2",
+        type: "text",
+        content: "Admin can update games, bundles, blogs, AI tools, business info, and brand content globally from one dashboard."
+      }
+    ],
+    bundles: [],
+    socialLinks: defaultSocialLinks(),
+    business: defaultBusiness(),
+    analytics: defaultAnalytics(),
+    emailAuthentication: defaultEmailAuthentication()
+  };
+}
+
+function normalizeSettings(settings = {}) {
+  const defaults = defaultSettings();
+  return {
+    siteTitle: normalizeText(settings.siteTitle, defaults.siteTitle) || defaults.siteTitle,
+    siteTagline: normalizeText(settings.siteTagline, defaults.siteTagline) || defaults.siteTagline,
+    siteDescription: normalizeText(settings.siteDescription, defaults.siteDescription) || defaults.siteDescription,
+    logoUrl: normalizeUrl(settings.logoUrl || defaults.logoUrl) || defaults.logoUrl,
+    faviconUrl: normalizeUrl(settings.faviconUrl || settings.logoUrl || defaults.faviconUrl) || defaults.faviconUrl,
+    qrImage: normalizeUrl(settings.qrImage || defaults.qrImage) || defaults.qrImage,
+    homeLayout: Array.isArray(settings.homeLayout)
+      ? settings.homeLayout
+        .filter((block) => block && ["text", "image", "video"].includes(block.type))
+        .map((block, index) => ({
+          id: block.id || `block-${index + 1}`,
+          type: block.type,
+          content: normalizeText(block.content)
+        }))
+      : defaults.homeLayout,
+    bundles: Array.isArray(settings.bundles) ? settings.bundles : defaults.bundles,
+    socialLinks: {
+      ...defaults.socialLinks,
+      ...(settings.socialLinks && typeof settings.socialLinks === "object" ? settings.socialLinks : {})
+    },
+    business: {
+      ...defaults.business,
+      ...(settings.business && typeof settings.business === "object" ? settings.business : {})
+    },
+    analytics: {
+      ...defaults.analytics,
+      ...(settings.analytics && typeof settings.analytics === "object" ? settings.analytics : {})
+    },
+    emailAuthentication: {
+      ...defaults.emailAuthentication,
+      ...(settings.emailAuthentication && typeof settings.emailAuthentication === "object" ? settings.emailAuthentication : {})
+    }
+  };
+}
+
+function defaultPageContent() {
+  return {
+    home: {
+      title: "Affordable PC, PS4, And PS5 Game Deals",
+      description: "Browse a premium storefront for PC game accounts, PS4 and PS5 picks, bundles, blogs, and AI tools with QR-first checkout.",
+      buttonLabel: "Browse PC Games",
+      buttonHref: "/pc-games",
+      heroImage: ""
+    },
+    games: {
+      title: "PC Game Accounts For Every Budget",
+      description: "Explore the full PC games catalog with filters, responsive browsing, Telegram support, and fast add-to-cart actions.",
+      buttonLabel: "Start Browsing",
+      buttonHref: "#gamesSection",
+      heroImage: ""
+    },
+    cart: {
+      title: "Review Your Gaming Cart",
+      description: "Check your games, bundles, and total amount before moving into the QR payment and Telegram confirmation flow.",
+      buttonLabel: "Continue to QR Payment",
+      buttonHref: "/checkout",
+      heroImage: ""
+    },
+    deals: {
+      title: "Gaming Deals, Bundles, And Budget Picks",
+      description: "See current bundle offers, fast-moving PC picks, and low-price recommendations curated for buyers who want strong value.",
+      buttonLabel: "Open All Deals",
+      buttonHref: "/deals",
+      heroImage: ""
+    },
+    ps4: {
+      title: "PS4 Game Deals With Direct Telegram Buying",
+      description: "Browse PS4 cards with bold artwork, quick-buy actions, and responsive layouts built for mobile and desktop shoppers.",
+      buttonLabel: "Browse PS4 Games",
+      buttonHref: "/ps4-games",
+      heroImage: ""
+    },
+    ps5: {
+      title: "PS5 Game Deals With Premium Neon Cards",
+      description: "Discover PS5 releases inside a fast storefront with vivid imagery, glow accents, and direct Telegram buying links.",
+      buttonLabel: "Browse PS5 Games",
+      buttonHref: "/ps5-games",
+      heroImage: ""
+    },
+    blog: {
+      title: "SEO Gaming Blog And Buying Guides",
+      description: "Read long-form gaming guides, rankings, and buying advice written to attract search traffic and help customers choose faster.",
+      buttonLabel: "Read The Blog",
+      buttonHref: "/blog",
+      heroImage: ""
+    },
+    aiTools: {
+      title: "200+ AI Tools For Creators And Sellers",
+      description: "Search a large AI tools directory across writing, coding, research, design, SEO, and productivity categories.",
+      buttonLabel: "Explore AI Tools",
+      buttonHref: "/ai-tools",
+      heroImage: ""
+    },
+    checkout: {
+      title: "Scan QR, Submit Details, And Continue",
+      description: "Use the store QR, confirm the amount, then submit your details before opening Telegram with an order-ready message.",
+      buttonLabel: "I Paid, Open Telegram",
+      buttonHref: "/checkout",
+      heroImage: ""
+    }
   };
 }
 
@@ -100,58 +325,57 @@ function normalizeStore(store) {
   const hadMedia = Array.isArray(next.media);
   const hadSections = Array.isArray(next.contentSections);
   const hadConsoleGames = Array.isArray(next.consoleGames);
+  const hadAiTools = Array.isArray(next.aiTools);
+
   next.admin = next.admin || {};
   next.admin.email = next.admin.email || defaultAdminEmail;
   next.admin.password = next.admin.password || defaultAdminPassword;
   next.admin.secondaryPassword = next.admin.secondaryPassword || defaultAdminSecondaryPassword;
-  next.settings = next.settings || {};
-  next.settings.homeLayout = Array.isArray(next.settings.homeLayout) ? next.settings.homeLayout : [];
+  next.settings = normalizeSettings(next.settings || {});
   next.games = Array.isArray(next.games) ? next.games.map(normalizeGame) : [];
   next.pages = Array.isArray(next.pages) ? next.pages.map(normalizePage) : [];
   next.media = Array.isArray(next.media) ? next.media.map(normalizeMediaItem) : [];
   next.consoleGames = Array.isArray(next.consoleGames) ? next.consoleGames.map(normalizeConsoleGame) : [];
   next.contentSections = Array.isArray(next.contentSections) ? next.contentSections.map(normalizeSection) : [];
+  next.aiTools = Array.isArray(next.aiTools) ? next.aiTools.map(normalizeAiTool) : [];
   next.users = Array.isArray(next.users) ? next.users : [];
   next.carts = next.carts && typeof next.carts === "object" ? next.carts : {};
   next.chats = Array.isArray(next.chats) ? next.chats : [];
   next.blogs = Array.isArray(next.blogs) ? next.blogs : [];
   next.orders = Array.isArray(next.orders) ? next.orders : [];
+
+  const pageDefaults = defaultPageContent();
   next.contentByPage = next.contentByPage && typeof next.contentByPage === "object" ? next.contentByPage : {};
-  next.contentByPage.home = next.contentByPage.home && typeof next.contentByPage.home === "object" ? next.contentByPage.home : {
-    title: "Cheap Steam Games & PC Game Deals",
-    description: "Buy cheap Steam games, discounted bundles, and budget-friendly PC game deals at Gamers Arena.",
-    buttonLabel: "Browse Games",
-    buttonHref: "#storeSection",
-    heroImage: ""
-  };
-  next.contentByPage.games = next.contentByPage.games && typeof next.contentByPage.games === "object" ? next.contentByPage.games : {
-    title: "Browse All Game Deals",
-    description: "Explore the full Gamers Arena game catalog with filters, bundle access, and fast support.",
-    buttonLabel: "Start Browsing",
-    buttonHref: "#gamesSection",
-    heroImage: ""
-  };
-  next.contentByPage.cart = next.contentByPage.cart && typeof next.contentByPage.cart === "object" ? next.contentByPage.cart : {
-    title: "Your Cart",
-    description: "Review saved games and bundles before continuing to checkout.",
-    buttonLabel: "Continue to QR Payment",
-    buttonHref: "/checkout.html",
-    heroImage: ""
-  };
+  Object.entries(pageDefaults).forEach(([pageKey, defaults]) => {
+    next.contentByPage[pageKey] = normalizePageContent(next.contentByPage[pageKey], defaults);
+  });
+
   if (!hadPages && !next.pages.length) {
     next.pages = [
       normalizePage({
         id: "page-about",
         slug: "about",
         title: "About Gamers Arena",
-        summary: "Learn how Gamers Arena handles affordable game deals, QR checkout, and Telegram support.",
-        content: "<p>Gamers Arena helps players browse affordable Steam and PC game deals in a clean storefront with QR checkout and fast support.</p><p>The store is built for simple discovery, quick checkout, and direct help when customers need a missing title or order update.</p>"
+        summary: "Learn how Gamers Arena handles affordable game deals, QR checkout, Telegram support, and admin-managed content.",
+        content: "<p>Gamers Arena helps players browse affordable PC and console game deals in a clean storefront with QR checkout and fast support.</p><p>The platform is designed for stronger SEO, direct Telegram handoff, and admin-managed global updates.</p>",
+        seoTitle: "About Gamers Arena | Gaming Store Story",
+        seoDescription: "Learn how Gamers Arena sells PC and console game deals with QR checkout, Telegram support, and a scalable admin-controlled storefront."
       })
     ];
   }
+
   if (!hadMedia && !next.media.length) {
-    next.media = [];
+    next.media = [
+      normalizeMediaItem({
+        id: "media-logo",
+        name: "Gamers Arena Logo",
+        url: next.settings.logoUrl,
+        alt: "Gamers Arena logo",
+        placement: "brand"
+      })
+    ];
   }
+
   if (!hadConsoleGames && !next.consoleGames.length) {
     next.consoleGames = [
       normalizeConsoleGame({
@@ -192,60 +416,91 @@ function normalizeStore(store) {
       })
     ];
   }
+
   if (!hadSections && !next.contentSections.length) {
     next.contentSections = [
       normalizeSection({
         id: "section-home-hero",
         key: "home-hero",
-        title: "Cheap Steam Games & PC Game Deals",
-        subtitle: "steam deals hub",
-        body: "Buy cheap Steam games, discounted bundles, and budget-friendly PC game deals at Gamers Arena. Search fast, pay by QR, save your wishlist, and finish your order with direct Telegram support.",
-        buttonLabel: "Browse Games",
-        buttonHref: "#storeSection",
-        image: ""
+        title: "Professional Gaming Storefront For Global Buyers",
+        subtitle: "gaming accounts, console picks, ai tools",
+        body: "Gamers Arena combines PC game accounts, PS4 and PS5 deals, curated bundles, blog SEO content, and a clean QR checkout flow into one modern storefront.",
+        buttonLabel: "Browse PC Games",
+        buttonHref: "/pc-games"
       }),
       normalizeSection({
         id: "section-home-store",
         key: "home-store",
-        title: "Steam Games And Budget PC Deals",
-        subtitle: "game store",
-        body: "Search fast, filter by category, and add affordable Steam and PC game deals to your cart in a clean storefront. If a title is missing, the request flow sends buyers straight to Telegram.",
-        buttonLabel: "",
-        buttonHref: "",
-        image: ""
+        title: "PC Games And Budget-Friendly Deals",
+        subtitle: "pc storefront",
+        body: "Search, filter, and compare a large PC games catalog with fast add-to-cart actions, related content blocks, and responsive card layouts."
       }),
       normalizeSection({
         id: "section-home-help",
         key: "home-help",
-        title: "Need a missing title?",
-        subtitle: "quick help",
-        body: "Use search first. If it is not listed, the store shows a Telegram request button so customers can still place a demand quickly.",
-        buttonLabel: "Ask On Telegram",
-        buttonHref: "https://t.me/gamersarena_shop",
-        image: ""
+        title: "Need A Title That Is Not Listed?",
+        subtitle: "instant help",
+        body: "Use Telegram support to request missing games, check availability, or continue checkout after payment confirmation.",
+        buttonLabel: "Open Telegram",
+        buttonHref: "https://t.me/gamersarena_shop"
       })
     ];
   }
+
   ensureSection(next.contentSections, {
     id: "section-home-ps5",
     key: "home-ps5",
-    title: "PS5 Game Library",
-    subtitle: "console picks",
-    body: "Premium PS5 titles with rich artwork, quick Telegram buying, and the same dark neon storefront feel as the PC catalog.",
-    buttonLabel: "",
-    buttonHref: "",
-    image: ""
+    title: "PS5 Neon Library",
+    subtitle: "playstation 5",
+    body: "Premium PS5 titles with rich backgrounds, glow accents, and direct Telegram buying links.",
+    buttonLabel: "Browse PS5 Games",
+    buttonHref: "/ps5-games"
   });
   ensureSection(next.contentSections, {
     id: "section-home-ps4",
     key: "home-ps4",
-    title: "PS4 Game Library",
-    subtitle: "console picks",
-    body: "Popular PS4 titles for players who still want a strong catalog, smooth browsing, and a simple direct-buy flow.",
-    buttonLabel: "",
-    buttonHref: "",
-    image: ""
+    title: "PS4 Best Sellers",
+    subtitle: "playstation 4",
+    body: "Popular PS4 titles presented in the same high-contrast storefront with strong artwork and quick-buy actions.",
+    buttonLabel: "Browse PS4 Games",
+    buttonHref: "/ps4-games"
   });
+  ensureSection(next.contentSections, {
+    id: "section-home-deals",
+    key: "home-deals",
+    title: "Deals, Bundles, And Budget Picks",
+    subtitle: "hot offers",
+    body: "Show buyers your best-value offers with related bundles, internal links, and stronger conversion copy across the site.",
+    buttonLabel: "View Deals",
+    buttonHref: "/deals"
+  });
+  ensureSection(next.contentSections, {
+    id: "section-home-blog",
+    key: "home-blog",
+    title: "SEO Blog Content That Builds Trust",
+    subtitle: "blog previews",
+    body: "Publish long-form gaming guides, rankings, and buying advice that can rank in search and feed homepage previews automatically.",
+    buttonLabel: "Read The Blog",
+    buttonHref: "/blog"
+  });
+  ensureSection(next.contentSections, {
+    id: "section-home-ai",
+    key: "home-ai",
+    title: "AI Tools Directory For Creators",
+    subtitle: "ai tools",
+    body: "Keep a searchable directory of 200+ AI tools for creators, marketers, and digital operators inside the same brand ecosystem.",
+    buttonLabel: "Open AI Tools",
+    buttonHref: "/ai-tools"
+  });
+
+  if (!hadAiTools || !next.aiTools.length) {
+    next.aiTools = seededAiTools.map((tool, index) => normalizeAiTool({
+      ...tool,
+      id: tool.id || `tool-${index + 1}`,
+      featured: index < 12
+    }));
+  }
+
   return next;
 }
 
@@ -257,14 +512,7 @@ function createInitialStore() {
       password: defaultAdminPassword,
       secondaryPassword: defaultAdminSecondaryPassword
     },
-    settings: {
-      siteTitle: "Gamers Arena",
-      qrImage: defaultQr,
-      homeLayout: [
-        { id: "block-1", type: "text", content: "Shop cheap Steam games, discounted bundles, and budget-friendly PC game deals with a clean buying flow." },
-        { id: "block-2", type: "text", content: "Search fast, pay by QR, save your wishlist, and continue the order with direct Telegram support." }
-      ]
-    },
+    settings: defaultSettings(),
     games: [
       { id: "game-1", name: "GTA V", price: 45, category: "Action", description: "Open-world crime action with a huge map, online modes, and fast-paced missions." },
       { id: "game-2", name: "EA FC 25", price: 45, category: "Sports", description: "Football gameplay, career modes, and team building for players who want a fast sports pick." },
@@ -288,85 +536,22 @@ function createInitialStore() {
         content: "<p>Gamers Arena helps players browse affordable Steam and PC game deals in a clean storefront with QR checkout and fast support.</p><p>The store is built for simple discovery, quick checkout, and direct help when customers need a missing title or order update.</p>"
       }
     ],
-    media: [],
-    consoleGames: [
+    media: [
       {
-        id: "console-ps5-1",
-        name: "Marvel's Spider-Man 2",
-        platform: "PS5",
-        image: "https://images.unsplash.com/photo-1606144042614-b2417e99c4e3?auto=format&fit=crop&w=1200&q=80"
-      },
-      {
-        id: "console-ps5-2",
-        name: "God of War Ragnarok",
-        platform: "PS5",
-        image: "https://images.unsplash.com/photo-1542751371-adc38448a05e?auto=format&fit=crop&w=1200&q=80"
-      },
-      {
-        id: "console-ps4-1",
-        name: "The Last of Us Remastered",
-        platform: "PS4",
-        image: "https://images.unsplash.com/photo-1493711662062-fa541adb3fc8?auto=format&fit=crop&w=1200&q=80"
-      },
-      {
-        id: "console-ps4-2",
-        name: "Ghost of Tsushima",
-        platform: "PS4",
-        image: "https://images.unsplash.com/photo-1550745165-9bc0b252726f?auto=format&fit=crop&w=1200&q=80"
+        id: "media-logo",
+        name: "Gamers Arena Logo",
+        url: defaultLogo,
+        alt: "Gamers Arena logo",
+        placement: "brand"
       }
     ],
-    contentSections: [
-      {
-        id: "section-home-hero",
-        key: "home-hero",
-        title: "Cheap Steam Games & PC Game Deals",
-        subtitle: "steam deals hub",
-        body: "Buy cheap Steam games, discounted bundles, and budget-friendly PC game deals at Gamers Arena. Search fast, pay by QR, save your wishlist, and finish your order with direct Telegram support.",
-        buttonLabel: "Browse Games",
-        buttonHref: "#storeSection",
-        image: ""
-      },
-      {
-        id: "section-home-store",
-        key: "home-store",
-        title: "Steam Games And Budget PC Deals",
-        subtitle: "game store",
-        body: "Search fast, filter by category, and add affordable Steam and PC game deals to your cart in a clean storefront. If a title is missing, the request flow sends buyers straight to Telegram.",
-        buttonLabel: "",
-        buttonHref: "",
-        image: ""
-      },
-      {
-        id: "section-home-help",
-        key: "home-help",
-        title: "Need a missing title?",
-        subtitle: "quick help",
-        body: "Use search first. If it is not listed, the store shows a Telegram request button so customers can still place a demand quickly.",
-        buttonLabel: "Ask On Telegram",
-        buttonHref: "https://t.me/gamersarena_shop",
-        image: ""
-      },
-      {
-        id: "section-home-ps5",
-        key: "home-ps5",
-        title: "PS5 Game Library",
-        subtitle: "console picks",
-        body: "Premium PS5 titles with rich artwork, quick Telegram buying, and the same dark neon storefront feel as the PC catalog.",
-        buttonLabel: "",
-        buttonHref: "",
-        image: ""
-      },
-      {
-        id: "section-home-ps4",
-        key: "home-ps4",
-        title: "PS4 Game Library",
-        subtitle: "console picks",
-        body: "Popular PS4 titles for players who still want a strong catalog, smooth browsing, and a simple direct-buy flow.",
-        buttonLabel: "",
-        buttonHref: "",
-        image: ""
-      }
-    ],
+    consoleGames: [],
+    contentSections: [],
+    aiTools: seededAiTools.map((tool, index) => ({
+      ...tool,
+      id: tool.id || `tool-${index + 1}`,
+      featured: index < 12
+    })),
     users: [],
     carts: {},
     chats: [],
@@ -375,7 +560,7 @@ function createInitialStore() {
         id: "blog-1",
         slug: "welcome-to-gamers-arena",
         title: "Welcome To Gamers Arena",
-        summary: "A quick look at how our game store, QR checkout, and support chat work together.",
+        summary: "A quick look at how our game store, QR checkout, support chat, and admin-managed SEO content work together.",
         content: "Gamers Arena keeps game buying simple. Add a game, pay by QR, and continue the order in a private chat thread with admin.",
         image: "",
         createdAt: now,
@@ -435,14 +620,8 @@ function createId(prefix) {
   return `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
 }
 
-function slugify(value) {
-  return String(value || "")
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-+|-+$/g, "");
-}
-
 module.exports = {
+  defaultLogo,
   defaultQr,
   readStore,
   storePath,
@@ -450,5 +629,8 @@ module.exports = {
   updateStore,
   createId,
   slugify,
-  normalizeConsoleGame
+  normalizeAiTool,
+  normalizeConsoleGame,
+  normalizePageContent,
+  normalizeSettings
 };
