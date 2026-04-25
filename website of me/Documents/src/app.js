@@ -9,15 +9,13 @@ const { ensureBundleDrafts, getBundleBySlug, getBundles, normalizeBundle } = req
 const { buildLlmsTxt, buildRobotsTxt, buildSitemapXml, getSeoForPath, injectSeo } = require("./seo");
 const createContentController = require("./controllers/contentController");
 const createContentRoutes = require("./routes/contentRoutes");
+const { upsertEnvValues } = require("./envConfig");
 
-const ADMIN_EMAIL = process.env.ADMIN_EMAIL || "admin@gamersarena.com";
-const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || null;
-const ADMIN_SECONDARY_PASSWORD = process.env.ADMIN_SECONDARY_PASSWORD || "change-me";
-const ADMIN_EMAIL_MANAGED_BY_ENV = Boolean(process.env.ADMIN_EMAIL);
-const ADMIN_PASSWORD_MANAGED_BY_ENV = Boolean(process.env.ADMIN_PASSWORD);
-const ADMIN_SECONDARY_MANAGED_BY_ENV = Boolean(process.env.ADMIN_SECONDARY_PASSWORD);
-const ADMIN_RECOVERY_DOB1 = process.env.ADMIN_RECOVERY_DOB1 || "27-03-2007";
-const ADMIN_RECOVERY_DOB2 = process.env.ADMIN_RECOVERY_DOB2 || "17-10-2008";
+const DEFAULT_ADMIN_EMAIL = "admin@gamersarena.com";
+const DEFAULT_ADMIN_PASSWORD = "change-me";
+const DEFAULT_ADMIN_SECONDARY_PASSWORD = "change-me";
+const DEFAULT_ADMIN_RECOVERY_DOB1 = "27-03-2007";
+const DEFAULT_ADMIN_RECOVERY_DOB2 = "17-10-2008";
 const ADMIN_PRIMARY_WINDOW_MS = 5 * 60 * 1000;
 const ADMIN_RECOVERY_WINDOW_MS = 10 * 60 * 1000;
 const AUTH_WINDOW_MS = 15 * 60 * 1000;
@@ -135,6 +133,19 @@ function normalizeRateLimitKey(req) {
   return `${req.path}:${forwarded || req.ip || "local"}`;
 }
 
+function getRuntimeAdminEnv() {
+  return {
+    email: String(process.env.ADMIN_EMAIL || DEFAULT_ADMIN_EMAIL).trim() || DEFAULT_ADMIN_EMAIL,
+    password: String(process.env.ADMIN_PASSWORD || "").trim(),
+    secondaryPassword: String(process.env.ADMIN_SECONDARY_PASSWORD || "").trim(),
+    recoveryDob1: String(process.env.ADMIN_RECOVERY_DOB1 || DEFAULT_ADMIN_RECOVERY_DOB1).trim() || DEFAULT_ADMIN_RECOVERY_DOB1,
+    recoveryDob2: String(process.env.ADMIN_RECOVERY_DOB2 || DEFAULT_ADMIN_RECOVERY_DOB2).trim() || DEFAULT_ADMIN_RECOVERY_DOB2,
+    emailManagedByEnv: Boolean(process.env.ADMIN_EMAIL),
+    passwordManagedByEnv: Boolean(process.env.ADMIN_PASSWORD),
+    secondaryManagedByEnv: Boolean(process.env.ADMIN_SECONDARY_PASSWORD)
+  };
+}
+
 function createApp(io) {
   const app = express();
   const publicDir = path.join(__dirname, "..", "public");
@@ -142,14 +153,17 @@ function createApp(io) {
   const contentController = createContentController({ readStore, updateStore, createId, slugify });
 
   function getAdminCredentials(store) {
+    const runtime = getRuntimeAdminEnv();
     return {
-      email: store.admin.email || ADMIN_EMAIL,
-      password: store.admin.password || ADMIN_PASSWORD || "change-me",
-      secondaryPassword: store.admin.secondaryPassword || ADMIN_SECONDARY_PASSWORD || "change-me",
-      emailManagedByEnv: ADMIN_EMAIL_MANAGED_BY_ENV,
-      passwordManagedByEnv: ADMIN_PASSWORD_MANAGED_BY_ENV,
-      secondaryManagedByEnv: ADMIN_SECONDARY_MANAGED_BY_ENV,
-      managedByEnv: ADMIN_EMAIL_MANAGED_BY_ENV || ADMIN_PASSWORD_MANAGED_BY_ENV || ADMIN_SECONDARY_MANAGED_BY_ENV
+      email: runtime.emailManagedByEnv ? runtime.email : (store.admin.email || runtime.email),
+      password: runtime.passwordManagedByEnv ? runtime.password : (store.admin.password || runtime.password || DEFAULT_ADMIN_PASSWORD),
+      secondaryPassword: runtime.secondaryManagedByEnv
+        ? runtime.secondaryPassword
+        : (store.admin.secondaryPassword || runtime.secondaryPassword || DEFAULT_ADMIN_SECONDARY_PASSWORD),
+      emailManagedByEnv: runtime.emailManagedByEnv,
+      passwordManagedByEnv: runtime.passwordManagedByEnv,
+      secondaryManagedByEnv: runtime.secondaryManagedByEnv,
+      managedByEnv: runtime.emailManagedByEnv || runtime.passwordManagedByEnv || runtime.secondaryManagedByEnv
     };
   }
 
@@ -492,8 +506,9 @@ function createApp(io) {
   app.post("/auth/admin/recovery", (req, res) => {
     const dob1 = normalizeDobValue(req.body?.dob1 || "");
     const dob2 = normalizeDobValue(req.body?.dob2 || "");
-    const expectedDob1 = normalizeDobValue(ADMIN_RECOVERY_DOB1);
-    const expectedDob2 = normalizeDobValue(ADMIN_RECOVERY_DOB2);
+    const runtime = getRuntimeAdminEnv();
+    const expectedDob1 = normalizeDobValue(runtime.recoveryDob1);
+    const expectedDob2 = normalizeDobValue(runtime.recoveryDob2);
     if (!dob1 || !dob2 || dob1 !== expectedDob1 || dob2 !== expectedDob2) {
       return res.status(401).json({ error: "Security answers did not match." });
     }
@@ -524,11 +539,14 @@ function createApp(io) {
       return res.status(400).json({ error: "Enter a new first and second admin password." });
     }
 
+    upsertEnvValues({
+      ADMIN_PASSWORD: password,
+      ADMIN_SECONDARY_PASSWORD: adminPasscode
+    });
+
     const store = updateStore((draft) => {
       draft.admin = draft.admin || {};
-      draft.admin.email = draft.admin.email || ADMIN_EMAIL;
-      draft.admin.password = password;
-      draft.admin.secondaryPassword = adminPasscode;
+      draft.admin.email = draft.admin.email || getRuntimeAdminEnv().email;
       draft.admin.updatedAt = new Date().toISOString();
       return draft;
     });
@@ -682,8 +700,27 @@ function createApp(io) {
         itemCount: bundle.itemCount
       }));
 
+    const consoleMatches = (Array.isArray(store.consoleGames) ? store.consoleGames : [])
+      .filter((item) => normalizeSearchValue(item.name).includes(query))
+      .sort((left, right) => {
+        const leftName = normalizeSearchValue(left.name);
+        const rightName = normalizeSearchValue(right.name);
+        const leftRank = leftName === query ? 0 : leftName.startsWith(query) ? 1 : 2;
+        const rightRank = rightName === query ? 0 : rightName.startsWith(query) ? 1 : 2;
+        if (leftRank !== rightRank) return leftRank - rightRank;
+        return left.name.localeCompare(right.name);
+      })
+      .slice(0, 4)
+      .map((item) => ({
+        type: "console",
+        id: item.id,
+        name: String(item.name || "").trim(),
+        category: String(item.platform || "Console").trim(),
+        platform: String(item.platform || "PS5").trim()
+      }));
+
     res.json({
-      items: [...gameMatches, ...bundleMatches].slice(0, 8)
+      items: [...gameMatches, ...consoleMatches, ...bundleMatches].slice(0, 8)
     });
   });
 
@@ -748,9 +785,22 @@ function createApp(io) {
   app.get("/console-games", (req, res) => {
     const store = readStore();
     const platform = String(req.query?.platform || "").trim().toUpperCase();
+    const query = normalizeSearchValue(req.query?.q || "");
     let items = Array.isArray(store.consoleGames) ? store.consoleGames : [];
     if (platform) {
       items = items.filter((item) => String(item.platform || "").toUpperCase() === platform);
+    }
+    if (query) {
+      items = items
+        .filter((item) => normalizeSearchValue(item.name).includes(query))
+        .sort((left, right) => {
+          const leftName = normalizeSearchValue(left.name);
+          const rightName = normalizeSearchValue(right.name);
+          const leftRank = leftName === query ? 0 : leftName.startsWith(query) ? 1 : 2;
+          const rightRank = rightName === query ? 0 : rightName.startsWith(query) ? 1 : 2;
+          if (leftRank !== rightRank) return leftRank - rightRank;
+          return left.name.localeCompare(right.name);
+        });
     }
     res.json({
       items: items.map(sanitizeConsoleGame),

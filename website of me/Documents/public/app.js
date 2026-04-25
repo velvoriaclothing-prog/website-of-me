@@ -1,6 +1,7 @@
 const page = document.body.dataset.page;
 const DESKTOP_GAME_PAGE_SIZE = 24;
 const MOBILE_GAME_PAGE_SIZE = 12;
+const CATALOG_MARKETING_TOTAL = 12000;
 
 const state = {
   session: null,
@@ -16,6 +17,8 @@ const state = {
   cart: { items: [], total: 0 },
   cartLoaded: false,
   consoleGames: { PS4: [], PS5: [] },
+  consoleTotals: { PS4: 0, PS5: 0 },
+  consoleFilters: { PS4: "", PS5: "" },
   blogs: [],
   filteredBlogs: [],
   blogQuery: "",
@@ -154,6 +157,10 @@ function consoleBuyLink(game) {
   return telegramMessageLink(`Hello, I want to buy ${game.name} for ${game.platform}. Please help me continue the order.`);
 }
 
+function consoleSupportLink() {
+  return telegramMessageLink("Hi, I want PS4/PS5 games");
+}
+
 function qs(id) {
   return document.getElementById(id);
 }
@@ -192,6 +199,17 @@ function stripHtml(value) {
 function safeHref(value, fallback = "#") {
   const href = String(value || "").trim();
   return /^(https?:\/\/|\/|#)/i.test(href) ? href : fallback;
+}
+
+function getConsoleCatalogPath(platform) {
+  return `/${String(platform || "ps5").toLowerCase()}-games`;
+}
+
+function getCatalogDisplayTotal() {
+  const actualTotal = Number(state.totalGames || state.games.length || 0);
+  if (page === "admin") return actualTotal;
+  if (state.catalogQuery || state.catalogCategory) return actualTotal;
+  return CATALOG_MARKETING_TOTAL;
 }
 
 function readLocalCart() {
@@ -979,6 +997,32 @@ function renderHomeLayout() {
       : `<div class="empty">No custom homepage blocks saved yet.</div>`;
 }
 
+function renderSliderGameCards(items, emptyMessage = "No games loaded yet.") {
+  return items.length
+    ? items.map((game) => `
+      <article class="card slider-game-card">
+        ${game.image ? `<img class="slider-game-thumb" src="${escapeHtml(game.image)}" alt="${escapeHtml(game.name)}" loading="lazy">` : `<div class="slider-game-thumb game-thumb-fallback" aria-hidden="true">${escapeHtml((game.name || "G").slice(0, 1))}</div>`}
+        <div class="stack">
+          <p class="eyebrow">${escapeHtml(game.category || game.platform || "Game")}</p>
+          <h3 class="card-title">${escapeHtml(game.name)}</h3>
+          <p class="price">${game.category === "Upcoming" ? "Coming Soon" : currency(game.price || 45)}</p>
+        </div>
+        <div class="inline-actions">
+          <button class="btn btn-primary" type="button" data-add-cart="${game.id}">Add to Cart</button>
+          <button class="btn btn-secondary" type="button" data-save-item="game" data-save-key="${game.id}" data-save-name="${escapeHtml(game.name)}" data-save-price="${game.price || 45}" data-save-category="${escapeHtml(game.category || game.platform || "Game")}">${isWishlisted("game", game.id) ? "Saved" : "Save"}</button>
+        </div>
+      </article>
+    `).join("")
+    : `<div class="empty">${emptyMessage}</div>`;
+}
+
+function renderTrendingGamesRail() {
+  const rail = qs("trendingGamesRail");
+  if (!rail) return;
+  const items = (state.games || []).filter((game) => game.category !== "Upcoming").slice(0, 10);
+  rail.innerHTML = renderSliderGameCards(items, "No trending games loaded yet.");
+}
+
 function renderSlidingRows() {
   const rails = [qs("gameRailRow1"), qs("gameRailRow2")];
   if (!rails.some(Boolean)) return;
@@ -989,23 +1033,7 @@ function renderSlidingRows() {
   ];
   rails.forEach((rail, rowIndex) => {
     if (!rail) return;
-    const rowItems = rows[rowIndex] || [];
-    rail.innerHTML = rowItems.length
-      ? rowItems.map((game) => `
-        <article class="card slider-game-card">
-          ${game.image ? `<img class="slider-game-thumb" src="${escapeHtml(game.image)}" alt="${escapeHtml(game.name)}" loading="lazy">` : `<div class="slider-game-thumb game-thumb-fallback" aria-hidden="true">${escapeHtml((game.name || "G").slice(0, 1))}</div>`}
-          <div class="stack">
-            <p class="eyebrow">${escapeHtml(game.category)}</p>
-            <h3 class="card-title">${escapeHtml(game.name)}</h3>
-            <p class="price">${game.category === "Upcoming" ? "Coming Soon" : currency(game.price)}</p>
-          </div>
-          <div class="inline-actions">
-            <button class="btn btn-primary" type="button" data-add-cart="${game.id}">Add to Cart</button>
-            <button class="btn btn-secondary" type="button" data-save-item="game" data-save-key="${game.id}" data-save-name="${escapeHtml(game.name)}" data-save-price="${game.price}" data-save-category="${escapeHtml(game.category)}">${isWishlisted("game", game.id) ? "Saved" : "Save"}</button>
-          </div>
-        </article>
-      `).join("")
-      : `<div class="empty">No games loaded yet.</div>`;
+    rail.innerHTML = renderSliderGameCards(rows[rowIndex] || []);
   });
 }
 
@@ -1057,7 +1085,36 @@ async function loadConsoleGames() {
     PS4: ps4.items || [],
     PS5: ps5.items || []
   };
+  state.consoleTotals = {
+    PS4: Number(ps4.total || state.consoleGames.PS4.length),
+    PS5: Number(ps5.total || state.consoleGames.PS5.length)
+  };
   return state.consoleGames;
+}
+
+function filterConsoleGames(platform, query = state.consoleFilters?.[platform] || "") {
+  const items = Array.isArray(state.consoleGames?.[platform]) ? state.consoleGames[platform] : [];
+  const normalizedQuery = normalizeSearchText(query);
+  if (!normalizedQuery) return items;
+  return items
+    .filter((game) => normalizeSearchText(`${game.name} ${game.platform}`).includes(normalizedQuery))
+    .sort((left, right) => {
+      const leftName = normalizeSearchText(left.name);
+      const rightName = normalizeSearchText(right.name);
+      const leftRank = leftName === normalizedQuery ? 0 : leftName.startsWith(normalizedQuery) ? 1 : 2;
+      const rightRank = rightName === normalizedQuery ? 0 : rightName.startsWith(normalizedQuery) ? 1 : 2;
+      if (leftRank !== rightRank) return leftRank - rightRank;
+      return left.name.localeCompare(right.name);
+    });
+}
+
+function updateConsoleCatalogUrl(platform, query) {
+  if (!["ps4-games", "ps5-games"].includes(page) || history.replaceState == null) return;
+  const nextUrl = new URL(window.location.href);
+  if (query) nextUrl.searchParams.set("q", query);
+  else nextUrl.searchParams.delete("q");
+  nextUrl.pathname = getConsoleCatalogPath(platform);
+  window.history.replaceState({}, "", `${nextUrl.pathname}${nextUrl.search}`);
 }
 
 async function loadSearchSuggestions(query) {
@@ -1083,7 +1140,7 @@ function renderSearchSuggestions() {
   }
   wrap.classList.remove("hidden");
   wrap.innerHTML = state.suggestedItems.map((item) => `
-    <button class="suggestion-item" type="button" data-suggestion-type="${item.type}" data-suggestion-name="${escapeHtml(item.name)}" ${item.slug ? `data-suggestion-slug="${item.slug}"` : ""}>
+    <button class="suggestion-item" type="button" data-suggestion-type="${item.type}" data-suggestion-name="${escapeHtml(item.name)}" ${item.slug ? `data-suggestion-slug="${item.slug}"` : ""} ${item.platform ? `data-suggestion-platform="${item.platform}"` : ""}>
       <span>
         <strong>${escapeHtml(item.name)}</strong>
         <small class="muted">${item.type === "bundle" ? `${(item.itemCount || 0).toLocaleString("en-IN")} games bundle` : escapeHtml(item.category || "Game")}</small>
@@ -1103,8 +1160,9 @@ function renderGameCards() {
   const query = String(qs("gameSearch")?.value || "").trim();
   const safeQuery = escapeHtml(query);
   if (resultsMeta) {
-    if (state.totalGames || sourceGames.length) {
-      resultsMeta.textContent = `Showing ${sourceGames.length} of ${state.totalGames || sourceGames.length} game${(state.totalGames || sourceGames.length) > 1 ? "s" : ""}${query ? ` for "${query}"` : ""}.`;
+    const displayTotal = getCatalogDisplayTotal();
+    if (displayTotal || sourceGames.length) {
+      resultsMeta.textContent = `Showing ${sourceGames.length} of ${displayTotal || sourceGames.length} game${(displayTotal || sourceGames.length) > 1 ? "s" : ""}${query ? ` for "${query}"` : ""}.`;
     } else {
       resultsMeta.textContent = query ? `No result for "${query}".` : "No games matched the current filter.";
     }
@@ -1160,31 +1218,101 @@ async function refreshCart() {
   updateCartBadges();
 }
 
-function renderConsoleSection(platform, wrapId, statusId) {
+function renderConsoleGameCards(items, platform) {
+  return items.map((game) => `
+    <article class="console-game-card">
+      ${game.image ? `<img class="console-game-bg" src="${escapeHtml(game.image)}" alt="${escapeHtml(game.name)}" loading="lazy">` : `<div class="console-game-bg console-game-bg-fallback" aria-hidden="true"></div>`}
+      <div class="console-game-overlay"></div>
+      <div class="console-game-content">
+        <span class="console-platform-pill">${platform}</span>
+        <h3 class="console-game-title">${escapeHtml(game.name)}</h3>
+        <a class="btn btn-primary console-buy-btn" href="${consoleBuyLink(game)}" target="_blank" rel="noreferrer">Buy Now</a>
+      </div>
+    </article>
+  `).join("");
+}
+
+function renderConsoleSection(platform, wrapId, statusId, options = {}) {
   const wrap = qs(wrapId);
   if (!wrap) return;
-  const items = Array.isArray(state.consoleGames?.[platform]) ? state.consoleGames[platform] : [];
-  if (qs(statusId)) {
-    qs(statusId).textContent = items.length ? `${items.length} ${platform} game${items.length === 1 ? "" : "s"} live right now.` : "";
+  const {
+    query = state.consoleFilters?.[platform] || "",
+    limit = 0,
+    resultsMetaId = "",
+    layout = "grid"
+  } = options;
+  const items = filterConsoleGames(platform, query);
+  const visibleItems = limit ? items.slice(0, limit) : items;
+  const totalItems = Number(state.consoleTotals?.[platform] || (state.consoleGames?.[platform] || []).length || 0);
+  const resultsMeta = resultsMetaId ? qs(resultsMetaId) : null;
+
+  if (resultsMeta) {
+    resultsMeta.textContent = items.length
+      ? `Showing ${visibleItems.length} of ${totalItems} ${platform} games${query ? ` for "${query}"` : ""}.`
+      : query
+        ? `No ${platform} games matched "${query}".`
+        : `No ${platform} games are available right now.`;
   }
-  wrap.innerHTML = items.length
-    ? items.map((game) => `
-      <article class="console-game-card">
-        ${game.image ? `<img class="console-game-bg" src="${escapeHtml(game.image)}" alt="${escapeHtml(game.name)}" loading="lazy">` : `<div class="console-game-bg console-game-bg-fallback" aria-hidden="true"></div>`}
-        <div class="console-game-overlay"></div>
-        <div class="console-game-content">
-          <span class="console-platform-pill">${platform}</span>
-          <h3 class="console-game-title">${escapeHtml(game.name)}</h3>
-          <a class="btn btn-primary console-buy-btn" href="${consoleBuyLink(game)}" target="_blank" rel="noreferrer">Buy Now</a>
-        </div>
-      </article>
-    `).join("")
+
+  if (qs(statusId)) {
+    if (layout === "slider") {
+      qs(statusId).textContent = totalItems
+        ? `Showing ${visibleItems.length} of ${totalItems} ${platform} games. Swipe or use the arrows.`
+        : "";
+    } else {
+      qs(statusId).textContent = totalItems
+        ? `${totalItems} ${platform} game${totalItems === 1 ? "" : "s"} live right now.`
+        : "";
+    }
+  }
+  wrap.innerHTML = visibleItems.length
+    ? renderConsoleGameCards(visibleItems, platform)
     : `<div class="empty">No ${platform} games added yet. You can publish them from the admin panel.</div>`;
 }
 
 function renderConsoleSections() {
-  renderConsoleSection("PS5", "ps5GamesGrid", "ps5Status");
-  renderConsoleSection("PS4", "ps4GamesGrid", "ps4Status");
+  renderConsoleSection("PS5", "ps5GamesGrid", "ps5Status", { layout: "slider", limit: 12 });
+  renderConsoleSection("PS4", "ps4GamesGrid", "ps4Status", { layout: "slider", limit: 12 });
+}
+
+function bindConsoleCatalogFilters(platform) {
+  const search = qs("consoleSearch");
+  const clear = qs("clearConsoleFilters");
+  if (!search) {
+    renderConsoleSection(platform, "consoleCatalogGrid", "consoleCatalogStatus", {
+      resultsMetaId: "consoleResultsMeta"
+    });
+    return;
+  }
+
+  const applyFilters = () => {
+    const value = String(search.value || "").trim();
+    state.consoleFilters = {
+      ...(state.consoleFilters || {}),
+      [platform]: value
+    };
+    renderConsoleSection(platform, "consoleCatalogGrid", "consoleCatalogStatus", {
+      query: value,
+      resultsMetaId: "consoleResultsMeta"
+    });
+    updateConsoleCatalogUrl(platform, value);
+  };
+
+  let searchTimer;
+  search.oninput = () => {
+    clearTimeout(searchTimer);
+    searchTimer = setTimeout(applyFilters, 140);
+  };
+
+  if (clear) {
+    clear.onclick = () => {
+      search.value = "";
+      applyFilters();
+      search.focus();
+    };
+  }
+
+  applyFilters();
 }
 
 function renderCartPage() {
@@ -2258,6 +2386,7 @@ async function initHome() {
   hydrateGameFilters();
   renderGameCards();
   renderConsoleSections();
+  renderTrendingGamesRail();
   renderSlidingRows();
   renderBundleSection();
   renderHomeCollectionLoading();
@@ -2320,7 +2449,13 @@ async function initConsoleCatalogPage(platform, pageKey) {
   if (pageContent?.buttonLabel && qs("managedConsoleButton")) qs("managedConsoleButton").textContent = pageContent.buttonLabel;
   if (pageContent?.buttonHref && qs("managedConsoleButton")) qs("managedConsoleButton").setAttribute("href", safeHref(pageContent.buttonHref, `/${pageKey}-games`));
   await loadConsoleGames();
-  renderConsoleSection(platform, "consoleCatalogGrid", "consoleCatalogStatus");
+  const initialQuery = getQuery("q") || "";
+  state.consoleFilters = {
+    ...(state.consoleFilters || {}),
+    [platform]: initialQuery
+  };
+  if (qs("consoleSearch")) qs("consoleSearch").value = initialQuery;
+  bindConsoleCatalogFilters(platform);
   await loadBlogs();
   const relatedWrap = qs("relatedBlogCards");
   if (relatedWrap) {
@@ -2577,8 +2712,13 @@ document.addEventListener("click", async (event) => {
     const type = suggestion.dataset.suggestionType;
     const name = suggestion.dataset.suggestionName || "";
     const slug = suggestion.dataset.suggestionSlug || "";
+    const platform = suggestion.dataset.suggestionPlatform || "";
     if (type === "bundle" && slug) {
     window.location.href = `/bundle/${encodeURIComponent(slug)}`;
+      return;
+    }
+    if (type === "console" && platform) {
+      window.location.href = `${getConsoleCatalogPath(platform)}?q=${encodeURIComponent(name)}`;
       return;
     }
     const searchInput = qs("gameSearch");
@@ -3675,6 +3815,9 @@ async function bindPageActions() {
   }
   document.querySelectorAll("[data-telegram-general]").forEach((element) => {
     element.href = telegramMessageLink("Hello, I have a question about Gamers Arena.");
+  });
+  document.querySelectorAll("[data-telegram-console]").forEach((element) => {
+    element.href = consoleSupportLink();
   });
   document.querySelectorAll("[data-telegram-order]").forEach((element) => {
     const orderGames = localStorage.getItem("ga-last-paid-game") || "my order";

@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Cheap Steam Games & PC Game Deals | Gamers Arena</title>
   <meta name="description" content="Buy cheap Steam games, discounted bundles, and fast PC game deals at Gamers Arena with QR checkout, saved wishlists, and instant Telegram support.">
+  <meta name="google-site-verification" content="VS1q0Z-2vREZTDL7-qegUyAj5aAloW1TEX-KXPB_KXg" />
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Oxanium:wght@400;600;700&family=Manrope:wght@400;500;700&display=swap" rel="stylesheet">
@@ -138,23 +139,17 @@
       <section class="panel pulse-panel reveal" data-reveal>
         <div class="section-head">
           <div>
-            <p class="eyebrow">store pulse</p>
-            <h2 class="section-title">Popular Universes Across Gamers Arena</h2>
+            <p class="eyebrow">trending games</p>
+            <h2 class="section-title">Trending Games</h2>
           </div>
+          <a class="btn btn-secondary" href="/pc-games">See More</a>
         </div>
-        <div class="pulse-rail auto-rail" data-auto-rail data-auto-rail-speed="3600">
-          <span class="pulse-pill">Grand Theft Auto</span>
-          <span class="pulse-pill">Black Myth: Wukong</span>
-          <span class="pulse-pill">Ghost of Tsushima</span>
-          <span class="pulse-pill">Red Dead Redemption</span>
-          <span class="pulse-pill">Elden Ring</span>
-          <span class="pulse-pill">Cyberpunk 2077</span>
-          <span class="pulse-pill">Resident Evil</span>
-          <span class="pulse-pill">Assassin&apos;s Creed</span>
-          <span class="pulse-pill">Call of Duty</span>
-          <span class="pulse-pill">Need for Speed</span>
-          <span class="pulse-pill">Spider-Man</span>
-          <span class="pulse-pill">God of War</span>
+        <div class="slider-row-shell">
+          <div class="slider-row-stage">
+            <button class="slider-arrow" type="button" data-slider-row="trendingGamesRail" data-slider-direction="-1" aria-label="Scroll trending games left">&#10094;</button>
+            <div id="trendingGamesRail" class="game-slider-row"></div>
+            <button class="slider-arrow" type="button" data-slider-row="trendingGamesRail" data-slider-direction="1" aria-label="Scroll trending games right">&#10095;</button>
+          </div>
         </div>
       </section>
 
@@ -168,23 +163,25 @@
         </div>
         <div class="slider-row-shell">
           <div class="slider-row-head">
-            <strong>Row One</strong>
-            <div class="inline-actions desktop-slider-actions">
-              <button class="btn btn-secondary" type="button" data-slider-row="gameRailRow1" data-slider-direction="-1">Prev</button>
-              <button class="btn btn-secondary" type="button" data-slider-row="gameRailRow1" data-slider-direction="1">Next</button>
-            </div>
+            <strong>PC picks lane 01</strong>
+            <span class="muted">Smooth arrows on desktop, swipe on mobile</span>
           </div>
-          <div id="gameRailRow1" class="game-slider-row"></div>
+          <div class="slider-row-stage">
+            <button class="slider-arrow" type="button" data-slider-row="gameRailRow1" data-slider-direction="-1" aria-label="Scroll PC picks left">&#10094;</button>
+            <div id="gameRailRow1" class="game-slider-row"></div>
+            <button class="slider-arrow" type="button" data-slider-row="gameRailRow1" data-slider-direction="1" aria-label="Scroll PC picks right">&#10095;</button>
+          </div>
         </div>
         <div class="slider-row-shell">
           <div class="slider-row-head">
-            <strong>Row Two</strong>
-            <div class="inline-actions desktop-slider-actions">
-              <button class="btn btn-secondary" type="button" data-slider-row="gameRailRow2" data-slider-direction="-1">Prev</button>
-              <button class="btn btn-secondary" type="button" data-slider-row="gameRailRow2" data-slider-direction="1">Next</button>
-            </div>
+            <strong>PC picks lane 02</strong>
+            <span class="muted">Showing more fast-moving entries</span>
           </div>
-          <div id="gameRailRow2" class="game-slider-row"></div>
+          <div class="slider-row-stage">
+            <button class="slider-arrow" type="button" data-slider-row="gameRailRow2" data-slider-direction="-1" aria-label="Scroll more PC picks left">&#10094;</button>
+            <div id="gameRailRow2" class="game-slider-row"></div>
+            <button class="slider-arrow" type="button" data-slider-row="gameRailRow2" data-slider-direction="1" aria-label="Scroll more PC picks right">&#10095;</button>
+          </div>
         </div>
       </section>
 
@@ -230,10 +227,15 @@
             <p class="eyebrow" data-section-subtitle="home-ps5">console picks</p>
             <h2 class="section-title" data-section-title="home-ps5">PS5 Game Library</h2>
           </div>
-          <p class="hero-copy console-section-copy" data-section-body="home-ps5">Premium PS5 titles with rich artwork, quick Telegram buying, and the same dark neon storefront feel as the PC catalog.</p>
+          <a class="btn btn-secondary" href="/ps5-games">Open PS5 Page</a>
         </div>
+        <p class="hero-copy console-section-copy" data-section-body="home-ps5">Premium PS5 titles with rich artwork, quick Telegram buying, and the same dark neon storefront feel as the PC catalog.</p>
         <p id="ps5Status" class="status"></p>
-        <div id="ps5GamesGrid" class="console-grid"></div>
+        <div class="slider-row-stage">
+          <button class="slider-arrow" type="button" data-slider-row="ps5GamesGrid" data-slider-direction="-1" aria-label="Scroll PS5 games left">&#10094;</button>
+          <div id="ps5GamesGrid" class="game-slider-row console-slider-row"></div>
+          <button class="slider-arrow" type="button" data-slider-row="ps5GamesGrid" data-slider-direction="1" aria-label="Scroll PS5 games right">&#10095;</button>
+        </div>
       </section>
 
       <section class="panel reveal console-section" data-reveal>
@@ -242,10 +244,15 @@
             <p class="eyebrow" data-section-subtitle="home-ps4">console picks</p>
             <h2 class="section-title" data-section-title="home-ps4">PS4 Game Library</h2>
           </div>
-          <p class="hero-copy console-section-copy" data-section-body="home-ps4">Popular PS4 titles for players who still want a strong catalog, smooth browsing, and a simple direct-buy flow.</p>
+          <a class="btn btn-secondary" href="/ps4-games">Open PS4 Page</a>
         </div>
+        <p class="hero-copy console-section-copy" data-section-body="home-ps4">Popular PS4 titles for players who still want a strong catalog, smooth browsing, and a simple direct-buy flow.</p>
         <p id="ps4Status" class="status"></p>
-        <div id="ps4GamesGrid" class="console-grid"></div>
+        <div class="slider-row-stage">
+          <button class="slider-arrow" type="button" data-slider-row="ps4GamesGrid" data-slider-direction="-1" aria-label="Scroll PS4 games left">&#10094;</button>
+          <div id="ps4GamesGrid" class="game-slider-row console-slider-row"></div>
+          <button class="slider-arrow" type="button" data-slider-row="ps4GamesGrid" data-slider-direction="1" aria-label="Scroll PS4 games right">&#10095;</button>
+        </div>
       </section>
 
       <section class="panel reveal" data-reveal>

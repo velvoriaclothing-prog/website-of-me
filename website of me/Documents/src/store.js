@@ -1,17 +1,27 @@
 const fs = require("fs");
 const path = require("path");
 const { aiTools: seededAiTools } = require("./data/aiTools");
+const { CONSOLE_CATALOG_VERSION, consoleCatalogSeeds } = require("./data/consoleCatalog");
 
 const bundledStorePath = path.join(__dirname, "..", "data", "store.json");
 const storePath = process.env.STORE_PATH ? path.resolve(process.env.STORE_PATH) : bundledStorePath;
 const seedStorePath = process.env.STORE_SEED_PATH ? path.resolve(process.env.STORE_SEED_PATH) : bundledStorePath;
-const defaultAdminEmail = process.env.ADMIN_EMAIL || "admin@gamersarena.com";
-const defaultAdminPassword = process.env.ADMIN_PASSWORD || "change-me";
-const defaultAdminSecondaryPassword = process.env.ADMIN_SECONDARY_PASSWORD || "change-me";
 const defaultQr = "/assets/payment-qr.jpeg";
 const defaultLogo = "/assets/gamers-arena-logo.png";
 let cachedStore = null;
 let cachedMtimeMs = 0;
+
+function getDefaultAdminEmail() {
+  return String(process.env.ADMIN_EMAIL || "admin@gamersarena.com").trim() || "admin@gamersarena.com";
+}
+
+function getDefaultAdminPassword() {
+  return String(process.env.ADMIN_PASSWORD || "change-me").trim() || "change-me";
+}
+
+function getDefaultAdminSecondaryPassword() {
+  return String(process.env.ADMIN_SECONDARY_PASSWORD || "change-me").trim() || "change-me";
+}
 
 function cloneStore(value) {
   return JSON.parse(JSON.stringify(value));
@@ -105,6 +115,25 @@ function normalizeConsoleGame(item = {}) {
     createdAt: item.createdAt || new Date().toISOString(),
     updatedAt: item.updatedAt || new Date().toISOString()
   };
+}
+
+function normalizeConsoleSeedKey(platform, name) {
+  return `${normalizeText(platform, "PS5").toUpperCase()}::${normalizeText(name).toLowerCase()}`;
+}
+
+function mergeSeedConsoleGames(items = []) {
+  const existing = items.map(normalizeConsoleGame);
+  const seen = new Set(existing.map((item) => normalizeConsoleSeedKey(item.platform, item.name)));
+  const additions = [];
+
+  consoleCatalogSeeds.forEach((item) => {
+    const key = normalizeConsoleSeedKey(item.platform, item.name);
+    if (seen.has(key)) return;
+    seen.add(key);
+    additions.push(normalizeConsoleGame(item));
+  });
+
+  return [...existing, ...additions];
 }
 
 function normalizeSection(item = {}) {
@@ -327,10 +356,11 @@ function normalizeStore(store) {
   const hadConsoleGames = Array.isArray(next.consoleGames);
   const hadAiTools = Array.isArray(next.aiTools);
 
+  next.meta = next.meta && typeof next.meta === "object" ? next.meta : {};
   next.admin = next.admin || {};
-  next.admin.email = next.admin.email || defaultAdminEmail;
-  next.admin.password = next.admin.password || defaultAdminPassword;
-  next.admin.secondaryPassword = next.admin.secondaryPassword || defaultAdminSecondaryPassword;
+  next.admin.email = next.admin.email || getDefaultAdminEmail();
+  next.admin.password = next.admin.password || getDefaultAdminPassword();
+  next.admin.secondaryPassword = next.admin.secondaryPassword || getDefaultAdminSecondaryPassword();
   next.settings = normalizeSettings(next.settings || {});
   next.games = Array.isArray(next.games) ? next.games.map(normalizeGame) : [];
   next.pages = Array.isArray(next.pages) ? next.pages.map(normalizePage) : [];
@@ -343,6 +373,11 @@ function normalizeStore(store) {
   next.chats = Array.isArray(next.chats) ? next.chats : [];
   next.blogs = Array.isArray(next.blogs) ? next.blogs : [];
   next.orders = Array.isArray(next.orders) ? next.orders : [];
+
+  if (next.meta.consoleCatalogVersion !== CONSOLE_CATALOG_VERSION) {
+    next.consoleGames = mergeSeedConsoleGames(next.consoleGames);
+    next.meta.consoleCatalogVersion = CONSOLE_CATALOG_VERSION;
+  }
 
   const pageDefaults = defaultPageContent();
   next.contentByPage = next.contentByPage && typeof next.contentByPage === "object" ? next.contentByPage : {};
@@ -372,47 +407,6 @@ function normalizeStore(store) {
         url: next.settings.logoUrl,
         alt: "Gamers Arena logo",
         placement: "brand"
-      })
-    ];
-  }
-
-  if (!hadConsoleGames && !next.consoleGames.length) {
-    next.consoleGames = [
-      normalizeConsoleGame({
-        id: "console-ps5-1",
-        name: "Marvel's Spider-Man 2",
-        platform: "PS5",
-        image: "https://images.unsplash.com/photo-1606144042614-b2417e99c4e3?auto=format&fit=crop&w=1200&q=80"
-      }),
-      normalizeConsoleGame({
-        id: "console-ps5-2",
-        name: "God of War Ragnarok",
-        platform: "PS5",
-        image: "https://images.unsplash.com/photo-1542751371-adc38448a05e?auto=format&fit=crop&w=1200&q=80"
-      }),
-      normalizeConsoleGame({
-        id: "console-ps5-3",
-        name: "Gran Turismo 7",
-        platform: "PS5",
-        image: "https://images.unsplash.com/photo-1511512578047-dfb367046420?auto=format&fit=crop&w=1200&q=80"
-      }),
-      normalizeConsoleGame({
-        id: "console-ps4-1",
-        name: "The Last of Us Remastered",
-        platform: "PS4",
-        image: "https://images.unsplash.com/photo-1493711662062-fa541adb3fc8?auto=format&fit=crop&w=1200&q=80"
-      }),
-      normalizeConsoleGame({
-        id: "console-ps4-2",
-        name: "Ghost of Tsushima",
-        platform: "PS4",
-        image: "https://images.unsplash.com/photo-1550745165-9bc0b252726f?auto=format&fit=crop&w=1200&q=80"
-      }),
-      normalizeConsoleGame({
-        id: "console-ps4-3",
-        name: "Uncharted 4",
-        platform: "PS4",
-        image: "https://images.unsplash.com/photo-1579373903781-fd5c0c30c4cd?auto=format&fit=crop&w=1200&q=80"
       })
     ];
   }
@@ -508,9 +502,9 @@ function createInitialStore() {
   const now = new Date().toISOString();
   return normalizeStore({
     admin: {
-      email: defaultAdminEmail,
-      password: defaultAdminPassword,
-      secondaryPassword: defaultAdminSecondaryPassword
+      email: getDefaultAdminEmail(),
+      password: getDefaultAdminPassword(),
+      secondaryPassword: getDefaultAdminSecondaryPassword()
     },
     settings: defaultSettings(),
     games: [
@@ -594,8 +588,15 @@ function readStore() {
   ensureStore();
   const stat = fs.statSync(storePath);
   if (!cachedStore || stat.mtimeMs !== cachedMtimeMs) {
-    cachedStore = normalizeStore(JSON.parse(fs.readFileSync(storePath, "utf8")));
-    cachedMtimeMs = stat.mtimeMs;
+    const rawStore = JSON.parse(fs.readFileSync(storePath, "utf8"));
+    const normalizedStore = normalizeStore(rawStore);
+    if (JSON.stringify(rawStore) !== JSON.stringify(normalizedStore)) {
+      fs.writeFileSync(storePath, JSON.stringify(normalizedStore, null, 2));
+      cachedMtimeMs = fs.statSync(storePath).mtimeMs;
+    } else {
+      cachedMtimeMs = stat.mtimeMs;
+    }
+    cachedStore = normalizedStore;
   }
   return cachedStore;
 }

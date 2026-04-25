@@ -48,6 +48,16 @@
     </header>
 
     <main>
+      <section class="site-banner reveal" data-reveal>
+        <div class="site-banner-row">
+          <div>
+            <strong>Buy PS4 &amp; PS5 Games from our Telegram (All games may not be listed)</strong>
+            <p class="muted">If you do not see the title you want here, message us directly and we can help manually.</p>
+          </div>
+          <a class="btn btn-primary" data-telegram-console href="https://t.me/gamersarena_shop" target="_blank" rel="noreferrer">Open Telegram</a>
+        </div>
+      </section>
+
       <section class="panel reveal console-section" data-reveal>
         <div class="section-head console-section-head">
           <div>
@@ -56,6 +66,11 @@
           </div>
           <p id="consoleCatalogStatus" class="status"></p>
         </div>
+        <div class="toolbar console-toolbar">
+          <input id="consoleSearch" class="input" placeholder="Search PS5 games">
+          <button id="clearConsoleFilters" class="btn btn-secondary" type="button">Clear</button>
+        </div>
+        <p id="consoleResultsMeta" class="muted"></p>
         <div id="consoleCatalogGrid" class="console-grid"></div>
       </section>
 
