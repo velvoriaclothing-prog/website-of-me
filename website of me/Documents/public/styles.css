@@ -2569,6 +2569,18 @@ body.header-scroll-enabled .topbar.hidden-header {
   .breadcrumb-bar {
     margin-bottom: 14px;
   }
+
+  .admin-dashboard-nav {
+    top: 82px;
+  }
+
+  .admin-section-copy {
+    text-align: left;
+  }
+
+  .admin-games-layout {
+    grid-template-columns: 1fr;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -2661,6 +2673,97 @@ body.header-scroll-enabled .topbar.hidden-header {
   padding: 18px;
 }
 
+.admin-dashboard-nav {
+  position: sticky;
+  top: 96px;
+  z-index: 7;
+}
+
+.admin-dashboard-section {
+  scroll-margin-top: 150px;
+}
+
+.admin-tab-link {
+  min-width: 112px;
+  justify-content: center;
+}
+
+.admin-section-copy {
+  max-width: 440px;
+  margin: 0;
+  text-align: right;
+}
+
+.admin-list-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 16px;
+}
+
+.admin-games-layout {
+  display: grid;
+  grid-template-columns: minmax(280px, 360px) minmax(0, 1fr);
+  gap: 20px;
+  align-items: start;
+}
+
+.admin-form-shell,
+.admin-catalog-shell {
+  display: grid;
+  gap: 14px;
+  align-content: start;
+}
+
+.admin-generated-key {
+  margin-bottom: 16px;
+}
+
+.admin-key-value {
+  margin: 0;
+  font-family: "Oxanium", sans-serif;
+  font-size: clamp(1.4rem, 3.2vw, 2rem);
+  line-height: 1.05;
+  word-break: break-word;
+}
+
+.admin-card-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: start;
+  gap: 12px;
+}
+
+.admin-card-meta p {
+  margin: 0;
+}
+
+.admin-pill {
+  display: inline-flex;
+  align-items: center;
+  min-height: 32px;
+  padding: 0 12px;
+  border-radius: 999px;
+  border: 1px solid rgba(148, 163, 184, 0.16);
+  background: rgba(255, 255, 255, 0.03);
+  color: var(--text);
+  font-size: 0.82rem;
+  white-space: nowrap;
+}
+
+.admin-pill-success {
+  border-color: rgba(52, 211, 153, 0.26);
+  background: rgba(52, 211, 153, 0.12);
+  color: #bbf7d0;
+}
+
+.admin-pill-warning {
+  border-color: rgba(251, 191, 36, 0.26);
+  background: rgba(251, 191, 36, 0.12);
+  color: #fde68a;
+}
+
+.admin-user-card,
+.admin-key-card,
 .admin-game-item {
   align-content: start;
 }

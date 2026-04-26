@@ -1,4 +1,8 @@
 const page = document.body.dataset.page;
+const adminDashboardState = {
+  lastGeneratedKey: "",
+  lastGeneratedEmail: ""
+};
 
 async function api(path, options = {}) {
   const response = await fetch(path, {
@@ -22,6 +26,38 @@ function qs(id) {
 function setText(id, value) {
   const element = typeof id === "string" ? qs(id) : id;
   if (element) element.textContent = value;
+}
+
+function formatDateTime(value) {
+  if (!value) return "Not yet";
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) return value;
+  return parsed.toLocaleString([], {
+    year: "numeric",
+    month: "short",
+    day: "numeric",
+    hour: "numeric",
+    minute: "2-digit"
+  });
+}
+
+async function copyText(value) {
+  const text = String(value || "");
+  if (!text) throw new Error("Nothing to copy yet.");
+  if (navigator.clipboard?.writeText) {
+    await navigator.clipboard.writeText(text);
+    return;
+  }
+
+  const helper = document.createElement("textarea");
+  helper.value = text;
+  helper.setAttribute("readonly", "readonly");
+  helper.style.position = "fixed";
+  helper.style.opacity = "0";
+  document.body.appendChild(helper);
+  helper.select();
+  document.execCommand("copy");
+  document.body.removeChild(helper);
 }
 
 function escapeHtml(value) {
@@ -379,14 +415,56 @@ async function initConsolePage(platform) {
 }
 
 function renderUserCard(user) {
-  const actionLabel = user.verified ? "Verified" : user.paymentStatus === "pending" ? "Approve And Generate Key" : "Generate Key";
-  const disabled = user.verified ? "disabled" : "";
+  const approveDisabled = user.verified || user.paymentStatus === "approved";
+  const generateDisabled = user.verified || user.paymentStatus !== "approved";
+  const statusClass = user.verified
+    ? "admin-pill admin-pill-success"
+    : user.paymentStatus === "approved"
+      ? "admin-pill admin-pill-warning"
+      : user.paymentStatus === "pending"
+        ? "admin-pill admin-pill-warning"
+        : "admin-pill";
+  const statusLabel = user.verified
+    ? "Verified"
+    : user.paymentStatus === "approved"
+      ? "Approved"
+      : user.paymentStatus === "pending"
+        ? "Pending Payment"
+        : "Unpaid";
   return `
-    <article class="card compact-card">
-      <p><strong>${escapeHtml(user.name)}</strong></p>
-      <p>${escapeHtml(user.email)}</p>
-      <p>Status: ${escapeHtml(user.paymentStatus)}${user.verified ? " / verified" : ""}</p>
-      <button class="btn btn-primary admin-approve-btn" type="button" data-user-id="${escapeHtml(user.id)}" ${disabled}>${actionLabel}</button>
+    <article class="card compact-card admin-user-card">
+      <div class="admin-card-head">
+        <div class="stack" style="gap:4px;">
+          <strong>${escapeHtml(user.email)}</strong>
+          <span class="muted">${escapeHtml(user.name || "Player")}</span>
+        </div>
+        <span class="${statusClass}">${statusLabel}</span>
+      </div>
+      <div class="stack admin-card-meta">
+        <p>Payment: ${escapeHtml(user.paymentStatus)}</p>
+        <p>Unused keys: ${escapeHtml(String(user.unusedKeyCount || 0))}</p>
+        <p>Latest key: ${escapeHtml(user.latestKeyPreview || "No key yet")}</p>
+      </div>
+      <div class="inline-actions">
+        <button class="btn btn-secondary admin-approve-user-btn" type="button" data-user-id="${escapeHtml(user.id)}" ${approveDisabled ? "disabled" : ""}>Approve User</button>
+        <button class="btn btn-primary admin-generate-key-btn" type="button" data-user-id="${escapeHtml(user.id)}" data-user-email="${escapeHtml(user.email)}" ${generateDisabled ? "disabled" : ""}>Generate Key</button>
+      </div>
+    </article>
+  `;
+}
+
+function renderKeyCard(key) {
+  return `
+    <article class="card compact-card admin-key-card">
+      <div class="admin-card-head">
+        <strong>${escapeHtml(key.keyPreview || "Hidden Key")}</strong>
+        <span class="${key.used ? "admin-pill" : "admin-pill admin-pill-success"}">${key.used ? "Used" : "Unused"}</span>
+      </div>
+      <div class="stack admin-card-meta">
+        <p>Linked email: ${escapeHtml(key.email || "Not linked")}</p>
+        <p>Created: ${escapeHtml(formatDateTime(key.createdAt))}</p>
+        <p>${key.used ? `Used: ${escapeHtml(formatDateTime(key.usedAt))}` : "Ready to activate"}</p>
+      </div>
     </article>
   `;
 }
@@ -394,6 +472,10 @@ function renderUserCard(user) {
 function renderAdminGameCard(game) {
   return `
     <article class="card compact-card admin-game-item">
+      <div class="admin-card-head">
+        <strong>${escapeHtml(game.name)}</strong>
+        <span class="${game.platform === "PC" ? "admin-pill admin-pill-success" : "admin-pill"}">${escapeHtml(game.platform)}</span>
+      </div>
       <input class="input admin-edit-field" data-field="name" data-game-id="${escapeHtml(game.id)}" value="${escapeHtml(game.name)}">
       <select class="select admin-edit-field" data-field="platform" data-game-id="${escapeHtml(game.id)}">
         <option value="PC" ${game.platform === "PC" ? "selected" : ""}>PC</option>
@@ -402,42 +484,73 @@ function renderAdminGameCard(game) {
       </select>
       <input class="input admin-edit-field" data-field="image" data-game-id="${escapeHtml(game.id)}" value="${escapeHtml(game.image || "")}" placeholder="Image URL">
       <textarea class="textarea admin-edit-field" data-field="description" data-game-id="${escapeHtml(game.id)}" rows="3">${escapeHtml(game.description)}</textarea>
-      <input class="input admin-edit-field" data-field="accountId" data-game-id="${escapeHtml(game.id)}" placeholder="New account ID for PC only">
+      <input class="input admin-edit-field" data-field="accountId" data-game-id="${escapeHtml(game.id)}" placeholder="New ID for PC only">
       <input class="input admin-edit-field" data-field="accountPassword" data-game-id="${escapeHtml(game.id)}" placeholder="New password for PC only">
+      <p class="muted">Credentials saved: ${game.hasCredentials ? "Yes" : "No"}</p>
       <div class="inline-actions">
-        <button class="btn btn-secondary admin-save-game-btn" type="button" data-game-id="${escapeHtml(game.id)}">Save</button>
+        <button class="btn btn-primary admin-save-game-btn" type="button" data-game-id="${escapeHtml(game.id)}">Save</button>
         <button class="btn btn-danger admin-delete-game-btn" type="button" data-game-id="${escapeHtml(game.id)}">Delete</button>
       </div>
     </article>
   `;
 }
 
+function renderGeneratedKey(result) {
+  adminDashboardState.lastGeneratedKey = result?.generatedKey || "";
+  adminDashboardState.lastGeneratedEmail = result?.user?.email || "";
+  const card = qs("generatedKeyCard");
+  if (!card) return;
+  card.classList.toggle("hidden", !adminDashboardState.lastGeneratedKey);
+  setText("generatedKeyValue", adminDashboardState.lastGeneratedKey || "----");
+  setText(
+    "generatedKeyMeta",
+    adminDashboardState.lastGeneratedEmail
+      ? `Linked to ${adminDashboardState.lastGeneratedEmail}`
+      : "Create a key from the Users section to show it here."
+  );
+}
+
 async function loadAdmin() {
-  const data = await api("/api/admin/overview");
-  setText("statUsers", String(data.stats.users));
-  setText("statVerifiedUsers", String(data.stats.verifiedUsers));
-  setText("statPendingPayments", String(data.stats.pendingPayments));
-  setText("statPcGames", String(data.stats.pcGames));
-  setText("adminNoticeCopy", data.settings.adminNotice);
+  const [overview, usersResult, keysResult, gamesResult] = await Promise.all([
+    api("/api/admin/overview"),
+    api("/api/admin/users"),
+    api("/api/admin/keys"),
+    api("/api/admin/games")
+  ]);
+
+  setText("statUsers", String(overview.stats.users || 0));
+  setText("statVerifiedUsers", String(overview.stats.verifiedUsers || 0));
+  setText("statPendingPayments", String(overview.stats.pendingPayments || 0));
+  setText("statUnusedKeys", String(overview.stats.unusedKeys || 0));
+  setText("adminNoticeCopy", overview.settings.adminNotice);
+
+  const users = usersResult.items || [];
+  const keys = keysResult.items || [];
+  const games = gamesResult.items || [];
 
   const usersWrap = qs("adminUsersGrid");
   if (usersWrap) {
-    usersWrap.innerHTML = data.users.length ? data.users.map(renderUserCard).join("") : `<div class="empty">No users yet.</div>`;
+    usersWrap.innerHTML = users.length ? users.map(renderUserCard).join("") : `<div class="empty">No users have signed in yet.</div>`;
+  }
+
+  const keysWrap = qs("adminKeysGrid");
+  if (keysWrap) {
+    keysWrap.innerHTML = keys.length ? keys.map(renderKeyCard).join("") : `<div class="empty">No access keys created yet.</div>`;
   }
 
   const gamesWrap = qs("adminGamesGrid");
   if (gamesWrap) {
-    gamesWrap.innerHTML = data.games.length ? data.games.map(renderAdminGameCard).join("") : `<div class="empty">No games added yet.</div>`;
+    gamesWrap.innerHTML = games.length ? games.map(renderAdminGameCard).join("") : `<div class="empty">No games added yet.</div>`;
   }
 
-  if (qs("settingsSiteTitle")) qs("settingsSiteTitle").value = data.settings.siteTitle || "";
-  if (qs("settingsSiteTagline")) qs("settingsSiteTagline").value = data.settings.siteTagline || "";
-  if (qs("settingsLogoUrl")) qs("settingsLogoUrl").value = data.settings.logoUrl || "";
-  if (qs("settingsQrUrl")) qs("settingsQrUrl").value = data.settings.paymentQrUrl || "";
-  if (qs("settingsTelegramUrl")) qs("settingsTelegramUrl").value = data.settings.telegramUrl || "";
-  if (qs("settingsAccessPrice")) qs("settingsAccessPrice").value = data.settings.accessPriceInr || 20;
-  if (qs("settingsDescription")) qs("settingsDescription").value = data.settings.siteDescription || "";
-  if (qs("settingsAdminNotice")) qs("settingsAdminNotice").value = data.settings.adminNotice || "";
+  if (qs("settingsSiteTitle")) qs("settingsSiteTitle").value = overview.settings.siteTitle || "";
+  if (qs("settingsSiteTagline")) qs("settingsSiteTagline").value = overview.settings.siteTagline || "";
+  if (qs("settingsLogoUrl")) qs("settingsLogoUrl").value = overview.settings.logoUrl || "";
+  if (qs("settingsQrUrl")) qs("settingsQrUrl").value = overview.settings.paymentQrUrl || "";
+  if (qs("settingsTelegramUrl")) qs("settingsTelegramUrl").value = overview.settings.telegramUrl || "";
+  if (qs("settingsAccessPrice")) qs("settingsAccessPrice").value = overview.settings.accessPriceInr || 20;
+  if (qs("settingsDescription")) qs("settingsDescription").value = overview.settings.siteDescription || "";
+  if (qs("settingsAdminNotice")) qs("settingsAdminNotice").value = overview.settings.adminNotice || "";
 }
 
 async function initAdminPage() {
@@ -453,14 +566,51 @@ async function initAdminPage() {
   }
 
   qs("adminUsersGrid")?.addEventListener("click", async (event) => {
-    const button = event.target.closest(".admin-approve-btn");
-    if (!button) return;
+    const approveButton = event.target.closest(".admin-approve-user-btn");
+    if (approveButton) {
+      try {
+        const result = await api("/api/admin/approve-user", {
+          method: "POST",
+          body: JSON.stringify({ userId: approveButton.dataset.userId })
+        });
+        setText("adminUsersStatus", `${result.user.email} is approved and ready for key delivery.`);
+        await loadAdmin();
+      } catch (error) {
+        setText("adminUsersStatus", error.message);
+      }
+      return;
+    }
+
+    const generateButton = event.target.closest(".admin-generate-key-btn");
+    if (!generateButton) return;
+
     try {
-      const result = await api(`/api/admin/users/${encodeURIComponent(button.dataset.userId)}/approve`, {
-        method: "POST"
+      const result = await api("/api/admin/generate-key", {
+        method: "POST",
+        body: JSON.stringify({ userId: generateButton.dataset.userId })
       });
-      setText("adminKeyStatus", `Key generated for ${result.user.email}: ${result.generatedKey}`);
+      renderGeneratedKey(result);
+      setText("adminKeyStatus", `Key generated for ${result.user.email}. Copy it from the card above.`);
+      setText("adminUsersStatus", `${result.user.email} now has an unused one-time key.`);
       await loadAdmin();
+    } catch (error) {
+      setText("adminKeyStatus", error.message);
+    }
+  });
+
+  qs("refreshAdminKeysButton")?.addEventListener("click", async () => {
+    try {
+      await loadAdmin();
+      setText("adminKeyStatus", "Key list refreshed.");
+    } catch (error) {
+      setText("adminKeyStatus", error.message);
+    }
+  });
+
+  qs("copyGeneratedKeyButton")?.addEventListener("click", async () => {
+    try {
+      await copyText(adminDashboardState.lastGeneratedKey);
+      setText("adminKeyStatus", "Key copied to clipboard.");
     } catch (error) {
       setText("adminKeyStatus", error.message);
     }
@@ -469,7 +619,7 @@ async function initAdminPage() {
   qs("adminGameForm")?.addEventListener("submit", async (event) => {
     event.preventDefault();
     try {
-      await api("/api/admin/games", {
+      await api("/api/admin/game", {
         method: "POST",
         body: JSON.stringify({
           name: qs("adminGameName")?.value || "",
@@ -483,6 +633,15 @@ async function initAdminPage() {
       setText("adminGameStatus", "Game added successfully.");
       event.target.reset();
       await loadAdmin();
+    } catch (error) {
+      setText("adminGameStatus", error.message);
+    }
+  });
+
+  qs("refreshAdminGamesButton")?.addEventListener("click", async () => {
+    try {
+      await loadAdmin();
+      setText("adminGameStatus", "Game catalog refreshed.");
     } catch (error) {
       setText("adminGameStatus", error.message);
     }
@@ -543,6 +702,8 @@ async function initAdminPage() {
       setText("adminSettingsStatus", error.message);
     }
   });
+
+  renderGeneratedKey();
 }
 
 async function init() {

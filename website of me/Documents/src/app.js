@@ -148,40 +148,208 @@ function createApp() {
     };
   }
 
-  function adminPayload() {
+  function sortByNewest(items, field = "createdAt") {
+    return [...items].sort((left, right) => String(right?.[field] || "").localeCompare(String(left?.[field] || "")));
+  }
+
+  function adminKeyRecord(key) {
+    return {
+      id: key.id,
+      userId: key.userId,
+      email: key.email,
+      keyPreview: key.keyPreview,
+      used: key.used === true,
+      createdAt: key.createdAt,
+      createdBy: key.createdBy,
+      usedAt: key.usedAt
+    };
+  }
+
+  function adminGameRecord(game) {
+    return {
+      id: game.id,
+      slug: game.slug,
+      platform: game.platform,
+      name: game.name,
+      image: game.image,
+      description: game.description,
+      hasCredentials: Boolean(game.credentialIdCipher && game.credentialPasswordCipher),
+      createdAt: game.createdAt,
+      updatedAt: game.updatedAt
+    };
+  }
+
+  function adminUserRecord(user, keys = []) {
+    const unusedKeys = keys.filter((item) => !item.used);
+    const usedKeys = keys.filter((item) => item.used);
+    return {
+      id: user.id,
+      email: user.email,
+      name: user.name,
+      paymentStatus: user.paymentStatus,
+      verified: user.verified,
+      hasUnusedKey: unusedKeys.length > 0,
+      unusedKeyCount: unusedKeys.length,
+      usedKeyCount: usedKeys.length,
+      latestKeyPreview: keys[0]?.keyPreview || "",
+      keyAssignedAt: user.keyAssignedAt,
+      keyUsedAt: user.keyUsedAt,
+      createdAt: user.createdAt,
+      updatedAt: user.updatedAt
+    };
+  }
+
+  function getAdminKeys() {
+    return sortByNewest(readStore().keys.map(adminKeyRecord));
+  }
+
+  function getAdminGames() {
+    return sortByNewest(readStore().games.map(adminGameRecord));
+  }
+
+  function getAdminUsers() {
+    const store = readStore();
+    const keysByUser = new Map();
+    store.keys.forEach((key) => {
+      const list = keysByUser.get(key.userId) || [];
+      list.push(adminKeyRecord(key));
+      keysByUser.set(key.userId, list);
+    });
+
+    keysByUser.forEach((keys, userId) => {
+      keysByUser.set(userId, sortByNewest(keys));
+    });
+
+    return sortByNewest(
+      store.users.map((user) => adminUserRecord(user, keysByUser.get(user.id) || [])),
+      "updatedAt"
+    );
+  }
+
+  function getAdminStats() {
     const store = readStore();
     return {
-      users: store.users.map((user) => ({
-        id: user.id,
-        email: user.email,
-        name: user.name,
-        paymentStatus: user.paymentStatus,
-        verified: user.verified,
-        keyAssignedAt: user.keyAssignedAt,
-        keyUsedAt: user.keyUsedAt,
-        createdAt: user.createdAt
-      })),
-      stats: {
-        users: store.users.length,
-        verifiedUsers: store.users.filter((item) => item.verified).length,
-        pendingPayments: store.users.filter((item) => item.paymentStatus === "pending").length,
-        pcGames: store.games.filter((item) => item.platform === "PC").length,
-        ps4Games: store.games.filter((item) => item.platform === "PS4").length,
-        ps5Games: store.games.filter((item) => item.platform === "PS5").length
-      },
-      games: store.games.map((game) => ({
-        id: game.id,
-        slug: game.slug,
-        platform: game.platform,
-        name: game.name,
-        image: game.image,
-        description: game.description,
-        hasCredentials: Boolean(game.credentialIdCipher && game.credentialPasswordCipher),
-        createdAt: game.createdAt,
-        updatedAt: game.updatedAt
-      })),
-      settings: store.settings
+      users: store.users.length,
+      verifiedUsers: store.users.filter((item) => item.verified).length,
+      pendingPayments: store.users.filter((item) => item.paymentStatus === "pending").length,
+      approvedUsers: store.users.filter((item) => item.paymentStatus === "approved").length,
+      unusedKeys: store.keys.filter((item) => item.used !== true).length,
+      usedKeys: store.keys.filter((item) => item.used === true).length,
+      pcGames: store.games.filter((item) => item.platform === "PC").length,
+      ps4Games: store.games.filter((item) => item.platform === "PS4").length,
+      ps5Games: store.games.filter((item) => item.platform === "PS5").length
     };
+  }
+
+  function adminPayload() {
+    return {
+      users: getAdminUsers(),
+      keys: getAdminKeys(),
+      games: getAdminGames(),
+      stats: getAdminStats(),
+      settings: getSettings()
+    };
+  }
+
+  function approveUserAccess(userId) {
+    const normalizedUserId = String(userId || "").trim();
+    if (!normalizedUserId) throw createHttpError(400, "Select a user first.");
+
+    const store = updateStore((draft) => {
+      const user = draft.users.find((item) => item.id === normalizedUserId);
+      if (!user) throw createHttpError(404, "User not found.");
+      const now = new Date().toISOString();
+      user.paymentStatus = "approved";
+      user.updatedAt = now;
+      return draft;
+    });
+
+    const user = store.users.find((item) => item.id === normalizedUserId);
+    return getAdminUsers().find((item) => item.id === user.id);
+  }
+
+  function generateAccessKeyForUser(userId) {
+    const normalizedUserId = String(userId || "").trim();
+    if (!normalizedUserId) throw createHttpError(400, "Select a user first.");
+
+    let generatedKey = "";
+    let createdKeyId = "";
+
+    const store = updateStore((draft) => {
+      const user = draft.users.find((item) => item.id === normalizedUserId);
+      if (!user) throw createHttpError(404, "User not found.");
+      if (user.verified) throw createHttpError(400, "This user already unlocked full access.");
+      if (user.paymentStatus !== "approved") {
+        throw createHttpError(400, "Approve this user before generating a key.");
+      }
+
+      const now = new Date().toISOString();
+      draft.keys = draft.keys.filter((item) => !(item.userId === user.id && item.used === false));
+
+      do {
+        generatedKey = makeAccessKey();
+      } while (draft.keys.some((item) => item.keyHash === hashKey(generatedKey)));
+
+      createdKeyId = createId("key");
+      draft.keys.unshift({
+        id: createdKeyId,
+        userId: user.id,
+        email: user.email,
+        keyHash: hashKey(generatedKey),
+        keyPreview: `${generatedKey.slice(0, 4)}-${generatedKey.slice(-4)}`,
+        used: false,
+        createdAt: now,
+        createdBy: "admin",
+        usedAt: ""
+      });
+
+      user.keyAssignedAt = now;
+      user.updatedAt = now;
+      return draft;
+    });
+
+    const user = getAdminUsers().find((item) => item.id === normalizedUserId);
+    const key = adminKeyRecord(store.keys.find((item) => item.id === createdKeyId));
+
+    return {
+      ok: true,
+      user,
+      key,
+      generatedKey
+    };
+  }
+
+  function createAdminGame(input) {
+    const platform = String(input?.platform || "PC").trim().toUpperCase();
+    const name = String(input?.name || "").trim();
+    const image = String(input?.image || "").trim();
+    const description = String(input?.description || "").trim();
+    const accountId = String(input?.accountId || "").trim();
+    const accountPassword = String(input?.accountPassword || "").trim();
+
+    if (!["PC", "PS4", "PS5"].includes(platform)) throw createHttpError(400, "Choose a valid platform.");
+    if (!name || !description) throw createHttpError(400, "Game name and description are required.");
+    if (platform === "PC" && (!accountId || !accountPassword)) {
+      throw createHttpError(400, "PC games require an ID and password.");
+    }
+
+    const store = updateStore((draft) => {
+      draft.games.unshift({
+        id: createId("game"),
+        slug: slugify(`${platform}-${name}`),
+        platform,
+        name,
+        image,
+        description,
+        credentialIdCipher: platform === "PC" ? encryptSecret(accountId) : "",
+        credentialPasswordCipher: platform === "PC" ? encryptSecret(accountPassword) : "",
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString()
+      });
+      return draft;
+    });
+
+    return adminGameRecord(store.games[0]);
   }
 
   function requireLogin(req, res, next) {
@@ -466,109 +634,126 @@ function createApp() {
   });
 
   app.get("/api/admin/overview", requireAdmin, (_req, res) => {
-    res.json(adminPayload());
-  });
-
-  app.post("/api/admin/games", requireAdmin, (req, res) => {
-    const platform = String(req.body?.platform || "PC").trim().toUpperCase();
-    const name = String(req.body?.name || "").trim();
-    const image = String(req.body?.image || "").trim();
-    const description = String(req.body?.description || "").trim();
-    const accountId = String(req.body?.accountId || "").trim();
-    const accountPassword = String(req.body?.accountPassword || "").trim();
-    if (!["PC", "PS4", "PS5"].includes(platform)) return res.status(400).json({ error: "Invalid platform." });
-    if (!name || !description) return res.status(400).json({ error: "Name and description are required." });
-    if (platform === "PC" && (!accountId || !accountPassword)) {
-      return res.status(400).json({ error: "PC games require an ID and password." });
-    }
-
-    const store = updateStore((draft) => {
-      draft.games.unshift({
-        id: createId("game"),
-        slug: slugify(`${platform}-${name}`),
-        platform,
-        name,
-        image,
-        description,
-        credentialIdCipher: platform === "PC" ? encryptSecret(accountId) : "",
-        credentialPasswordCipher: platform === "PC" ? encryptSecret(accountPassword) : "",
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString()
-      });
-      return draft;
-    });
-
-    res.status(201).json(store.games[0]);
-  });
-
-  app.put("/api/admin/games/:id", requireAdmin, (req, res) => {
-    const store = updateStore((draft) => {
-      const game = draft.games.find((item) => item.id === req.params.id);
-      if (!game) throw new Error("Game not found.");
-      const name = String(req.body?.name || game.name).trim();
-      const image = String(req.body?.image || game.image).trim();
-      const description = String(req.body?.description || game.description).trim();
-      const platform = String(req.body?.platform || game.platform).trim().toUpperCase();
-      if (!["PC", "PS4", "PS5"].includes(platform)) throw new Error("Invalid platform.");
-      game.name = name;
-      game.slug = slugify(`${platform}-${name}`);
-      game.platform = platform;
-      game.image = image;
-      game.description = description;
-      if (platform === "PC") {
-        const accountId = String(req.body?.accountId || "").trim();
-        const accountPassword = String(req.body?.accountPassword || "").trim();
-        if (accountId) game.credentialIdCipher = encryptSecret(accountId);
-        if (accountPassword) game.credentialPasswordCipher = encryptSecret(accountPassword);
-      } else {
-        game.credentialIdCipher = "";
-        game.credentialPasswordCipher = "";
-      }
-      game.updatedAt = new Date().toISOString();
-      return draft;
-    });
-    res.json(store.games.find((item) => item.id === req.params.id));
-  });
-
-  app.delete("/api/admin/games/:id", requireAdmin, (req, res) => {
-    updateStore((draft) => {
-      draft.games = draft.games.filter((item) => item.id !== req.params.id);
-      return draft;
-    });
-    res.json({ ok: true });
-  });
-
-  app.post("/api/admin/users/:id/approve", requireAdmin, (req, res) => {
-    const store = updateStore((draft) => {
-      const user = draft.users.find((item) => item.id === req.params.id);
-      if (!user) throw new Error("User not found.");
-      user.paymentStatus = "approved";
-      user.keyAssignedAt = new Date().toISOString();
-      user.updatedAt = user.keyAssignedAt;
-      return draft;
-    });
-    const user = store.users.find((item) => item.id === req.params.id);
-    const keyValue = makeAccessKey();
-    updateStore((draft) => {
-      draft.keys = draft.keys.filter((item) => !(item.userId === user.id && item.used === false));
-      draft.keys.unshift({
-        id: createId("key"),
-        userId: user.id,
-        email: user.email,
-        keyHash: hashKey(keyValue),
-        keyPreview: `${keyValue.slice(0, 4)}-${keyValue.slice(-4)}`,
-        used: false,
-        createdAt: new Date().toISOString(),
-        createdBy: "admin",
-        usedAt: ""
-      });
-      return draft;
-    });
     res.json({
-      ok: true,
-      user: publicUser(user),
-      generatedKey: keyValue
+      stats: getAdminStats(),
+      settings: getSettings()
     });
+  });
+
+  app.get("/api/admin/users", requireAdmin, (_req, res) => {
+    res.json({ items: getAdminUsers() });
+  });
+
+  app.post("/api/admin/approve-user", requireAdmin, (req, res, next) => {
+    try {
+      const user = approveUserAccess(req.body?.userId);
+      res.json({ ok: true, user });
+    } catch (error) {
+      next(error);
+    }
+  });
+
+  app.post("/api/admin/users/:id/approve", requireAdmin, (req, res, next) => {
+    try {
+      const user = approveUserAccess(req.params.id);
+      res.json({ ok: true, user });
+    } catch (error) {
+      next(error);
+    }
+  });
+
+  app.get("/api/admin/keys", requireAdmin, (_req, res) => {
+    res.json({ items: getAdminKeys() });
+  });
+
+  app.post("/api/admin/generate-key", requireAdmin, (req, res, next) => {
+    try {
+      res.json(generateAccessKeyForUser(req.body?.userId));
+    } catch (error) {
+      next(error);
+    }
+  });
+
+  app.get("/api/admin/games", requireAdmin, (_req, res) => {
+    res.json({ items: getAdminGames() });
+  });
+
+  app.post("/api/admin/game", requireAdmin, (req, res, next) => {
+    try {
+      const item = createAdminGame(req.body);
+      res.status(201).json({ item });
+    } catch (error) {
+      next(error);
+    }
+  });
+
+  app.post("/api/admin/games", requireAdmin, (req, res, next) => {
+    try {
+      const item = createAdminGame(req.body);
+      res.status(201).json({ item });
+    } catch (error) {
+      next(error);
+    }
+  });
+
+  app.put("/api/admin/games/:id", requireAdmin, (req, res, next) => {
+    try {
+      const store = updateStore((draft) => {
+        const game = draft.games.find((item) => item.id === req.params.id);
+        if (!game) throw createHttpError(404, "Game not found.");
+
+        const name = String(req.body?.name || game.name).trim();
+        const image = String(req.body?.image || game.image).trim();
+        const description = String(req.body?.description || game.description).trim();
+        const platform = String(req.body?.platform || game.platform).trim().toUpperCase();
+
+        if (!["PC", "PS4", "PS5"].includes(platform)) throw createHttpError(400, "Choose a valid platform.");
+        if (!name || !description) throw createHttpError(400, "Game name and description are required.");
+
+        game.name = name;
+        game.slug = slugify(`${platform}-${name}`);
+        game.platform = platform;
+        game.image = image;
+        game.description = description;
+
+        if (platform === "PC") {
+          const accountId = String(req.body?.accountId || "").trim();
+          const accountPassword = String(req.body?.accountPassword || "").trim();
+          if (accountId) game.credentialIdCipher = encryptSecret(accountId);
+          if (accountPassword) game.credentialPasswordCipher = encryptSecret(accountPassword);
+          if (!game.credentialIdCipher || !game.credentialPasswordCipher) {
+            throw createHttpError(400, "PC games must keep an ID and password configured.");
+          }
+        } else {
+          game.credentialIdCipher = "";
+          game.credentialPasswordCipher = "";
+        }
+
+        game.updatedAt = new Date().toISOString();
+        return draft;
+      });
+
+      const item = adminGameRecord(store.games.find((game) => game.id === req.params.id));
+      res.json({ item });
+    } catch (error) {
+      next(error);
+    }
+  });
+
+  app.delete("/api/admin/games/:id", requireAdmin, (req, res, next) => {
+    try {
+      let removed = false;
+      updateStore((draft) => {
+        const before = draft.games.length;
+        draft.games = draft.games.filter((item) => item.id !== req.params.id);
+        removed = draft.games.length !== before;
+        return draft;
+      });
+      if (!removed) throw createHttpError(404, "Game not found.");
+      res.json({ ok: true });
+    } catch (error) {
+      next(error);
+    }
   });
 
   app.post("/api/admin/settings", requireAdmin, (req, res) => {
@@ -614,7 +799,7 @@ function createApp() {
   });
 
   app.use((error, _req, res, _next) => {
-    res.status(500).json({ error: error.message || "Internal server error." });
+    res.status(error.status || 500).json({ error: error.message || "Internal server error." });
   });
 
   return app;
@@ -629,6 +814,12 @@ function createApp() {
       return draft;
     });
   }
+}
+
+function createHttpError(status, message) {
+  const error = new Error(message);
+  error.status = status;
+  return error;
 }
 
 function normalizePagePath(pathname) {
