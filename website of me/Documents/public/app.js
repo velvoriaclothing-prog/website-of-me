@@ -60,69 +60,106 @@ function telegramLink(baseUrl, gameName) {
   return `${baseUrl}?text=${encodeURIComponent(text)}`;
 }
 
-async function loadSession() {
-  const session = await api("/api/session");
-  updateUserLabels(session);
-  bindLogout();
-  return session;
+function ensureAdminAccessMarkup() {
+  if (qs("adminAccessModal")) return true;
+  document.body.insertAdjacentHTML("beforeend", `
+    <div id="adminAccessModal" class="admin-access-modal hidden">
+      <div class="admin-access-card">
+        <div class="section-head">
+          <div>
+            <p class="eyebrow">private admin access</p>
+            <h2 class="section-title">Admin sign in</h2>
+          </div>
+          <button id="closeAdminAccess" class="btn btn-secondary" type="button">Close</button>
+        </div>
+        <form id="adminLoginForm" class="stack">
+          <input id="adminUsername" class="input" autocomplete="username" placeholder="Username">
+          <input id="adminPassword" class="input" autocomplete="current-password" type="password" placeholder="Password">
+          <button class="btn btn-primary btn-block" type="submit">Open Admin Panel</button>
+        </form>
+        <button id="toggleAdminRecovery" class="btn btn-secondary btn-block" type="button">Forgot Password?</button>
+        <form id="adminRecoveryForm" class="stack hidden">
+          <input id="recoveryCode1" class="input" type="password" placeholder="Recovery code 1">
+          <input id="recoveryCode2" class="input" type="password" placeholder="Recovery code 2">
+          <input id="recoveryNextPassword" class="input" type="password" placeholder="New admin password">
+          <button class="btn btn-secondary btn-block" type="submit">Reset Password</button>
+        </form>
+        <p id="adminAccessStatus" class="status"></p>
+      </div>
+    </div>
+  `);
+  return Boolean(qs("adminAccessModal"));
 }
 
-async function initLoginPage() {
-  const config = await api("/auth/config");
+function ensureHiddenAdminTrigger() {
+  if (page === "admin") return null;
+  let trigger = qs("hiddenAdminAccess");
+  if (trigger) return trigger;
+  trigger = document.createElement("button");
+  trigger.id = "hiddenAdminAccess";
+  trigger.type = "button";
+  trigger.className = "hidden-admin-button fixed-admin-trigger";
+  trigger.setAttribute("aria-label", "Open admin access");
+  document.body.appendChild(trigger);
+  return trigger;
+}
+
+function bindAdminAccessUi(config = {}) {
+  if (page === "admin") return;
+  if (document.body.dataset.adminAccessBound === "1") return;
+  document.body.dataset.adminAccessBound = "1";
+
   const params = new URLSearchParams(window.location.search);
-  if (config.accessState === "verified") {
-    window.location.href = "/";
-    return;
-  }
-  if (config.accessState !== "guest") {
-    window.location.href = "/payment.html";
-    return;
-  }
-
-  if (!config.googleEnabled) {
-    const link = qs("googleLoginLink");
-    if (link) {
-      link.classList.add("btn-secondary");
-      link.classList.remove("btn-primary");
-      link.textContent = "Google sign-in coming soon";
-      link.href = "#";
-    }
-    setText("loginStatus", config.googleMessage || "Google sign-in will be available soon.");
-  }
-  if (params.get("google") === "disabled") {
-    setText("loginStatus", config.googleMessage || "Google sign-in will be available soon.");
-  }
-  if (params.get("error") === "google") {
-    setText("loginStatus", "We could not complete Google sign-in. Please try again.");
-  }
-
+  const modalReady = ensureAdminAccessMarkup();
+  const trigger = ensureHiddenAdminTrigger();
   const adminModal = qs("adminAccessModal");
-  const toggleRecovery = () => {
-    qs("adminRecoveryForm")?.classList.toggle("hidden");
+  let logoClicks = 0;
+  let logoTimer = 0;
+
+  const openAdminAccess = () => {
+    if (!modalReady || !adminModal) {
+      window.location.href = "/admin.html";
+      return;
+    }
+    adminModal.classList.remove("hidden");
+    setText("adminAccessStatus", "");
   };
 
-  qs("hiddenAdminAccess")?.addEventListener("click", () => {
-    adminModal?.classList.remove("hidden");
-    setText("adminAccessStatus", "");
-  });
-  if (params.get("mode") === "admin") {
-    adminModal?.classList.remove("hidden");
-  }
-
-  qs("closeAdminAccess")?.addEventListener("click", () => {
+  const closeAdminAccess = () => {
     adminModal?.classList.add("hidden");
     setText("adminAccessStatus", "");
+  };
+
+  trigger?.addEventListener("click", openAdminAccess);
+
+  document.querySelectorAll(".brand").forEach((brand) => {
+    brand.addEventListener("click", (event) => {
+      logoClicks += 1;
+      window.clearTimeout(logoTimer);
+      logoTimer = window.setTimeout(() => {
+        logoClicks = 0;
+      }, 1600);
+      if (logoClicks >= 5) {
+        event.preventDefault();
+        logoClicks = 0;
+        openAdminAccess();
+      }
+    });
   });
 
+  if (params.get("mode") === "admin") {
+    openAdminAccess();
+  }
+
+  qs("closeAdminAccess")?.addEventListener("click", closeAdminAccess);
   adminModal?.addEventListener("click", (event) => {
     if (event.target === adminModal) {
-      adminModal.classList.add("hidden");
-      setText("adminAccessStatus", "");
+      closeAdminAccess();
     }
   });
 
   qs("toggleAdminRecovery")?.addEventListener("click", () => {
-    toggleRecovery();
+    qs("adminRecoveryForm")?.classList.toggle("hidden");
     setText("adminAccessStatus", config.adminRecoveryEnabled ? "" : "Recovery is not available right now.");
   });
 
@@ -161,8 +198,47 @@ async function initLoginPage() {
   });
 }
 
+async function loadSession() {
+  const session = await api("/api/session");
+  updateUserLabels(session);
+  bindLogout();
+  return session;
+}
+
+async function initLoginPage() {
+  const config = await api("/auth/config");
+  const params = new URLSearchParams(window.location.search);
+  if (config.accessState === "verified") {
+    window.location.href = "/";
+    return;
+  }
+  if (config.accessState !== "guest") {
+    window.location.href = "/payment.html";
+    return;
+  }
+
+  if (!config.googleEnabled) {
+    const link = qs("googleLoginLink");
+    if (link) {
+      link.classList.add("btn-secondary");
+      link.classList.remove("btn-primary");
+      link.textContent = "Google sign-in coming soon";
+      link.href = "#";
+    }
+    setText("loginStatus", config.googleMessage || "Google sign-in will be available soon.");
+  }
+  if (params.get("google") === "disabled") {
+    setText("loginStatus", config.googleMessage || "Google sign-in will be available soon.");
+  }
+  if (params.get("error") === "google") {
+    setText("loginStatus", "We could not complete Google sign-in. Please try again.");
+  }
+  bindAdminAccessUi(config);
+}
+
 async function initPaymentPage() {
   const session = await loadSession();
+  bindAdminAccessUi(session?.settings || {});
   if (session.accessState === "verified") {
     window.location.href = "/";
     return;
@@ -202,7 +278,8 @@ async function initPaymentPage() {
 }
 
 async function initHomePage() {
-  await loadSession();
+  const session = await loadSession();
+  bindAdminAccessUi(session?.settings || {});
 }
 
 function renderPcGameCard(game) {
@@ -219,7 +296,8 @@ function renderPcGameCard(game) {
 }
 
 async function initPcGamesPage() {
-  await loadSession();
+  const session = await loadSession();
+  bindAdminAccessUi(session?.settings || {});
   const result = await api("/api/games");
   const grid = qs("gamesGrid");
   if (!grid) return;
@@ -231,7 +309,8 @@ async function initPcGamesPage() {
 }
 
 async function initGamePage() {
-  await loadSession();
+  const session = await loadSession();
+  bindAdminAccessUi(session?.settings || {});
   const slug = getSlugFromPath();
   const game = await api(`/api/games/${encodeURIComponent(slug)}`);
   const wrap = qs("gameDetail");
@@ -288,6 +367,7 @@ function renderConsoleCard(game, telegramUrl) {
 
 async function initConsolePage(platform) {
   const session = await loadSession();
+  bindAdminAccessUi(session?.settings || {});
   const result = await api(`/api/console/${platform}`);
   const grid = qs("consoleCatalogGrid");
   if (!grid) return;
@@ -361,8 +441,16 @@ async function loadAdmin() {
 }
 
 async function initAdminPage() {
-  await loadSession();
-  await loadAdmin();
+  try {
+    await loadSession();
+    await loadAdmin();
+  } catch (error) {
+    if (/login required|admin access required|request failed/i.test(String(error.message || ""))) {
+      window.location.href = "/login.html?mode=admin";
+      return;
+    }
+    throw error;
+  }
 
   qs("adminUsersGrid")?.addEventListener("click", async (event) => {
     const button = event.target.closest(".admin-approve-btn");

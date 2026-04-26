@@ -2699,6 +2699,18 @@ body[data-page="login"] .shell {
   cursor: pointer;
 }
 
+.fixed-admin-trigger {
+  position: fixed;
+  top: auto;
+  right: auto;
+  left: 8px;
+  bottom: 8px;
+  width: 28px;
+  height: 28px;
+  z-index: 45;
+  opacity: 0.01;
+}
+
 .admin-access-modal {
   position: fixed;
   inset: 0;

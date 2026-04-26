@@ -62,12 +62,25 @@ function createApp() {
 
   app.use("/vendor", express.static(nodeModulesDir, { maxAge: "1d", etag: true }));
   app.use("/assets", express.static(path.join(publicDir, "assets"), { maxAge: "1d", etag: true }));
-  app.use(express.static(publicDir, {
+  app.use((req, res, next) => {
+    if (req.path !== "/admin" && req.path !== "/admin.html") return next();
+    const session = getSession(req);
+    if (!session?.isAdmin) {
+      return res.redirect("/login.html?mode=admin");
+    }
+    return res.sendFile(path.join(publicDir, "admin.html"));
+  });
+
+  const publicStatic = express.static(publicDir, {
     etag: true,
     maxAge: "1h",
     index: false,
     extensions: false
-  }));
+  });
+  app.use((req, res, next) => {
+    if (req.path === "/" || req.path.endsWith(".html")) return next();
+    return publicStatic(req, res, next);
+  });
 
   function getSettings() {
     return readStore().settings;
@@ -590,6 +603,7 @@ function createApp() {
   ];
 
   pages.forEach((page) => {
+    if (page.route === "/admin" || page.route === "/admin.html") return;
     app.get(page.route, (_req, res) => {
       res.sendFile(path.join(publicDir, page.file));
     });
