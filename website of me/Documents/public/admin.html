@@ -23,46 +23,128 @@
       </div>
     </nav>
 
-    <header class="hero reveal" data-reveal>
-      <div class="hero-grid">
-        <div class="hero-main">
+    <section class="panel reveal admin-dashboard-shell" data-reveal>
+      <div class="section-head">
+        <div>
           <p class="eyebrow">admin backend</p>
-          <h1>Control users, one-time keys, and your full game catalog from one dashboard.</h1>
-          <p class="hero-copy" id="adminNoticeCopy">All access, content, and credential delivery is controlled from this dashboard.</p>
+          <h1 class="admin-dashboard-title">Admin Dashboard</h1>
         </div>
-        <aside class="hero-side">
-          <div class="metric-grid">
-            <article class="metric-card">
-              <span class="metric-label">Users</span>
-              <strong id="statUsers" class="metric-value">0</strong>
-            </article>
-            <article class="metric-card">
-              <span class="metric-label">Verified</span>
-              <strong id="statVerifiedUsers" class="metric-value">0</strong>
-            </article>
-            <article class="metric-card">
-              <span class="metric-label">Pending</span>
-              <strong id="statPendingPayments" class="metric-value">0</strong>
-            </article>
-            <article class="metric-card">
-              <span class="metric-label">Unused Keys</span>
-              <strong id="statUnusedKeys" class="metric-value">0</strong>
-            </article>
-          </div>
-        </aside>
+        <p class="hero-copy admin-dashboard-copy" id="adminNoticeCopy">All access, content, and credential delivery is controlled from this dashboard.</p>
       </div>
-    </header>
+      <div class="metric-grid admin-metric-grid">
+        <article class="metric-card">
+          <span class="metric-label">Users</span>
+          <strong id="statUsers" class="metric-value">0</strong>
+        </article>
+        <article class="metric-card">
+          <span class="metric-label">Verified</span>
+          <strong id="statVerifiedUsers" class="metric-value">0</strong>
+        </article>
+        <article class="metric-card">
+          <span class="metric-label">Pending</span>
+          <strong id="statPendingPayments" class="metric-value">0</strong>
+        </article>
+        <article class="metric-card">
+          <span class="metric-label">Unused Keys</span>
+          <strong id="statUnusedKeys" class="metric-value">0</strong>
+        </article>
+      </div>
+    </section>
 
     <section class="panel reveal admin-dashboard-nav" data-reveal>
       <div class="tab-row">
-        <a class="btn btn-secondary admin-tab-link" href="#adminUsersSection">Users</a>
         <a class="btn btn-secondary admin-tab-link" href="#adminKeysSection">Keys</a>
         <a class="btn btn-secondary admin-tab-link" href="#adminGamesSection">Games</a>
+        <a class="btn btn-secondary admin-tab-link" href="#adminUsersSection">Users</a>
         <a class="btn btn-secondary admin-tab-link" href="#adminSettingsSection">Settings</a>
       </div>
     </section>
 
     <main class="stack">
+      <section class="admin-top-tools reveal" data-reveal>
+        <section id="adminKeysSection" class="panel admin-dashboard-section">
+          <div class="section-head">
+            <div>
+              <p class="eyebrow">keys</p>
+              <h2 class="section-title">Generate Key</h2>
+            </div>
+            <div class="inline-actions">
+              <button id="generateStandaloneKeyButton" class="btn btn-primary" type="button">Generate Key</button>
+              <button id="refreshAdminKeysButton" class="btn btn-secondary" type="button">Refresh Keys</button>
+            </div>
+          </div>
+          <p id="adminKeyStatus" class="status"></p>
+          <article id="generatedKeyCard" class="card compact-card admin-generated-key hidden">
+            <div class="section-head">
+              <div>
+                <p class="eyebrow">latest key</p>
+                <h3 class="card-title">Ready To Share</h3>
+              </div>
+              <button id="copyGeneratedKeyButton" class="btn btn-primary" type="button">Copy Key</button>
+            </div>
+            <p class="admin-key-value" id="generatedKeyValue">----</p>
+            <p class="muted" id="generatedKeyMeta">Create a key to show it here, then copy it or assign it to a player.</p>
+          </article>
+          <div id="adminKeysGrid" class="admin-list-grid"></div>
+        </section>
+
+        <section id="adminGamesSection" class="panel admin-dashboard-section">
+          <div class="section-head">
+            <div>
+              <p class="eyebrow">games</p>
+              <h2 class="section-title">Add And Edit Games</h2>
+            </div>
+          </div>
+          <div class="admin-games-layout">
+            <div class="admin-form-shell">
+              <h3 class="card-title">Create New Game</h3>
+              <form id="adminGameForm" class="stack">
+                <label class="admin-field">
+                  <span class="admin-field-label">Game Name</span>
+                  <input id="adminGameName" class="input" placeholder="Game name">
+                </label>
+                <label class="admin-field">
+                  <span class="admin-field-label">Platform</span>
+                  <select id="adminGamePlatform" class="select">
+                    <option value="PC">PC</option>
+                    <option value="PS4">PS4</option>
+                    <option value="PS5">PS5</option>
+                  </select>
+                </label>
+                <label class="admin-field">
+                  <span class="admin-field-label">Image URL</span>
+                  <input id="adminGameImage" class="input" placeholder="https://...">
+                </label>
+                <label class="admin-field">
+                  <span class="admin-field-label">Description</span>
+                  <textarea id="adminGameDescription" class="textarea" rows="4" placeholder="Description"></textarea>
+                </label>
+                <label class="admin-field">
+                  <span class="admin-field-label">Game ID</span>
+                  <input id="adminGameAccountId" class="input" placeholder="ID for PC games">
+                </label>
+                <label class="admin-field">
+                  <span class="admin-field-label">Game Password</span>
+                  <input id="adminGameAccountPassword" class="input" placeholder="Password for PC games">
+                </label>
+                <button class="btn btn-primary" type="submit">Add Game</button>
+              </form>
+              <p id="adminGameStatus" class="status"></p>
+            </div>
+            <div class="admin-catalog-shell">
+              <div class="section-head">
+                <div>
+                  <p class="eyebrow">catalog</p>
+                  <h3 class="card-title">Edit Existing Games</h3>
+                </div>
+                <button id="refreshAdminGamesButton" class="btn btn-secondary" type="button">Refresh Games</button>
+              </div>
+              <div id="adminGamesGrid" class="stack"></div>
+            </div>
+          </div>
+        </section>
+      </section>
+
       <section id="adminUsersSection" class="panel reveal admin-dashboard-section" data-reveal>
         <div class="section-head">
           <div>
@@ -73,70 +155,6 @@
         </div>
         <p id="adminUsersStatus" class="status"></p>
         <div id="adminUsersGrid" class="admin-list-grid"></div>
-      </section>
-
-      <section id="adminKeysSection" class="panel reveal admin-dashboard-section" data-reveal>
-        <div class="section-head">
-          <div>
-            <p class="eyebrow">keys</p>
-            <h2 class="section-title">Key System</h2>
-          </div>
-          <div class="inline-actions">
-            <button id="generateStandaloneKeyButton" class="btn btn-primary" type="button">Generate Key</button>
-            <button id="refreshAdminKeysButton" class="btn btn-secondary" type="button">Refresh Keys</button>
-          </div>
-        </div>
-        <p id="adminKeyStatus" class="status"></p>
-        <article id="generatedKeyCard" class="card compact-card admin-generated-key hidden">
-          <div class="section-head">
-            <div>
-              <p class="eyebrow">latest key</p>
-              <h3 class="card-title">Ready To Share</h3>
-            </div>
-            <button id="copyGeneratedKeyButton" class="btn btn-primary" type="button">Copy Key</button>
-          </div>
-          <p class="admin-key-value" id="generatedKeyValue">----</p>
-          <p class="muted" id="generatedKeyMeta">Create a key to show it here, then copy it or assign it to a player.</p>
-        </article>
-        <div id="adminKeysGrid" class="admin-list-grid"></div>
-      </section>
-
-      <section id="adminGamesSection" class="panel reveal admin-dashboard-section" data-reveal>
-        <div class="section-head">
-          <div>
-            <p class="eyebrow">games</p>
-            <h2 class="section-title">Game Management</h2>
-          </div>
-        </div>
-        <div class="admin-games-layout">
-          <div class="admin-form-shell">
-            <h3 class="card-title">Add Game</h3>
-            <form id="adminGameForm" class="stack">
-              <input id="adminGameName" class="input" placeholder="Game name">
-              <select id="adminGamePlatform" class="select">
-                <option value="PC">PC</option>
-                <option value="PS4">PS4</option>
-                <option value="PS5">PS5</option>
-              </select>
-              <input id="adminGameImage" class="input" placeholder="Image URL">
-              <textarea id="adminGameDescription" class="textarea" rows="4" placeholder="Description"></textarea>
-              <input id="adminGameAccountId" class="input" placeholder="ID (PC only)">
-              <input id="adminGameAccountPassword" class="input" placeholder="Password (PC only)">
-              <button class="btn btn-primary" type="submit">Add Game</button>
-            </form>
-            <p id="adminGameStatus" class="status"></p>
-          </div>
-          <div class="admin-catalog-shell">
-            <div class="section-head">
-              <div>
-                <p class="eyebrow">catalog</p>
-                <h3 class="card-title">Edit Existing Games</h3>
-              </div>
-              <button id="refreshAdminGamesButton" class="btn btn-secondary" type="button">Refresh Games</button>
-            </div>
-            <div id="adminGamesGrid" class="stack"></div>
-          </div>
-        </div>
       </section>
 
       <section id="adminSettingsSection" class="panel reveal admin-dashboard-section" data-reveal>

@@ -7,7 +7,6 @@ const GoogleStrategy = require("passport-google-oauth20").Strategy;
 const { attachSession, clearSession, getSession, setSession } = require("./sessionManager");
 const { createId, defaultLogo, defaultQr, readStore, slugify, updateStore } = require("./store");
 
-const ACCESS_KEY_LENGTH = 12;
 const CREDENTIAL_SECRET = String(process.env.CREDENTIAL_SECRET || process.env.SESSION_SECRET || "change-me-platform-secret");
 const PASSWORD_SECRET = String(process.env.PASSWORD_SECRET || process.env.SESSION_SECRET || "change-me-password-secret");
 const GOOGLE_CLIENT_ID = String(process.env.GOOGLE_CLIENT_ID || "").trim();
@@ -22,8 +21,6 @@ function createApp() {
   const app = express();
   const publicDir = path.join(__dirname, "..", "public");
   const nodeModulesDir = path.join(__dirname, "..", "node_modules");
-  ensureStoreSeedState();
-
   app.disable("x-powered-by");
   app.use(compression());
   app.use(express.json({ limit: "5mb" }));
@@ -309,7 +306,7 @@ function createApp() {
         userId: user?.id || "",
         email: user?.email || "",
         keyHash: hashKey(generatedKey),
-        keyPreview: `${generatedKey.slice(0, 4)}-${generatedKey.slice(-4)}`,
+        keyPreview: generatedKey,
         used: false,
         createdAt: now,
         createdBy: "admin",
@@ -630,7 +627,7 @@ function createApp() {
     });
     const user = store.users.find((item) => item.id === current.id);
     setSession(req, res, getSessionPayload(user));
-    res.json({ ok: true, user: publicUser(user), redirect: "/" });
+    res.json({ ok: true, user: publicUser(user), redirect: "/pc-games" });
   });
 
   app.get("/api/games", requireVerified, (_req, res) => {
@@ -886,17 +883,6 @@ function createApp() {
   });
 
   return app;
-
-  function ensureStoreSeedState() {
-    updateStore((draft) => {
-      if (!draft.meta) draft.meta = {};
-      if (draft.meta.platformResetApplied) return draft;
-      draft.games = [];
-      draft.keys = [];
-      draft.meta.platformResetApplied = true;
-      return draft;
-    });
-  }
 }
 
 function createHttpError(status, message) {
@@ -946,12 +932,17 @@ function upsertGoogleUser({ email, googleId, name }) {
 }
 
 function makeAccessKey() {
-  const alphabet = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
-  let key = "";
-  for (let index = 0; index < ACCESS_KEY_LENGTH; index += 1) {
-    key += alphabet[Math.floor(Math.random() * alphabet.length)];
+  const words = [
+    "EMBER", "RAVEN", "PIXEL", "TIGER", "NOVA", "RIVER", "FALCON", "QUARTZ",
+    "VORTEX", "SHADOW", "ROCKET", "MATRIX", "ORBIT", "CIPHER", "BLAZE", "SUMMIT",
+    "TUNDRA", "ECHO", "PHANTOM", "NEON", "DRAGON", "PULSE", "ATLAS", "STORM",
+    "VISION", "FROST", "COMET", "LEGEND", "TITAN", "AURORA", "VECTOR", "CRYSTAL"
+  ];
+  const parts = [];
+  for (let index = 0; index < 6; index += 1) {
+    parts.push(words[Math.floor(Math.random() * words.length)]);
   }
-  return `${key.slice(0, 4)}-${key.slice(4, 8)}-${key.slice(8, 12)}`;
+  return parts.join("-");
 }
 
 function hashKey(value) {

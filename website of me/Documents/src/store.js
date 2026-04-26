@@ -103,8 +103,10 @@ function normalizeKey(key = {}) {
 }
 
 function createBaseStore(seed = {}) {
+  const meta = seed.meta && typeof seed.meta === "object" ? seed.meta : {};
   return {
     meta: {
+      ...meta,
       schemaVersion: SCHEMA_VERSION
     },
     admin: {

@@ -20,31 +20,6 @@
     "adminNotice": "Approve payment, generate one-time keys, and manage all game inventory from one secure backend."
   },
   "users": [],
-  "keys": [
-    {
-      "id": "key-1777214882708-jqiwop",
-      "userId": "",
-      "email": "",
-      "keyHash": "284f92292fc46ea5a0bf1174a345c792876c6c185641fbd84cac635ca39b2e38",
-      "keyPreview": "LKSG-94F4",
-      "used": false,
-      "createdAt": "2026-04-26T14:48:02.708Z",
-      "createdBy": "admin",
-      "usedAt": ""
-    }
-  ],
-  "games": [
-    {
-      "id": "game-1777214882791-929zx4",
-      "slug": "pc-live-verify-game",
-      "platform": "PC",
-      "name": "Live Verify Game",
-      "image": "",
-      "description": "verifies admin create",
-      "credentialIdCipher": "d7LiIttRxGvsGZ1L.P7iEkzoZdg6okTY_sHmBDg.kvbNSbB2DgQ",
-      "credentialPasswordCipher": "gMrmlAYxEmUwTvD6.2Ul-qgtAlkNu36AmD3n_Pg.T3JSVKN9HXQ",
-      "createdAt": "2026-04-26T14:48:02.792Z",
-      "updatedAt": "2026-04-26T14:48:02.792Z"
-    }
-  ]
+  "keys": [],
+  "games": []
 }

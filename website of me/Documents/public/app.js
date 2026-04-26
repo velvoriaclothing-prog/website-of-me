@@ -403,10 +403,13 @@ async function initHomePage() {
 
 function renderPcGameCard(game) {
   return `
-    <article class="card game-card">
-      ${game.image ? `<img class="game-thumb" src="${escapeHtml(game.image)}" alt="${escapeHtml(game.name)}" loading="lazy">` : `<div class="game-thumb game-thumb-fallback">${escapeHtml(game.name.slice(0, 1) || "G")}</div>`}
-      <strong>${escapeHtml(game.name)}</strong>
-      <p class="game-summary">${escapeHtml(game.description)}</p>
+    <article class="card game-card premium-game-card">
+      ${game.image ? `<img class="game-thumb premium-game-thumb" src="${escapeHtml(game.image)}" alt="${escapeHtml(game.name)}" loading="lazy">` : `<div class="game-thumb game-thumb-fallback premium-game-thumb">${escapeHtml(game.name.slice(0, 1) || "G")}</div>`}
+      <div class="game-card-body">
+        <p class="eyebrow">Premium account</p>
+        <strong>${escapeHtml(game.name)}</strong>
+        <p class="game-summary">${escapeHtml(game.description)}</p>
+      </div>
       <div class="inline-actions">
         <a class="btn btn-primary" href="/game/${encodeURIComponent(game.slug)}">View Game</a>
       </div>
@@ -572,6 +575,9 @@ function renderKeyCard(key, users = []) {
         <p>Created: ${escapeHtml(formatDateTime(key.createdAt))}</p>
         <p>${key.used ? `Used: ${escapeHtml(formatDateTime(key.usedAt))}` : "Ready to activate"}</p>
       </div>
+      <div class="inline-actions">
+        <button class="btn btn-primary admin-copy-key-btn" type="button" data-key-preview="${escapeHtml(key.keyPreview || "")}" ${key.keyPreview ? "" : "disabled"}>Copy Key</button>
+      </div>
       ${canAssign ? `
       <div class="inline-actions admin-key-assign-row">
         <select class="select admin-key-user-select" data-key-id="${escapeHtml(key.id)}">
@@ -588,20 +594,44 @@ function renderKeyCard(key, users = []) {
 function renderAdminGameCard(game) {
   return `
     <article class="card compact-card admin-game-item">
+      <div class="admin-game-preview">
+        ${game.image ? `<img class="admin-game-thumb" src="${escapeHtml(game.image)}" alt="${escapeHtml(game.name)}" loading="lazy">` : `<div class="admin-game-thumb admin-game-thumb-fallback">${escapeHtml(game.name.slice(0, 1) || "G")}</div>`}
+      </div>
       <div class="admin-card-head">
-        <strong>${escapeHtml(game.name)}</strong>
+        <div class="stack" style="gap:4px;">
+          <strong>${escapeHtml(game.name)}</strong>
+          <span class="muted">${escapeHtml(game.slug)}</span>
+        </div>
         <span class="${game.platform === "PC" ? "admin-pill admin-pill-success" : "admin-pill"}">${escapeHtml(game.platform)}</span>
       </div>
-      <input class="input admin-edit-field" data-field="name" data-game-id="${escapeHtml(game.id)}" value="${escapeHtml(game.name)}">
-      <select class="select admin-edit-field" data-field="platform" data-game-id="${escapeHtml(game.id)}">
-        <option value="PC" ${game.platform === "PC" ? "selected" : ""}>PC</option>
-        <option value="PS4" ${game.platform === "PS4" ? "selected" : ""}>PS4</option>
-        <option value="PS5" ${game.platform === "PS5" ? "selected" : ""}>PS5</option>
-      </select>
-      <input class="input admin-edit-field" data-field="image" data-game-id="${escapeHtml(game.id)}" value="${escapeHtml(game.image || "")}" placeholder="Image URL">
-      <textarea class="textarea admin-edit-field" data-field="description" data-game-id="${escapeHtml(game.id)}" rows="3">${escapeHtml(game.description)}</textarea>
-      <input class="input admin-edit-field" data-field="accountId" data-game-id="${escapeHtml(game.id)}" placeholder="New ID for PC only">
-      <input class="input admin-edit-field" data-field="accountPassword" data-game-id="${escapeHtml(game.id)}" placeholder="New password for PC only">
+      <label class="admin-field">
+        <span class="admin-field-label">Game Name</span>
+        <input class="input admin-edit-field" data-field="name" data-game-id="${escapeHtml(game.id)}" value="${escapeHtml(game.name)}">
+      </label>
+      <label class="admin-field">
+        <span class="admin-field-label">Platform</span>
+        <select class="select admin-edit-field" data-field="platform" data-game-id="${escapeHtml(game.id)}">
+          <option value="PC" ${game.platform === "PC" ? "selected" : ""}>PC</option>
+          <option value="PS4" ${game.platform === "PS4" ? "selected" : ""}>PS4</option>
+          <option value="PS5" ${game.platform === "PS5" ? "selected" : ""}>PS5</option>
+        </select>
+      </label>
+      <label class="admin-field">
+        <span class="admin-field-label">Image URL</span>
+        <input class="input admin-edit-field" data-field="image" data-game-id="${escapeHtml(game.id)}" value="${escapeHtml(game.image || "")}" placeholder="Image URL">
+      </label>
+      <label class="admin-field">
+        <span class="admin-field-label">Description</span>
+        <textarea class="textarea admin-edit-field" data-field="description" data-game-id="${escapeHtml(game.id)}" rows="3">${escapeHtml(game.description)}</textarea>
+      </label>
+      <label class="admin-field">
+        <span class="admin-field-label">Game ID</span>
+        <input class="input admin-edit-field" data-field="accountId" data-game-id="${escapeHtml(game.id)}" placeholder="New ID for PC only">
+      </label>
+      <label class="admin-field">
+        <span class="admin-field-label">Game Password</span>
+        <input class="input admin-edit-field" data-field="accountPassword" data-game-id="${escapeHtml(game.id)}" placeholder="New password for PC only">
+      </label>
       <p class="muted">Credentials saved: ${game.hasCredentials ? "Yes" : "No"}</p>
       <div class="inline-actions">
         <button class="btn btn-primary admin-save-game-btn" type="button" data-game-id="${escapeHtml(game.id)}">Save</button>
@@ -757,6 +787,19 @@ async function initAdminPage() {
   });
 
   qs("adminKeysGrid")?.addEventListener("click", async (event) => {
+    const copyButton = event.target.closest(".admin-copy-key-btn");
+    if (copyButton) {
+      try {
+        await copyText(copyButton.dataset.keyPreview || "");
+        setText("adminKeyStatus", "Key copied to clipboard.");
+        showToast("Key copied", "success");
+      } catch (error) {
+        setText("adminKeyStatus", error.message);
+        showToast(error.message, "warning");
+      }
+      return;
+    }
+
     const assignButton = event.target.closest(".admin-assign-key-btn");
     if (!assignButton) return;
 
@@ -830,6 +873,8 @@ async function initAdminPage() {
 
   qs("adminGameForm")?.addEventListener("submit", async (event) => {
     event.preventDefault();
+    const submitButton = event.target.querySelector('button[type="submit"]');
+    const restoreButton = setButtonLoading(submitButton, "Adding...");
     try {
       await api("/api/admin/game", {
         method: "POST",
@@ -843,10 +888,14 @@ async function initAdminPage() {
         })
       });
       setText("adminGameStatus", "Game added successfully.");
+      showToast("Game added", "success");
       event.target.reset();
       await loadAdmin();
     } catch (error) {
       setText("adminGameStatus", error.message);
+      showToast(error.message, "warning");
+    } finally {
+      restoreButton();
     }
   });
 
@@ -862,6 +911,7 @@ async function initAdminPage() {
   qs("adminGamesGrid")?.addEventListener("click", async (event) => {
     const saveButton = event.target.closest(".admin-save-game-btn");
     if (saveButton) {
+      const restoreButton = setButtonLoading(saveButton, "Saving...");
       try {
         const gameId = saveButton.dataset.gameId;
         const fields = [...document.querySelectorAll(`.admin-edit-field[data-game-id="${gameId}"]`)];
@@ -874,21 +924,30 @@ async function initAdminPage() {
           body: JSON.stringify(payload)
         });
         setText("adminGameStatus", "Game updated.");
+        showToast("Game updated", "success");
         await loadAdmin();
       } catch (error) {
         setText("adminGameStatus", error.message);
+        showToast(error.message, "warning");
+      } finally {
+        restoreButton();
       }
       return;
     }
 
     const button = event.target.closest(".admin-delete-game-btn");
     if (!button) return;
+    const restoreButton = setButtonLoading(button, "Deleting...");
     try {
       await api(`/api/admin/games/${encodeURIComponent(button.dataset.gameId)}`, { method: "DELETE" });
       setText("adminGameStatus", "Game removed.");
+      showToast("Game removed", "success");
       await loadAdmin();
     } catch (error) {
       setText("adminGameStatus", error.message);
+      showToast(error.message, "warning");
+    } finally {
+      restoreButton();
     }
   });
 
