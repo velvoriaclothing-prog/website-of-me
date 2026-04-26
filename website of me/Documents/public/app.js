@@ -130,7 +130,10 @@ function ensureAdminAccessMarkup() {
 function ensureHiddenAdminTrigger() {
   if (page === "admin") return null;
   let trigger = qs("hiddenAdminAccess");
-  if (trigger) return trigger;
+  if (trigger) {
+    trigger.classList.add("fixed-admin-trigger");
+    return trigger;
+  }
   trigger = document.createElement("button");
   trigger.id = "hiddenAdminAccess";
   trigger.type = "button";
@@ -280,14 +283,14 @@ async function initPaymentPage() {
     return;
   }
 
-  setText("paymentIntroCopy", `Pay ₹${session.settings.accessPriceInr} and message us on Telegram for verification.`);
+  setText("paymentIntroCopy", `Pay ₹${session.settings.accessPriceInr}, then message us on Telegram so we can approve your access key.`);
   setText("accessPrice", String(session.settings.accessPriceInr));
   if (qs("paymentQrImage")) qs("paymentQrImage").src = session.settings.paymentQrUrl;
 
   qs("paymentNotifyButton")?.addEventListener("click", async () => {
     try {
       const result = await api("/api/payment/request", { method: "POST" });
-      setText("paymentStatus", "Telegram is opening with your verification message.");
+      setText("paymentStatus", "Telegram is opening with your payment verification message.");
       window.location.href = result.telegramUrl;
     } catch (error) {
       setText("paymentStatus", error.message);
@@ -309,7 +312,7 @@ async function initPaymentPage() {
   });
 
   if (session.accessState === "awaiting-key") {
-    setText("paymentStatus", "Payment recorded. Enter your one-time access key after approval.");
+    setText("paymentStatus", "Payment recorded. Enter your access key as soon as it reaches you.");
   }
 }
 
@@ -325,7 +328,7 @@ function renderPcGameCard(game) {
       <strong>${escapeHtml(game.name)}</strong>
       <p class="game-summary">${escapeHtml(game.description)}</p>
       <div class="inline-actions">
-        <a class="btn btn-primary" href="/game/${encodeURIComponent(game.slug)}">Open Detail</a>
+        <a class="btn btn-primary" href="/game/${encodeURIComponent(game.slug)}">View Game</a>
       </div>
     </article>
   `;
@@ -361,9 +364,9 @@ async function initGamePage() {
       </article>
     </section>
     <aside class="panel">
-      <h2 class="section-title">Secure Delivery</h2>
-      <p class="hero-copy">Credentials appear only after secure verification.</p>
-      <button id="unlockCredentialsButton" class="btn btn-primary btn-block" type="button">Unlock ID &amp; Password</button>
+      <h2 class="section-title">Game Access</h2>
+      <p class="hero-copy">Your game login details appear only after your verified access is confirmed.</p>
+      <button id="unlockCredentialsButton" class="btn btn-primary btn-block" type="button">Unlock Game Access</button>
       <div id="credentialsBox" class="stack" style="margin-top:16px;"></div>
       <p id="gameStatus" class="status"></p>
     </aside>
@@ -380,7 +383,7 @@ async function initGamePage() {
           <p>${escapeHtml(credentials.accountPassword)}</p>
         </div>
       `;
-      setText("gameStatus", "Credentials unlocked successfully.");
+      setText("gameStatus", "Game access unlocked successfully.");
     } catch (error) {
       setText("gameStatus", error.message);
     }

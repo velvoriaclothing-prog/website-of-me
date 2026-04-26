@@ -12,7 +12,7 @@
 <body data-page="payment">
   <div class="shell">
     <nav class="topbar">
-      <a class="brand" href="/"><span class="brand-mark">GA</span><span><strong>Gamers Arena</strong><br><small class="muted">access checkpoint</small></span></a>
+      <a class="brand" href="/"><span class="brand-mark">GA</span><span><strong>Gamers Arena</strong><br><small class="muted">payment unlock</small></span></a>
       <div class="nav-actions">
         <span class="muted" data-user-label>Player</span>
         <button class="btn btn-secondary" type="button" data-logout-button>Logout</button>
@@ -22,15 +22,16 @@
     <header class="hero reveal" data-reveal>
       <div class="hero-grid">
         <div class="hero-main">
-          <p class="eyebrow">unlock flow</p>
-          <h1>Verify payment, then activate your key.</h1>
-          <p class="hero-copy">Every user goes through one secure route: login, pay ₹20, wait for approval, then use a one-time access key to unlock the platform.</p>
+          <p class="eyebrow">finish your unlock</p>
+          <h1>You are one step away from the full game library.</h1>
+          <p class="hero-copy">Pay the ₹20 maintenance fee, send the payment message on Telegram, then enter your access key to unlock every available game card.</p>
         </div>
         <aside class="hero-side">
           <div class="route-steps">
-            <div class="route-step"><span>01</span> Scan QR and pay</div>
-            <div class="route-step"><span>02</span> Tap I Have Paid to open Telegram</div>
-            <div class="route-step"><span>03</span> Enter the approved access key</div>
+            <div class="route-step"><span>01</span> Pay ₹20</div>
+            <div class="route-step"><span>02</span> Tap I Have Paid</div>
+            <div class="route-step"><span>03</span> Enter Access Key</div>
+            <div class="route-step"><span>04</span> Unlock All Games</div>
           </div>
         </aside>
       </div>
@@ -40,19 +41,19 @@
       <section class="panel">
         <p class="eyebrow">payment</p>
         <h2 class="section-title">₹<span data-access-price>20</span> Access Fee</h2>
-        <p class="hero-copy" id="paymentIntroCopy">Pay the access fee to continue into the platform.</p>
+        <p class="hero-copy" id="paymentIntroCopy">Pay the access fee to continue into the full library.</p>
         <img id="paymentQrImage" class="qr-box" src="/assets/payment-qr.jpeg" alt="Payment QR">
         <button id="paymentNotifyButton" class="btn btn-primary btn-block" type="button">I Have Paid</button>
         <p id="paymentStatus" class="status"></p>
       </section>
 
       <section class="panel">
-        <p class="eyebrow">activation</p>
-        <h2 class="section-title">One-Time Key</h2>
-        <p class="hero-copy">After your payment is approved, you will receive a unique access key linked only to your email.</p>
+        <p class="eyebrow">access key</p>
+        <h2 class="section-title">Enter Your Access Key</h2>
+        <p class="hero-copy">After approval, we will share a unique access key linked to your email. Enter it here to unlock your games instantly.</p>
         <form id="activationForm" class="stack">
           <input id="activationKey" class="input" placeholder="XXXX-XXXX-XXXX">
-          <button class="btn btn-secondary btn-block" type="submit">Activate Access</button>
+          <button class="btn btn-secondary btn-block" type="submit">Unlock My Games</button>
         </form>
         <p id="activationStatus" class="status"></p>
       </section>

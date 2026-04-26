@@ -2581,6 +2581,20 @@ body.header-scroll-enabled .topbar.hidden-header {
   .admin-games-layout {
     grid-template-columns: 1fr;
   }
+
+  .login-benefits,
+  .login-steps {
+    grid-template-columns: 1fr;
+  }
+
+  .auth-side {
+    align-content: start;
+  }
+
+  .login-cta-button {
+    min-height: 62px;
+    font-size: 1.02rem;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -2614,8 +2628,67 @@ body.header-scroll-enabled .topbar.hidden-header {
   margin-top: 0;
 }
 
+.auth-lead {
+  max-width: 680px;
+}
+
 .auth-side {
+  display: grid;
+  gap: 14px;
   align-content: center;
+}
+
+.login-cta-button {
+  min-height: 58px;
+  font-size: 1rem;
+  letter-spacing: 0.01em;
+  box-shadow: 0 18px 42px rgba(34, 211, 238, 0.24);
+}
+
+.auth-helper-note {
+  margin: -2px 0 0;
+  color: #a5f3fc;
+  font-size: 0.92rem;
+}
+
+.login-benefits {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  margin-top: 8px;
+}
+
+.login-benefit {
+  position: relative;
+  min-height: 56px;
+  display: flex;
+  align-items: center;
+  padding: 14px 16px 14px 42px;
+  border-radius: 18px;
+  border: 1px solid rgba(34, 211, 238, 0.12);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.045), rgba(255, 255, 255, 0.025)),
+    rgba(255, 255, 255, 0.02);
+}
+
+.login-benefit::before {
+  content: "";
+  position: absolute;
+  left: 16px;
+  width: 12px;
+  height: 12px;
+  border-radius: 999px;
+  background: linear-gradient(135deg, var(--accent), var(--accent-2));
+  box-shadow: 0 0 0 6px rgba(34, 211, 238, 0.12);
+}
+
+.login-steps {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  margin-top: 6px;
+}
+
+.login-steps .route-step {
+  min-height: 74px;
 }
 
 .auth-divider {
@@ -2650,6 +2723,20 @@ body.header-scroll-enabled .topbar.hidden-header {
   display: grid;
   gap: 12px;
   margin-top: 8px;
+}
+
+.admin-hint {
+  position: fixed;
+  left: 12px;
+  bottom: 42px;
+  z-index: 44;
+  color: rgba(226, 232, 240, 0.42);
+  font-size: 0.68rem;
+  letter-spacing: 0.05em;
+}
+
+.admin-hint:hover {
+  color: rgba(226, 232, 240, 0.7);
 }
 
 .payment-layout {

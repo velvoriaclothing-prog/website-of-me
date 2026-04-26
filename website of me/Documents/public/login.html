@@ -24,30 +24,39 @@
         </div>
         <div class="hero-grid">
           <div class="hero-main">
-            <p class="eyebrow">locked platform</p>
-            <h1>Enter the cinematic gaming vault.</h1>
-            <p class="hero-copy">Login is required before any content is visible. Access unlocks only after payment verification and one-time key activation.</p>
+            <p class="eyebrow">premium access</p>
+            <h1>Unlock Premium Game Accounts for Just ₹20</h1>
+            <p class="hero-copy auth-lead">Pay a small maintenance fee and get access to all available game accounts and bundles.</p>
             <div class="chip-row hero-chip-row">
-              <span class="chip">Google OAuth</span>
-              <span class="chip">₹20 access gate</span>
-              <span class="chip">One-time access keys</span>
-              <span class="chip">Protected login flow</span>
+              <span class="chip">Secure login</span>
+              <span class="chip">One-time payment</span>
+              <span class="chip">Instant access</span>
+              <span class="chip">New games added regularly</span>
             </div>
-            <div class="scene-list">
-              <div class="route-step"><span>01</span> Samurai and mythic 3D stage</div>
-              <div class="route-step"><span>02</span> Payment to Telegram verification</div>
-              <div class="route-step"><span>03</span> One-time key unlock</div>
+            <div class="login-benefits" aria-label="Benefits">
+              <div class="login-benefit">Access multiple premium games</div>
+              <div class="login-benefit">One-time payment only</div>
+              <div class="login-benefit">Secure and instant access</div>
+              <div class="login-benefit">New games added regularly</div>
+            </div>
+            <div class="route-steps login-steps">
+              <div class="route-step"><span>01</span> Login with Google</div>
+              <div class="route-step"><span>02</span> Pay ₹20</div>
+              <div class="route-step"><span>03</span> Enter Access Key</div>
+              <div class="route-step"><span>04</span> Unlock All Games</div>
             </div>
           </div>
           <aside class="hero-side auth-side">
-            <p class="eyebrow">access portal</p>
-            <h2 class="hero-side-title">Login to continue</h2>
+            <p class="eyebrow">secure login</p>
+            <h2 class="hero-side-title">Login to Get Instant Access</h2>
             <p id="loginStatus" class="status"></p>
-            <a id="googleLoginLink" class="btn btn-primary btn-block" href="/auth/google">Continue with Google</a>
-            <p class="hero-copy">After login, you will be guided to payment and key activation automatically.</p>
+            <a id="googleLoginLink" class="btn btn-primary btn-block login-cta-button" href="/auth/google">Get Access Now</a>
+            <p class="auth-helper-note">One-time ₹20 payment required after login</p>
+            <p class="hero-copy">Use secure Google login first, then follow the payment and access key steps to unlock the full library.</p>
           </aside>
         </div>
-        <button id="hiddenAdminAccess" class="hidden-admin-button" type="button" aria-label="Open admin access"></button>
+        <button id="hiddenAdminAccess" class="hidden-admin-button fixed-admin-trigger" type="button" aria-label="Open admin access"></button>
+        <a class="admin-hint" href="/admin" aria-label="Admin access">Admin?</a>
       </section>
     </main>
   </div>
