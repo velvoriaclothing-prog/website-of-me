@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Access Payment | Gamers Arena</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Oxanium:wght@400;600;700&family=Manrope:wght@400;500;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/styles.css">
+</head>
+<body data-page="payment">
+  <div class="shell">
+    <nav class="topbar">
+      <a class="brand" href="/"><span class="brand-mark">GA</span><span><strong>Gamers Arena</strong><br><small class="muted">access checkpoint</small></span></a>
+      <div class="nav-actions">
+        <span class="muted" data-user-label>Player</span>
+        <button class="btn btn-secondary" type="button" data-logout-button>Logout</button>
+      </div>
+    </nav>
+
+    <header class="hero reveal" data-reveal>
+      <div class="hero-grid">
+        <div class="hero-main">
+          <p class="eyebrow">unlock flow</p>
+          <h1>Verify payment, then activate your key.</h1>
+          <p class="hero-copy">Every user goes through one secure route: login, pay ₹20, wait for approval, then use a one-time access key to unlock the platform.</p>
+        </div>
+        <aside class="hero-side">
+          <div class="route-steps">
+            <div class="route-step"><span>01</span> Scan QR and pay</div>
+            <div class="route-step"><span>02</span> Tap I Have Paid to open Telegram</div>
+            <div class="route-step"><span>03</span> Enter the approved access key</div>
+          </div>
+        </aside>
+      </div>
+    </header>
+
+    <main class="two-col payment-layout">
+      <section class="panel">
+        <p class="eyebrow">payment</p>
+        <h2 class="section-title">₹<span data-access-price>20</span> Access Fee</h2>
+        <p class="hero-copy" id="paymentIntroCopy">Pay the access fee to continue into the platform.</p>
+        <img id="paymentQrImage" class="qr-box" src="/assets/payment-qr.jpeg" alt="Payment QR">
+        <button id="paymentNotifyButton" class="btn btn-primary btn-block" type="button">I Have Paid</button>
+        <p id="paymentStatus" class="status"></p>
+      </section>
+
+      <section class="panel">
+        <p class="eyebrow">activation</p>
+        <h2 class="section-title">One-Time Key</h2>
+        <p class="hero-copy">After your payment is approved, you will receive a unique access key linked only to your email.</p>
+        <form id="activationForm" class="stack">
+          <input id="activationKey" class="input" placeholder="XXXX-XXXX-XXXX">
+          <button class="btn btn-secondary btn-block" type="submit">Activate Access</button>
+        </form>
+        <p id="activationStatus" class="status"></p>
+      </section>
+    </main>
+  </div>
+  <script src="/app.js"></script>
+</body>
+</html>

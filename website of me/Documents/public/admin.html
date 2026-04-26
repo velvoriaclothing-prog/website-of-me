@@ -3,368 +3,123 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Admin Dashboard | Gamers Arena</title>
+  <title>Admin | Gamers Arena</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Oxanium:wght@400;600;700&family=Manrope:wght@400;500;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="/styles.min.css">
+  <link rel="stylesheet" href="/styles.css">
 </head>
 <body data-page="admin">
   <div class="shell">
     <nav class="topbar">
-      <a class="brand" href="/"><span class="brand-mark">GA</span><span><strong data-site-title>Gamers Arena</strong><br><small class="muted">admin dashboard</small></span></a>
+      <a class="brand" href="/admin"><span class="brand-mark">GA</span><span><strong>Gamers Arena</strong><br><small class="muted">admin control</small></span></a>
       <div class="nav-links">
         <a class="nav-link" href="/">Home</a>
-        <a class="nav-link" href="/cart.html">Cart</a>
-        <a class="nav-link" href="/chat.html">Support</a>
-        <a class="nav-link" href="/blog.html">Blog</a>
-        <a class="nav-link" href="/editor.html">Editor</a>
+        <a class="nav-link" href="/pc-games">PC Games</a>
       </div>
       <div class="nav-actions">
-        <span class="muted" data-user-label>Guest</span>
-        <button class="btn btn-secondary" type="button" data-auth-action>Login</button>
+        <span class="muted">Admin</span>
+        <button class="btn btn-secondary" type="button" data-logout-button>Logout</button>
       </div>
     </nav>
 
-    <main>
-      <section id="adminGate" class="panel hidden">
-        <p class="eyebrow">admin only</p>
-        <h1 class="section-title">Admin Login Required</h1>
-        <p class="hero-copy">Please login with admin credentials to manage games, chat, blogs, and settings.</p>
-        <button id="adminLoginRedirect" class="btn btn-primary" type="button">Go To Login</button>
+    <header class="hero reveal" data-reveal>
+      <div class="hero-grid">
+        <div class="hero-main">
+          <p class="eyebrow">admin backend</p>
+          <h1>Approve payments, generate keys, and manage all games.</h1>
+          <p class="hero-copy" id="adminNoticeCopy">All access, content, and credential delivery is controlled from this dashboard.</p>
+        </div>
+        <aside class="hero-side">
+          <div class="metric-grid">
+            <article class="metric-card">
+              <span class="metric-label">Users</span>
+              <strong id="statUsers" class="metric-value">0</strong>
+            </article>
+            <article class="metric-card">
+              <span class="metric-label">Verified</span>
+              <strong id="statVerifiedUsers" class="metric-value">0</strong>
+            </article>
+            <article class="metric-card">
+              <span class="metric-label">Pending</span>
+              <strong id="statPendingPayments" class="metric-value">0</strong>
+            </article>
+            <article class="metric-card">
+              <span class="metric-label">PC Games</span>
+              <strong id="statPcGames" class="metric-value">0</strong>
+            </article>
+          </div>
+        </aside>
+      </div>
+    </header>
+
+    <main class="stack">
+      <section class="panel reveal" data-reveal>
+        <div class="section-head">
+          <div>
+            <p class="eyebrow">users</p>
+            <h2 class="section-title">Payment Approval Queue</h2>
+          </div>
+        </div>
+        <p id="adminKeyStatus" class="status"></p>
+        <div id="adminUsersGrid" class="stack"></div>
       </section>
 
-      <section id="adminApp" class="hidden">
-        <div class="panel">
-          <p class="eyebrow">overview</p>
-          <h1 class="section-title">Main Control</h1>
-          <p class="hero-copy">Manage the full store from one place: games, support settings, QR payment, blog posts, and homepage sections.</p>
-          <div class="toolbar">
-            <div class="card"><strong id="adminGamesCount">0</strong><p class="muted">Games</p></div>
-            <div class="card"><strong id="adminConsoleGamesCount">0</strong><p class="muted">Console Games</p></div>
-            <div class="card"><strong id="adminUsersCount">0</strong><p class="muted">Users</p></div>
-            <div class="card"><strong id="adminChatsCount">0</strong><p class="muted">Chats</p></div>
-            <div class="card"><strong id="adminBlogsCount">0</strong><p class="muted">Blogs</p></div>
-            <div class="card"><strong id="adminAiToolsCount">0</strong><p class="muted">AI Tools</p></div>
-            <div class="card"><strong id="adminOrdersCount">0</strong><p class="muted">Orders</p></div>
+      <section class="panel reveal" data-reveal>
+        <div class="section-head">
+          <div>
+            <p class="eyebrow">inventory</p>
+            <h2 class="section-title">Add Game</h2>
           </div>
         </div>
+        <form id="adminGameForm" class="admin-editor-grid">
+          <input id="adminGameName" class="input" placeholder="Game name">
+          <select id="adminGamePlatform" class="select">
+            <option value="PC">PC</option>
+            <option value="PS4">PS4</option>
+            <option value="PS5">PS5</option>
+          </select>
+          <input id="adminGameImage" class="input" placeholder="Image URL">
+          <textarea id="adminGameDescription" class="textarea" rows="4" placeholder="Description"></textarea>
+          <input id="adminGameAccountId" class="input" placeholder="Account ID (PC only)">
+          <input id="adminGameAccountPassword" class="input" placeholder="Password (PC only)">
+          <button class="btn btn-primary" type="submit">Add Game</button>
+        </form>
+        <p id="adminGameStatus" class="status"></p>
+      </section>
 
-        <div class="panel">
-          <div class="tab-row">
-            <button class="btn btn-secondary tab-btn active" type="button" data-admin-tab="adminGamesPanel">Games</button>
-            <button class="btn btn-secondary tab-btn" type="button" data-admin-tab="adminConsolePanel">PS4 / PS5</button>
-            <button class="btn btn-secondary tab-btn" type="button" data-admin-tab="adminBundlesPanel">Bundles</button>
-            <button class="btn btn-secondary tab-btn" type="button" data-admin-tab="adminContentPanel">Content</button>
-            <button class="btn btn-secondary tab-btn" type="button" data-admin-tab="adminPagesPanel">Pages</button>
-            <button class="btn btn-secondary tab-btn" type="button" data-admin-tab="adminMediaPanel">Media</button>
-            <button class="btn btn-secondary tab-btn" type="button" data-admin-tab="adminOrdersPanel">Orders</button>
-            <button class="btn btn-secondary tab-btn" type="button" data-admin-tab="adminChatsPanel">Chats</button>
-            <button class="btn btn-secondary tab-btn" type="button" data-admin-tab="adminBlogsPanel">Blog</button>
-            <button class="btn btn-secondary tab-btn" type="button" data-admin-tab="adminAiToolsPanel">AI Tools</button>
-            <button class="btn btn-secondary tab-btn" type="button" data-admin-tab="adminSettingsPanel">Settings</button>
+      <section class="panel reveal" data-reveal>
+        <div class="section-head">
+          <div>
+            <p class="eyebrow">catalog</p>
+            <h2 class="section-title">Manage Games</h2>
           </div>
         </div>
+        <div id="adminGamesGrid" class="stack"></div>
+      </section>
 
-        <section id="adminGamesPanel" data-admin-panel class="panel">
-          <div class="section-head">
-            <div>
-              <p class="eyebrow">games</p>
-              <h2 class="section-title">Add And Edit Games</h2>
-            </div>
+      <section class="panel reveal" data-reveal>
+        <div class="section-head">
+          <div>
+            <p class="eyebrow">settings</p>
+            <h2 class="section-title">Platform Settings</h2>
           </div>
-          <div class="toolbar">
-            <input id="gameSearch" class="input" placeholder="Search games to edit">
-            <select id="gameCategory" class="select">
-              <option value="">All categories</option>
-            </select>
-            <button id="clearGameFilters" class="btn btn-secondary" type="button">Clear</button>
-          </div>
-          <p id="resultsMeta" class="muted"></p>
-          <form id="addGameForm" class="two-col">
-            <input id="newGameName" class="input" placeholder="Game name">
-            <select id="newGameCategory" class="select">
-              <option value="Action">Action</option>
-              <option value="Shooter">Shooter</option>
-              <option value="RPG">RPG</option>
-              <option value="Racing">Racing</option>
-              <option value="Sports">Sports</option>
-              <option value="Low-end PC">Low-end PC</option>
-              <option value="Upcoming">Upcoming</option>
-            </select>
-            <input id="newGamePrice" class="input" type="number" value="45" placeholder="Price">
-            <input id="newGameImageUrl" class="input" placeholder="Game image URL (optional)">
-            <input id="newGameImage" class="input" type="file" accept="image/*">
-            <textarea id="newGameDescription" class="textarea" placeholder="Short game description"></textarea>
-            <button class="btn btn-primary" type="submit">Add Game</button>
-          </form>
-          <p id="adminGamesStatus" class="status"></p>
-          <div id="gamesGrid" class="game-grid"></div>
-          <div id="loadMoreWrap" class="load-more-wrap hidden">
-            <button id="loadMoreGames" class="btn btn-secondary" type="button">Load More Games</button>
-          </div>
-        </section>
-
-        <section id="adminConsolePanel" data-admin-panel class="panel hidden">
-          <div class="section-head">
-            <div>
-              <p class="eyebrow">console games</p>
-              <h2 class="section-title">Manage PS4 And PS5 Games</h2>
-            </div>
-          </div>
-          <form id="createConsoleGameForm" class="two-col">
-            <input id="newConsoleGameName" class="input" placeholder="Console game name">
-            <select id="newConsoleGamePlatform" class="select">
-              <option value="PS5">PS5</option>
-              <option value="PS4">PS4</option>
-            </select>
-            <input id="newConsoleGameImageUrl" class="input" placeholder="Console game image URL">
-            <input id="newConsoleGameImage" class="input" type="file" accept="image/*">
-            <button class="btn btn-primary" type="submit">Add Console Game</button>
-          </form>
-          <p id="adminConsoleGamesStatus" class="status"></p>
-          <div id="consoleGamesAdminList" class="console-admin-grid"></div>
-        </section>
-
-        <section id="adminBundlesPanel" data-admin-panel class="panel hidden">
-          <div class="section-head">
-            <div>
-              <p class="eyebrow">bundles</p>
-              <h2 class="section-title">Bundle Manager</h2>
-            </div>
-          </div>
-          <form id="addBundleForm" class="stack">
-            <input id="newBundleName" class="input" placeholder="Bundle name">
-            <input id="newBundleCount" class="input" type="number" placeholder="How many games are in this bundle">
-            <input id="newBundlePrice" class="input" type="number" value="45" placeholder="Bundle price">
-            <textarea id="newBundleDescription" class="textarea" placeholder="Bundle description"></textarea>
-            <input id="bundleGameSearch" class="input" placeholder="Search games to add in this bundle">
-            <p id="bundleGameSelectionMeta" class="muted">Select games with the tick boxes below.</p>
-            <div id="bundleGameChecklist" class="bundle-picker"></div>
-            <button class="btn btn-primary" type="submit">Add Bundle</button>
-          </form>
-          <p id="adminBundlesStatus" class="status"></p>
-          <div id="bundleAdminList" class="list"></div>
-        </section>
-
-        <section id="adminContentPanel" data-admin-panel class="panel hidden">
-          <div class="section-head">
-            <div>
-              <p class="eyebrow">homepage content</p>
-              <h2 class="section-title">Edit Homepage Text And Flexible Blocks</h2>
-            </div>
-          </div>
-          <p class="hero-copy">Use sections for the important homepage text and use the block builder below to add extra text, images, and videos anywhere on the homepage.</p>
-          <form id="createSectionForm" class="stack" style="margin-bottom:18px;">
-            <input id="newSectionKey" class="input" placeholder="Section key (example: home-hero)">
-            <input id="newSectionSubtitle" class="input" placeholder="Subtitle / eyebrow">
-            <input id="newSectionTitle" class="input" placeholder="Section title">
-            <textarea id="newSectionBody" class="textarea" placeholder="Section body"></textarea>
-            <input id="newSectionButtonLabel" class="input" placeholder="Button label">
-            <input id="newSectionButtonHref" class="input" placeholder="Button link">
-            <input id="newSectionImage" class="input" placeholder="Optional image URL">
-            <button class="btn btn-primary" type="submit">Add Content Section</button>
-          </form>
-          <p id="contentStatus" class="status"></p>
-          <div id="contentSectionsList" class="admin-editor-grid"></div>
-
-          <div class="section-head" style="margin-top:22px;">
-            <div>
-              <p class="eyebrow">page content api</p>
-              <h3 class="card-title">Edit Home, Games, And Cart Content Groups</h3>
-            </div>
-          </div>
-          <div id="pageContentList" class="admin-editor-grid"></div>
-
-          <div class="section-head" style="margin-top:22px;">
-            <div>
-              <p class="eyebrow">homepage builder</p>
-              <h3 class="card-title">Add Text, Image, Or Video Blocks</h3>
-            </div>
-          </div>
-          <div class="inline-actions" style="margin-bottom:12px;">
-            <button id="addTextBlock" class="btn btn-secondary" type="button">Add Text Block</button>
-            <button id="addImageBlock" class="btn btn-secondary" type="button">Add Image Block</button>
-            <button id="addVideoBlock" class="btn btn-secondary" type="button">Add Video Block</button>
-          </div>
-          <form id="editorSaveForm" class="stack">
-            <div id="editorBlocks" class="list"></div>
-            <button class="btn btn-primary" type="submit">Save Homepage Layout</button>
-          </form>
-          <p id="editorStatus" class="status"></p>
-        </section>
-
-        <section id="adminPagesPanel" data-admin-panel class="panel hidden">
-          <div class="section-head">
-            <div>
-              <p class="eyebrow">pages</p>
-              <h2 class="section-title">Create And Edit Custom Pages</h2>
-            </div>
-          </div>
-          <p class="hero-copy">Page content supports normal text or full HTML, so you can place images, formatted sections, or buttons inside the page body whenever you need.</p>
-          <form id="createPageForm" class="stack" style="margin-bottom:18px;">
-            <input id="newPageTitle" class="input" placeholder="Page title">
-            <input id="newPageSlug" class="input" placeholder="Page slug">
-            <input id="newPageSummary" class="input" placeholder="Short summary">
-            <input id="newPageImage" class="input" placeholder="Hero image URL (optional)">
-            <input id="newPageSeoTitle" class="input" placeholder="SEO title (optional)">
-            <textarea id="newPageSeoDescription" class="textarea" placeholder="SEO description (optional)"></textarea>
-            <textarea id="newPageContent" class="textarea code-textarea" placeholder="Page content. HTML is supported."></textarea>
-            <button class="btn btn-primary" type="submit">Create Page</button>
-          </form>
-          <p id="pagesStatus" class="status"></p>
-          <div id="pagesList" class="admin-editor-grid"></div>
-        </section>
-
-        <section id="adminMediaPanel" data-admin-panel class="panel hidden">
-          <div class="section-head">
-            <div>
-              <p class="eyebrow">media</p>
-              <h2 class="section-title">Store Images For Reuse</h2>
-            </div>
-          </div>
-          <form id="createMediaForm" class="stack" style="margin-bottom:18px;">
-            <input id="newMediaName" class="input" placeholder="Media name">
-            <input id="newMediaUrl" class="input" placeholder="Image URL">
-            <input id="newMediaFile" class="input" type="file" accept="image/*">
-            <input id="newMediaAlt" class="input" placeholder="Alt text">
-            <input id="newMediaPlacement" class="input" placeholder="Placement tag (example: hero, deals, banner)">
-            <button class="btn btn-primary" type="submit">Save Media</button>
-          </form>
-          <p id="mediaStatus" class="status"></p>
-          <div id="mediaList" class="admin-editor-grid"></div>
-        </section>
-
-        <section id="adminOrdersPanel" data-admin-panel class="panel hidden">
-          <div class="section-head">
-            <div>
-              <p class="eyebrow">orders</p>
-              <h2 class="section-title">Customer Orders</h2>
-            </div>
-          </div>
-          <div id="adminOrdersList" class="list"></div>
-        </section>
-
-        <section id="adminChatsPanel" data-admin-panel class="panel hidden">
-          <div class="section-head">
-            <div>
-              <p class="eyebrow">chat</p>
-              <h2 class="section-title">All User Messages</h2>
-            </div>
-          </div>
-          <div class="chat-layout">
-            <div id="adminChatList" class="list"></div>
-            <div class="card">
-              <p id="adminChatMeta" class="muted">Select a user to open the full chat.</p>
-              <div id="adminChatThread" class="chat-thread"></div>
-              <form id="adminReplyForm" class="stack" style="margin-top:12px;">
-                <textarea id="adminReplyMessage" class="textarea" placeholder="Reply as admin"></textarea>
-                <input id="adminReplyFile" class="input" type="file" accept="image/*,video/*">
-                <button class="btn btn-primary" type="submit">Send Reply</button>
-              </form>
-            </div>
-          </div>
-        </section>
-
-        <section id="adminBlogsPanel" data-admin-panel class="panel hidden">
-          <div class="section-head">
-            <div>
-              <p class="eyebrow">blog</p>
-              <h2 class="section-title">Manual Blog System</h2>
-            </div>
-          </div>
-          <p class="hero-copy">Your public blog page now also includes 100 seeded long-form SEO guides. This admin section is only for the manual posts you want to create or edit yourself.</p>
-          <form id="createBlogForm" class="stack" style="margin-bottom:18px;">
-            <input id="newBlogTitle" class="input" placeholder="Blog title">
-            <input id="newBlogCategory" class="input" placeholder="Blog category (Guide, Ranking, Buying, Performance)" value="Manual">
-            <input id="newBlogSummary" class="input" placeholder="Short summary">
-            <input id="newBlogKeywords" class="input" placeholder="SEO keywords separated by comma">
-            <textarea id="newBlogMeta" class="textarea" placeholder="SEO meta description"></textarea>
-            <input id="newBlogImage" class="input" type="file" accept="image/*">
-            <textarea id="newBlogContent" class="textarea" placeholder="Full blog content"></textarea>
-            <button class="btn btn-primary" type="submit">Create Blog Post</button>
-          </form>
-          <p id="adminBlogsStatus" class="status"></p>
-          <div id="blogList" class="blog-grid"></div>
-        </section>
-
-        <section id="adminAiToolsPanel" data-admin-panel class="panel hidden">
-          <div class="section-head">
-            <div>
-              <p class="eyebrow">ai tools</p>
-              <h2 class="section-title">AI Tools Directory Manager</h2>
-            </div>
-          </div>
-          <form id="createAiToolForm" class="stack" style="margin-bottom:18px;">
-            <input id="newAiToolName" class="input" placeholder="Tool name">
-            <input id="newAiToolCategory" class="input" placeholder="Category">
-            <input id="newAiToolUrl" class="input" placeholder="Tool URL">
-            <textarea id="newAiToolDescription" class="textarea" placeholder="Short description"></textarea>
-            <label class="muted"><input id="newAiToolFeatured" type="checkbox"> Mark as featured</label>
-            <button class="btn btn-primary" type="submit">Add AI Tool</button>
-          </form>
-          <p id="adminAiToolsStatus" class="status"></p>
-          <div id="adminAiToolsList" class="blog-grid"></div>
-        </section>
-
-        <section id="adminSettingsPanel" data-admin-panel class="panel hidden">
-          <div class="section-head">
-            <div>
-              <p class="eyebrow">settings</p>
-              <h2 class="section-title">Brand, Business, Tracking, And Admin Access</h2>
-            </div>
-          </div>
-          <form id="settingsForm" class="stack">
-            <input id="siteTitleInput" class="input" placeholder="Site title">
-            <input id="siteTaglineInput" class="input" placeholder="Site tagline">
-            <textarea id="siteDescriptionInput" class="textarea" placeholder="Site description"></textarea>
-            <input id="logoUrlInput" class="input" placeholder="Logo image URL">
-            <input id="faviconUrlInput" class="input" placeholder="Favicon image URL">
-            <input id="adminEmailInput" class="input" placeholder="Admin email">
-            <input id="adminPasswordInput" class="input" type="password" placeholder="New first admin password (optional)">
-            <input id="adminSecondaryPasswordInput" class="input" type="password" placeholder="New second admin password (optional)">
-            <p id="credentialsHint" class="status"></p>
-            <input id="qrUrlInput" class="input" placeholder="QR image URL">
-            <input id="qrFile" class="input" type="file" accept="image/*">
-            <img id="qrPreview" class="qr-box" src="" alt="QR preview">
-            <div class="two-col">
-              <input id="businessNameInput" class="input" placeholder="Business name">
-              <input id="businessPhoneInput" class="input" placeholder="Business phone">
-              <input id="businessEmailInput" class="input" placeholder="Business email">
-              <input id="businessAddressInput" class="input" placeholder="Address line 1">
-              <input id="businessCityInput" class="input" placeholder="City">
-              <input id="businessStateInput" class="input" placeholder="State">
-            </div>
-            <div class="two-col">
-              <input id="instagramUrlInput" class="input" placeholder="Instagram URL">
-              <input id="facebookUrlInput" class="input" placeholder="Facebook URL">
-              <input id="youtubeUrlInput" class="input" placeholder="YouTube URL">
-              <input id="twitterUrlInput" class="input" placeholder="Twitter / X URL">
-              <input id="linkedinUrlInput" class="input" placeholder="LinkedIn URL">
-              <input id="telegramUrlInput" class="input" placeholder="Telegram URL">
-            </div>
-            <div class="two-col">
-              <input id="googleAnalyticsIdInput" class="input" placeholder="Google Analytics measurement ID">
-              <input id="facebookPixelIdInput" class="input" placeholder="Facebook Pixel ID">
-            </div>
-            <textarea id="spfRecordInput" class="textarea" placeholder="SPF record guidance"></textarea>
-            <textarea id="dmarcRecordInput" class="textarea" placeholder="DMARC record guidance"></textarea>
-            <p class="hero-copy">SPF and DMARC fields are informational notes for your DNS setup. They do not publish records automatically.</p>
-            <button class="btn btn-primary" type="submit">Save Settings</button>
-            <p id="settingsStatus" class="status"></p>
-          </form>
-        </section>
+        </div>
+        <form id="adminSettingsForm" class="admin-editor-grid">
+          <input id="settingsSiteTitle" class="input" placeholder="Site title">
+          <input id="settingsSiteTagline" class="input" placeholder="Tagline">
+          <input id="settingsLogoUrl" class="input" placeholder="Logo URL">
+          <input id="settingsQrUrl" class="input" placeholder="Payment QR URL">
+          <input id="settingsTelegramUrl" class="input" placeholder="Telegram URL">
+          <input id="settingsAccessPrice" class="input" type="number" min="1" placeholder="Access price">
+          <textarea id="settingsDescription" class="textarea" rows="4" placeholder="Description"></textarea>
+          <textarea id="settingsAdminNotice" class="textarea" rows="4" placeholder="Admin notice"></textarea>
+          <button class="btn btn-secondary" type="submit">Save Settings</button>
+        </form>
+        <p id="adminSettingsStatus" class="status"></p>
       </section>
     </main>
   </div>
-  <script src="/socket.io/socket.io.js"></script>
-  <script src="/mobile-nav.min.js"></script>
-  <script src="/header-scroll.min.js"></script>
-  <script src="/app.min.js"></script>
+  <script src="/app.js"></script>
 </body>
 </html>
-
-
-
-
-

@@ -4,34 +4,28 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Game Detail | Gamers Arena</title>
-  <meta name="description" content="Game details, cart actions, QR checkout, and support links on Gamers Arena.">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Oxanium:wght@400;600;700&family=Manrope:wght@400;500;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="/styles.min.css">
+  <link rel="stylesheet" href="/styles.css">
 </head>
 <body data-page="game">
-  <div class="bg-grid"></div>
-  <div class="site-shell">
+  <div class="shell">
     <nav class="topbar">
-      <a class="brand" href="/"><span class="brand-mark">GA</span><span><strong>Gamers Arena</strong><small>game detail</small></span></a>
+      <a class="brand" href="/"><span class="brand-mark">GA</span><span><strong>Gamers Arena</strong><br><small class="muted">game detail</small></span></a>
       <div class="nav-links">
-        <div class="nav-item"><a href="/games.html">All Games</a></div>
-        <div class="nav-item"><a href="/admin.html">Admin Panel</a></div>
-        <div class="nav-item"><a id="cartNavLink" href="/games.html#cartPanel">Cart (0)</a></div>
-        <div class="nav-item"><a href="/blog.html">Blog</a></div>
-        <div class="nav-item"><a href="/news.html">News</a></div>
+        <a class="nav-link" href="/pc-games">PC Games</a>
+        <a class="nav-link" href="/ps4-games">PS4</a>
+        <a class="nav-link" href="/ps5-games">PS5</a>
+      </div>
+      <div class="nav-actions">
+        <span class="muted" data-user-label>Verified User</span>
+        <button class="btn btn-secondary" type="button" data-logout-button>Logout</button>
       </div>
     </nav>
-    <main id="gameDetail" class="panel"></main>
+
+    <main id="gameDetail" class="layout"></main>
   </div>
-  <script src="/mobile-nav.min.js"></script>
-  <script src="/header-scroll.min.js"></script>
-  <script src="/site.js"></script>
+  <script src="/app.js"></script>
 </body>
 </html>
-
-
-
-
-

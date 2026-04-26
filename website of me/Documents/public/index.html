@@ -3,408 +3,131 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Cheap Steam Games & PC Game Deals | Gamers Arena</title>
-  <meta name="description" content="Buy cheap Steam games, discounted bundles, and fast PC game deals at Gamers Arena with QR checkout, saved wishlists, and instant Telegram support.">
-  <meta name="google-site-verification" content="VS1q0Z-2vREZTDL7-qegUyAj5aAloW1TEX-KXPB_KXg" />
+  <title>Gamers Arena</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Oxanium:wght@400;600;700&family=Manrope:wght@400;500;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="/styles.min.css">
+  <link rel="stylesheet" href="/styles.css">
 </head>
 <body data-page="home">
   <div class="shell">
     <nav class="topbar">
-      <a class="brand" href="/"><span class="brand-mark">GA</span><span><strong data-site-title>Gamers Arena</strong><br><small class="muted">simple game store</small></span></a>
+      <a class="brand" href="/"><span class="brand-mark">GA</span><span><strong>Gamers Arena</strong><br><small class="muted">verified vault</small></span></a>
       <div class="nav-links">
-        <a class="nav-link" data-nav-link="home" href="/">Home</a>
-        <a class="nav-link" href="#storeSection">Games</a>
-        <a class="nav-link" href="/bundles.html">Bundles</a>
-        <a class="nav-link" href="/cart.html">Cart (<span data-cart-count>0</span>)</a>
-        <a class="nav-link" href="/checkout.html">Checkout</a>
-        <a class="nav-link" href="/chat.html">Support</a>
-        <a class="nav-link" href="/blog.html">Blog</a>
+        <a class="nav-link" href="/pc-games">PC Games</a>
+        <a class="nav-link" href="/ps4-games">PS4</a>
+        <a class="nav-link" href="/ps5-games">PS5</a>
       </div>
       <div class="nav-actions">
-        <span class="muted" data-user-label>Guest</span>
-        <button class="btn btn-secondary" type="button" data-auth-action>Login</button>
+        <span class="muted" data-user-label>Verified User</span>
+        <button class="btn btn-secondary" type="button" data-logout-button>Logout</button>
       </div>
     </nav>
 
-    <header class="hero reveal" data-reveal>
+    <header class="hero hero-3d reveal" data-reveal data-home-hero>
+      <div class="hero-scene-shell" aria-hidden="true">
+        <canvas class="hero-scene-canvas" data-hero-canvas></canvas>
+        <div class="hero-scene-glow hero-scene-glow-a"></div>
+        <div class="hero-scene-glow hero-scene-glow-b"></div>
+        <div class="hero-scene-grid"></div>
+        <div class="hero-float hero-float-a"></div>
+        <div class="hero-float hero-float-b"></div>
+        <div class="hero-float hero-float-c"></div>
+      </div>
       <div class="hero-grid">
         <div class="hero-main">
-          <div class="hero-badge-row">
-            <span class="hero-badge">Curated for budget PC buyers</span>
-            <span class="hero-badge hero-badge-soft">QR-ready checkout flow</span>
-          </div>
-          <p class="eyebrow" data-section-subtitle="home-hero">steam deals hub</p>
-          <h1 id="managedHomeTitle" data-section-title="home-hero">Cheap Steam Games &amp; PC Game Deals</h1>
-          <p id="managedHomeDescription" class="hero-copy" data-section-body="home-hero">Buy cheap Steam games, discounted bundles, and budget-friendly PC game deals at Gamers Arena. Search fast, pay by QR, save your wishlist, and finish your order with direct Telegram support.</p>
-          <div class="chip-row hero-chip-row">
-            <span class="chip">Fast search</span>
-            <span class="chip">Wishlist support</span>
-            <span class="chip">Bundle pages</span>
-            <span class="chip">Telegram handoff</span>
-          </div>
+          <p class="eyebrow">verified access</p>
+          <h1>Samurai steel, mythic fire, neon speed.</h1>
+          <p class="hero-copy">The platform now opens only for verified users. Explore PC credentials securely, then use the PS4 and PS5 halls to message us on Telegram for console purchases.</p>
           <div class="cta-row">
-            <a id="managedHomeButton" class="btn btn-primary" href="#storeSection" data-section-button-label="home-hero" data-section-button-href="home-hero">Browse Games</a>
-            <a class="btn btn-secondary" href="/bundles.html">Open Bundles</a>
-            <a class="btn btn-secondary" data-telegram-general href="https://t.me/gamersarena_shop" target="_blank" rel="noreferrer">Ask On Telegram</a>
+            <a class="btn btn-primary" href="/pc-games">Enter PC Vault</a>
+            <a class="btn btn-secondary" href="/ps5-games">Explore PS5 Hall</a>
           </div>
-          <div class="quick-filter-row">
-            <button class="filter-pill active" type="button" data-home-category="">All Games</button>
-            <button class="filter-pill" type="button" data-home-category="Action">Action</button>
-            <button class="filter-pill" type="button" data-home-category="Shooter">Shooter</button>
-            <button class="filter-pill" type="button" data-home-category="RPG">RPG</button>
-            <button class="filter-pill" type="button" data-home-category="Racing">Racing</button>
-            <button class="filter-pill" type="button" data-home-category="Low-end PC">Low-End PC</button>
-            <button class="filter-pill" type="button" data-home-category="Upcoming">Upcoming</button>
-          </div>
-          <div class="hero-trust-strip">
-            <div class="hero-trust-pill">
-              <span class="hero-trust-label">Wishlist ready</span>
-              <strong>Save now, buy later</strong>
-            </div>
-            <div class="hero-trust-pill">
-              <span class="hero-trust-label">Direct support</span>
-              <strong>Telegram handoff after payment</strong>
-            </div>
+          <div class="chip-row hero-chip-row">
+            <span class="chip">Google login</span>
+            <span class="chip">One-time access keys</span>
+            <span class="chip">Encrypted credentials</span>
+            <span class="chip">Admin approvals</span>
           </div>
         </div>
         <aside class="hero-side">
-          <div class="hero-side-header">
-            <div class="hero-note">Live store pulse</div>
-            <span class="hero-signal">Scan. Pay. Confirm.</span>
-          </div>
-          <div class="hero-side-spotlight">
-            <p class="eyebrow">order route</p>
-            <h2 class="hero-side-title">Built for fast orders without a messy checkout.</h2>
-            <p class="hero-copy">Browse from the catalog, pay through your QR, then continue the conversation in Telegram with your order details ready.</p>
-          </div>
-          <div class="metric-grid">
-            <article class="metric-card">
-              <span class="metric-label">Games Live</span>
-              <strong id="metricGames" class="metric-value">0</strong>
-            </article>
-            <article class="metric-card">
-              <span class="metric-label">Bundles</span>
-              <strong id="metricBundles" class="metric-value">0</strong>
-            </article>
-            <article class="metric-card">
-              <span class="metric-label">Upcoming</span>
-              <strong id="metricUpcoming" class="metric-value">0</strong>
-            </article>
-            <article class="metric-card">
-              <span class="metric-label">Saved</span>
-              <strong id="metricWishlist" class="metric-value">0</strong>
-            </article>
+          <div class="hero-console-stack" aria-hidden="true">
+            <div class="hero-console-card hero-console-card-primary">
+              <span class="hero-console-kicker">Scene Stack</span>
+              <strong>Samurai / Myth / City / Cars</strong>
+              <small>Cinematic 3D transitions</small>
+            </div>
+            <div class="hero-console-card hero-console-card-secondary">
+              <span class="hero-console-dot"></span>
+              <strong>Access gate active</strong>
+            </div>
           </div>
           <div class="route-steps">
-            <div class="route-step"><span>01</span> Browse games or bundles</div>
-            <div class="route-step"><span>02</span> Add to cart and pay by QR</div>
-            <div class="route-step"><span>03</span> Continue to Telegram support</div>
+            <div class="route-step"><span>01</span> Enter the verified home scene</div>
+            <div class="route-step"><span>02</span> Open secure PC game details</div>
+            <div class="route-step"><span>03</span> Message Telegram for PS4 and PS5 games</div>
           </div>
         </aside>
       </div>
     </header>
 
     <main>
-      <section class="panel commerce-strip reveal" data-reveal>
-      <div class="section-head commerce-strip-head">
-        <div>
-          <p class="eyebrow">buying flow</p>
-          <h2 class="section-title">A Clear Storefront From Discovery To Delivery</h2>
-        </div>
-        <p class="hero-copy commerce-strip-copy">The homepage now leads buyers through one simple path instead of making every section compete for attention.</p>
-      </div>
-      <div class="commerce-grid">
-        <article class="commerce-card commerce-card-accent">
-          <p class="eyebrow">discover</p>
-          <h3 class="card-title">Search fast and filter by game type</h3>
-          <p class="hero-copy">Popular genres stay one tap away, and missing titles can move straight into Telegram support.</p>
-        </article>
-        <article class="commerce-card">
-          <p class="eyebrow">checkout</p>
-          <h3 class="card-title">Show your QR with confidence</h3>
-          <p class="hero-copy">When you give me your QR image, I can place it into the site's persistent settings flow so it stays part of the website experience.</p>
-        </article>
-        <article class="commerce-card">
-          <p class="eyebrow">handoff</p>
-          <h3 class="card-title">Finish orders in Telegram without confusion</h3>
-          <p class="hero-copy">Customers get a simple next step after payment instead of guessing what to do or where to message.</p>
-        </article>
-      </div>
-      </section>
-
-      <section class="panel pulse-panel reveal" data-reveal>
+      <section class="panel depth-panel reveal" data-reveal>
         <div class="section-head">
           <div>
-            <p class="eyebrow">trending games</p>
-            <h2 class="section-title">Trending Games</h2>
-          </div>
-          <a class="btn btn-secondary" href="/pc-games">See More</a>
-        </div>
-        <div class="slider-row-shell">
-          <div class="slider-row-stage">
-            <button class="slider-arrow" type="button" data-slider-row="trendingGamesRail" data-slider-direction="-1" aria-label="Scroll trending games left">&#10094;</button>
-            <div id="trendingGamesRail" class="game-slider-row"></div>
-            <button class="slider-arrow" type="button" data-slider-row="trendingGamesRail" data-slider-direction="1" aria-label="Scroll trending games right">&#10095;</button>
-          </div>
-        </div>
-      </section>
-
-      <section class="panel reveal" data-reveal>
-        <div class="section-head">
-          <div>
-            <p class="eyebrow">mobile-first slider</p>
-            <h2 class="section-title">Swipe Through Fast Picks</h2>
-          </div>
-          <a class="btn btn-secondary" href="/pc-games">Open Full Catalog</a>
-        </div>
-        <div class="slider-row-shell">
-          <div class="slider-row-head">
-            <strong>PC picks lane 01</strong>
-            <span class="muted">Smooth arrows on desktop, swipe on mobile</span>
-          </div>
-          <div class="slider-row-stage">
-            <button class="slider-arrow" type="button" data-slider-row="gameRailRow1" data-slider-direction="-1" aria-label="Scroll PC picks left">&#10094;</button>
-            <div id="gameRailRow1" class="game-slider-row"></div>
-            <button class="slider-arrow" type="button" data-slider-row="gameRailRow1" data-slider-direction="1" aria-label="Scroll PC picks right">&#10095;</button>
-          </div>
-        </div>
-        <div class="slider-row-shell">
-          <div class="slider-row-head">
-            <strong>PC picks lane 02</strong>
-            <span class="muted">Showing more fast-moving entries</span>
-          </div>
-          <div class="slider-row-stage">
-            <button class="slider-arrow" type="button" data-slider-row="gameRailRow2" data-slider-direction="-1" aria-label="Scroll more PC picks left">&#10094;</button>
-            <div id="gameRailRow2" class="game-slider-row"></div>
-            <button class="slider-arrow" type="button" data-slider-row="gameRailRow2" data-slider-direction="1" aria-label="Scroll more PC picks right">&#10095;</button>
-          </div>
-        </div>
-      </section>
-
-      <section id="storeSection" class="panel reveal store-panel" data-reveal>
-        <div class="store-stage-top">
-          <div class="store-stage-copy">
-            <p class="eyebrow" data-section-subtitle="home-store">game store</p>
-            <h2 class="section-title" data-section-title="home-store">Steam Games And Budget PC Deals</h2>
-            <p class="hero-copy" data-section-body="home-store">Search fast, filter by category, and add affordable Steam and PC game deals to your cart in a clean storefront. If a title is missing, the request flow sends buyers straight to Telegram.</p>
-            <div class="chip-row">
-              <span class="chip">Fast search</span>
-              <span class="chip">Budget-friendly pricing</span>
-              <span class="chip">Fast Telegram support</span>
-            </div>
-          </div>
-          <aside class="store-note-card">
-            <p class="eyebrow" data-section-subtitle="home-help">quick help</p>
-            <strong data-section-title="home-help">Need a missing title?</strong>
-            <p class="hero-copy" data-section-body="home-help">Use search first. If it is not listed, the store shows a Telegram request button so customers can still place a demand quickly.</p>
-          </aside>
-        </div>
-        <div class="toolbar">
-          <div class="search-suggestions-shell">
-            <input id="gameSearch" class="input" placeholder="Search games">
-            <div id="searchSuggestions" class="search-suggestions hidden"></div>
-          </div>
-          <select id="gameCategory" class="select">
-            <option value="">All categories</option>
-          </select>
-          <button id="clearGameFilters" class="btn btn-secondary" type="button">Clear</button>
-        </div>
-        <p id="resultsMeta" class="muted"></p>
-        <p id="homeStatus" class="status"></p>
-        <div id="gamesGrid" class="game-grid"></div>
-        <div id="loadMoreWrap" class="load-more-wrap hidden">
-          <button id="loadMoreGames" class="btn btn-secondary" type="button">Load More Games</button>
-        </div>
-      </section>
-
-      <section class="panel reveal console-section" data-reveal>
-        <div class="section-head console-section-head">
-          <div>
-            <p class="eyebrow" data-section-subtitle="home-ps5">console picks</p>
-            <h2 class="section-title" data-section-title="home-ps5">PS5 Game Library</h2>
-          </div>
-          <a class="btn btn-secondary" href="/ps5-games">Open PS5 Page</a>
-        </div>
-        <p class="hero-copy console-section-copy" data-section-body="home-ps5">Premium PS5 titles with rich artwork, quick Telegram buying, and the same dark neon storefront feel as the PC catalog.</p>
-        <p id="ps5Status" class="status"></p>
-        <div class="slider-row-stage">
-          <button class="slider-arrow" type="button" data-slider-row="ps5GamesGrid" data-slider-direction="-1" aria-label="Scroll PS5 games left">&#10094;</button>
-          <div id="ps5GamesGrid" class="game-slider-row console-slider-row"></div>
-          <button class="slider-arrow" type="button" data-slider-row="ps5GamesGrid" data-slider-direction="1" aria-label="Scroll PS5 games right">&#10095;</button>
-        </div>
-      </section>
-
-      <section class="panel reveal console-section" data-reveal>
-        <div class="section-head console-section-head">
-          <div>
-            <p class="eyebrow" data-section-subtitle="home-ps4">console picks</p>
-            <h2 class="section-title" data-section-title="home-ps4">PS4 Game Library</h2>
-          </div>
-          <a class="btn btn-secondary" href="/ps4-games">Open PS4 Page</a>
-        </div>
-        <p class="hero-copy console-section-copy" data-section-body="home-ps4">Popular PS4 titles for players who still want a strong catalog, smooth browsing, and a simple direct-buy flow.</p>
-        <p id="ps4Status" class="status"></p>
-        <div class="slider-row-stage">
-          <button class="slider-arrow" type="button" data-slider-row="ps4GamesGrid" data-slider-direction="-1" aria-label="Scroll PS4 games left">&#10094;</button>
-          <div id="ps4GamesGrid" class="game-slider-row console-slider-row"></div>
-          <button class="slider-arrow" type="button" data-slider-row="ps4GamesGrid" data-slider-direction="1" aria-label="Scroll PS4 games right">&#10095;</button>
-        </div>
-      </section>
-
-      <section class="panel reveal" data-reveal>
-        <div class="section-head">
-          <div>
-            <p class="eyebrow">bundles</p>
-            <h2 class="section-title">Bundles</h2>
-          </div>
-          <a class="btn btn-secondary" href="/bundles.html">Open Bundle Catalog</a>
-        </div>
-        <div id="bundleList" class="bundle-grid auto-rail" data-auto-rail></div>
-      </section>
-
-      <section class="panel reveal" data-reveal>
-        <div class="section-head">
-          <div>
-            <p class="eyebrow">blog preview</p>
-            <h2 class="section-title">Latest SEO Guides And Buyer Advice</h2>
-          </div>
-          <a class="btn btn-secondary" href="/blog">Open Blog</a>
-        </div>
-        <div id="homeBlogGrid" class="feature-grid"></div>
-      </section>
-
-      <section class="panel reveal" data-reveal>
-        <div class="section-head">
-          <div>
-            <p class="eyebrow">ai tools</p>
-            <h2 class="section-title">AI Tools For Creators And Operators</h2>
-          </div>
-          <a class="btn btn-secondary" href="/ai-tools">Browse AI Tools</a>
-        </div>
-        <div id="homeAiToolsGrid" class="feature-grid"></div>
-      </section>
-
-      <section class="panel reveal" data-reveal>
-        <div class="section-head">
-          <div>
-            <p class="eyebrow">featured lanes</p>
-            <h2 class="section-title">Curated Entry Points For Different Buyers</h2>
-          </div>
-        </div>
-        <div id="featuredSections" class="feature-grid"></div>
-      </section>
-
-      <section class="panel reveal" data-reveal>
-        <div class="section-head">
-          <div>
-            <p class="eyebrow">upcoming</p>
-            <h2 class="section-title">Upcoming Watchlist</h2>
-          </div>
-        </div>
-        <div id="upcomingGrid" class="game-grid"></div>
-      </section>
-
-      <section class="panel reveal" data-reveal>
-        <div class="section-head">
-          <div>
-            <p class="eyebrow">how it works</p>
-            <h2 class="section-title">Simple Multi-Page Buying Flow</h2>
+            <p class="eyebrow">platform pillars</p>
+            <h2 class="section-title">Everything now runs through protected access.</h2>
           </div>
         </div>
         <div class="feature-grid">
           <article class="card feature-item">
-            <h3 class="card-title">1. Pick Games</h3>
-            <p class="hero-copy">Browse clean text-only cards with the same easy layout and fast add-to-cart flow.</p>
+            <h3 class="card-title">Locked Until Verified</h3>
+            <p class="hero-copy">No visitor sees catalog content before login, payment, and key activation are complete.</p>
           </article>
           <article class="card feature-item">
-            <h3 class="card-title">2. Pay By QR</h3>
-            <p class="hero-copy">Checkout stays simple. Scan the QR, pay, and click one button to continue.</p>
+            <h3 class="card-title">Admin-Controlled Access</h3>
+            <p class="hero-copy">Payments, one-time keys, and the full game inventory are controlled from the admin panel.</p>
           </article>
           <article class="card feature-item">
-            <h3 class="card-title">3. Support On Telegram</h3>
-            <p class="hero-copy">After payment or for any query, users go directly to Telegram support with a ready message.</p>
+            <h3 class="card-title">Cinematic Motion</h3>
+            <p class="hero-copy">Three.js and GSAP drive a lightweight interactive hero with scroll-linked depth and scene energy.</p>
           </article>
         </div>
       </section>
 
-      <section class="panel reveal" data-reveal>
+      <section class="panel depth-panel reveal" data-reveal>
         <div class="section-head">
           <div>
-            <p class="eyebrow">page builder</p>
-            <h2 class="section-title">Custom Homepage Blocks</h2>
+            <p class="eyebrow">next steps</p>
+            <h2 class="section-title">Choose your route</h2>
           </div>
         </div>
-        <div id="homeLayout" class="list"></div>
-      </section>
-
-      <section class="panel reveal" data-reveal>
-        <div class="section-head">
-          <div>
-            <p class="eyebrow">saved for later</p>
-            <h2 class="section-title">Wishlist</h2>
-          </div>
-          <a class="btn btn-secondary" href="/wishlist.html">Open Wishlist</a>
-        </div>
-        <div id="wishlistPreview" class="bundle-grid"></div>
-      </section>
-
-      <section class="panel reveal" data-reveal>
-        <div class="section-head">
-          <div>
-            <p class="eyebrow">customer voice</p>
-            <h2 class="section-title">Reviews And Trust</h2>
-          </div>
-          <a class="btn btn-secondary" href="/reviews.html">All Reviews</a>
-        </div>
-        <div id="reviewPreview" class="bundle-grid auto-rail" data-auto-rail></div>
-      </section>
-
-      <section class="panel reveal" data-reveal>
-        <div class="section-head">
-          <div>
-            <p class="eyebrow">help center</p>
-            <h2 class="section-title">FAQ</h2>
-          </div>
-          <a class="btn btn-secondary" href="/faq.html">Open FAQ</a>
-        </div>
-        <div id="faqPreview" class="feature-grid"></div>
-      </section>
-
-      <section class="panel reveal" data-reveal>
-        <div class="section-head">
-          <div>
-            <p class="eyebrow">store confidence</p>
-            <h2 class="section-title">Built To Feel Clear, Fast, And Trustworthy</h2>
-          </div>
-        </div>
-        <div class="feature-grid">
-          <article class="card feature-item">
-            <h3 class="card-title">All Games Same Price</h3>
-            <p class="hero-copy">Every listed deal is positioned as a budget-friendly offer, and you can update pricing any time from the admin dashboard.</p>
+        <div class="commerce-grid">
+          <article class="commerce-card commerce-card-accent">
+            <p class="eyebrow">pc</p>
+            <h3 class="card-title">Unlock ID &amp; Password securely</h3>
+            <p class="hero-copy">Verified users can open PC games, view details, and request credentials only after access is unlocked.</p>
+            <a class="btn btn-primary" href="/pc-games">Browse PC Games</a>
           </article>
-          <article class="card feature-item">
-            <h3 class="card-title">Fast Support</h3>
-            <p class="hero-copy">After payment, users are redirected straight to Telegram support with an order-ready message.</p>
+          <article class="commerce-card">
+            <p class="eyebrow">ps4</p>
+            <h3 class="card-title">Telegram-only purchase flow</h3>
+            <p class="hero-copy">PS4 pages now tell buyers to message us on Telegram instead of exposing credentials.</p>
+            <a class="btn btn-secondary" href="/ps4-games">Open PS4</a>
           </article>
-          <article class="card feature-item">
-            <h3 class="card-title">Easy Management</h3>
-            <p class="hero-copy">You can change title, QR, games, blog, and homepage sections from the admin dashboard and editor.</p>
+          <article class="commerce-card">
+            <p class="eyebrow">ps5</p>
+            <h3 class="card-title">Telegram-only purchase flow</h3>
+            <p class="hero-copy">PS5 pages follow the same rule: message us on Telegram to buy PS5 games.</p>
+            <a class="btn btn-secondary" href="/ps5-games">Open PS5</a>
           </article>
         </div>
       </section>
     </main>
   </div>
-  <script src="/mobile-nav.min.js"></script>
-  <script src="/header-scroll.min.js"></script>
-  <script src="/app.min.js"></script>
+  <script src="/vendor/gsap/dist/gsap.min.js"></script>
+  <script src="/vendor/gsap/dist/ScrollTrigger.min.js"></script>
+  <script src="/app.js"></script>
+  <script type="module" src="/home-3d.js"></script>
 </body>
 </html>
-
-
-
-
-

@@ -1,209 +1,33 @@
-const fs = require("fs");
-const express = require("express");
-const compression = require("compression");
+const crypto = require("crypto");
 const path = require("path");
-const { readStore, updateStore, createId, slugify, defaultQr, defaultLogo, normalizeAiTool, normalizeConsoleGame } = require("./store");
-const { attachSession, getSession, setSession, clearSession } = require("./sessionManager");
-const { getMergedBlogs, getBlogBySlug } = require("./blogEngine");
-const { ensureBundleDrafts, getBundleBySlug, getBundles, normalizeBundle } = require("./bundleCatalog");
-const { buildLlmsTxt, buildRobotsTxt, buildSitemapXml, getSeoForPath, injectSeo } = require("./seo");
-const createContentController = require("./controllers/contentController");
-const createContentRoutes = require("./routes/contentRoutes");
-const { upsertEnvValues } = require("./envConfig");
+const compression = require("compression");
+const express = require("express");
+const passport = require("passport");
+const GoogleStrategy = require("passport-google-oauth20").Strategy;
+const { attachSession, clearSession, getSession, setSession } = require("./sessionManager");
+const { createId, defaultLogo, defaultQr, readStore, slugify, updateStore } = require("./store");
 
-const DEFAULT_ADMIN_EMAIL = "admin@gamersarena.com";
-const DEFAULT_ADMIN_PASSWORD = "change-me";
-const DEFAULT_ADMIN_SECONDARY_PASSWORD = "change-me";
-const DEFAULT_ADMIN_RECOVERY_DOB1 = "27-03-2007";
-const DEFAULT_ADMIN_RECOVERY_DOB2 = "17-10-2008";
-const ADMIN_PRIMARY_WINDOW_MS = 5 * 60 * 1000;
-const ADMIN_RECOVERY_WINDOW_MS = 10 * 60 * 1000;
-const AUTH_WINDOW_MS = 15 * 60 * 1000;
-const AUTH_ATTEMPT_LIMIT = 20;
-const authAttempts = new Map();
+const ACCESS_KEY_LENGTH = 12;
+const CREDENTIAL_SECRET = String(process.env.CREDENTIAL_SECRET || process.env.SESSION_SECRET || "change-me-platform-secret");
+const PASSWORD_SECRET = String(process.env.PASSWORD_SECRET || process.env.SESSION_SECRET || "change-me-password-secret");
+const GOOGLE_CLIENT_ID = String(process.env.GOOGLE_CLIENT_ID || "").trim();
+const GOOGLE_CLIENT_SECRET = String(process.env.GOOGLE_CLIENT_SECRET || "").trim();
+const BASE_URL = String(process.env.BASE_URL || "http://127.0.0.1:3000").trim().replace(/\/+$/, "");
+const ADMIN_USERNAME = String(process.env.ADMIN_USERNAME || "admin").trim();
+const ADMIN_PASSWORD = String(process.env.ADMIN_PASSWORD || "").trim();
+const RECOVERY_CODE_1 = String(process.env.RECOVERY_CODE_1 || "").trim();
+const RECOVERY_CODE_2 = String(process.env.RECOVERY_CODE_2 || "").trim();
 
-function sanitizeGame(game) {
-  const name = String(game.name || "").trim();
-  return {
-    id: game.id,
-    slug: String(game.slug || slugify(name)).trim(),
-    name,
-    price: Number(game.price || 45),
-    category: String(game.category || "Action").trim(),
-    description: String(game.description || `${name} is available on Gamers Arena.`).trim(),
-    image: String(game.image || "").trim()
-  };
-}
-
-function sanitizeBlog(blog) {
-  return {
-    id: blog.id,
-    slug: blog.slug,
-    title: String(blog.title || "").trim(),
-    summary: String(blog.summary || "").trim(),
-    content: String(blog.content || "").trim(),
-    htmlContent: String(blog.htmlContent || "").trim(),
-    image: String(blog.image || "").trim(),
-    category: String(blog.category || "Manual").trim(),
-    keywords: Array.isArray(blog.keywords) ? blog.keywords.map((item) => String(item).trim()).filter(Boolean) : [],
-    metaTitle: String(blog.metaTitle || `${blog.title || "Blog"} | Gamers Arena`).trim(),
-    metaDescription: String(blog.metaDescription || blog.summary || "").trim(),
-    wordCount: Number(blog.wordCount || 0),
-    readTime: Number(blog.readTime || 0),
-    editable: blog.editable !== false,
-    source: String(blog.source || "manual").trim(),
-    createdAt: blog.createdAt,
-    updatedAt: blog.updatedAt
-  };
-}
-
-function sanitizeConsoleGame(item) {
-  return {
-    id: item.id,
-    slug: item.slug,
-    name: String(item.name || "").trim(),
-    platform: String(item.platform || "PS5").trim(),
-    image: String(item.image || "").trim(),
-    createdAt: item.createdAt,
-    updatedAt: item.updatedAt
-  };
-}
-
-function sanitizeAiTool(item) {
-  return {
-    id: item.id,
-    slug: item.slug,
-    name: String(item.name || "").trim(),
-    category: String(item.category || "AI").trim(),
-    description: String(item.description || "").trim(),
-    url: String(item.url || "").trim(),
-    featured: item.featured === true,
-    createdAt: item.createdAt,
-    updatedAt: item.updatedAt
-  };
-}
-
-function sanitizeBundle(bundle, options = {}) {
-  const includeImages = options.includeImages !== false;
-  return {
-    id: bundle.id,
-    slug: bundle.slug,
-    name: String(bundle.name || "").trim(),
-    itemCount: Number(bundle.itemCount || 0),
-    price: Number(bundle.price || 45),
-    description: String(bundle.description || "").trim(),
-    images: includeImages && Array.isArray(bundle.images) ? bundle.images.map((image) => String(image || "").trim()).filter(Boolean).slice(0, 2) : [],
-    gameIds: Array.isArray(bundle.gameIds) ? bundle.gameIds : []
-  };
-}
-
-function legacyNormalizeSearchValue(value) {
-  return String(value || "")
-    .toLowerCase()
-    .normalize("NFKD")
-    .replace(/[’'`]/g, "")
-    .replace(/[^a-z0-9]+/g, " ")
-    .trim();
-}
-
-function normalizeSearchValue(value) {
-  return String(value || "")
-    .toLowerCase()
-    .normalize("NFKD")
-    .replace(/['\u2019`]/g, "")
-    .replace(/[^a-z0-9]+/g, " ")
-    .trim();
-}
-
-function normalizeDobValue(value) {
-  const digits = String(value || "").replace(/\D/g, "");
-  if (digits.length !== 8) return "";
-  if (digits.startsWith("19") || digits.startsWith("20")) {
-    return `${digits.slice(6, 8)}-${digits.slice(4, 6)}-${digits.slice(0, 4)}`;
-  }
-  return `${digits.slice(0, 2)}-${digits.slice(2, 4)}-${digits.slice(4, 8)}`;
-}
-
-function stripHtmlText(value) {
-  return String(value || "").replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim();
-}
-
-function normalizeRateLimitKey(req) {
-  const forwarded = String(req.headers["x-forwarded-for"] || "").split(",")[0].trim();
-  return `${req.path}:${forwarded || req.ip || "local"}`;
-}
-
-function getRuntimeAdminEnv() {
-  return {
-    email: String(process.env.ADMIN_EMAIL || DEFAULT_ADMIN_EMAIL).trim() || DEFAULT_ADMIN_EMAIL,
-    password: String(process.env.ADMIN_PASSWORD || "").trim(),
-    secondaryPassword: String(process.env.ADMIN_SECONDARY_PASSWORD || "").trim(),
-    recoveryDob1: String(process.env.ADMIN_RECOVERY_DOB1 || DEFAULT_ADMIN_RECOVERY_DOB1).trim() || DEFAULT_ADMIN_RECOVERY_DOB1,
-    recoveryDob2: String(process.env.ADMIN_RECOVERY_DOB2 || DEFAULT_ADMIN_RECOVERY_DOB2).trim() || DEFAULT_ADMIN_RECOVERY_DOB2,
-    emailManagedByEnv: Boolean(process.env.ADMIN_EMAIL),
-    passwordManagedByEnv: Boolean(process.env.ADMIN_PASSWORD),
-    secondaryManagedByEnv: Boolean(process.env.ADMIN_SECONDARY_PASSWORD)
-  };
-}
-
-function createApp(io) {
+function createApp() {
   const app = express();
   const publicDir = path.join(__dirname, "..", "public");
-  readStore();
-  const contentController = createContentController({ readStore, updateStore, createId, slugify });
+  const nodeModulesDir = path.join(__dirname, "..", "node_modules");
+  ensureStoreSeedState();
 
-  function getAdminCredentials(store) {
-    const runtime = getRuntimeAdminEnv();
-    return {
-      email: runtime.emailManagedByEnv ? runtime.email : (store.admin.email || runtime.email),
-      password: runtime.passwordManagedByEnv ? runtime.password : (store.admin.password || runtime.password || DEFAULT_ADMIN_PASSWORD),
-      secondaryPassword: runtime.secondaryManagedByEnv
-        ? runtime.secondaryPassword
-        : (store.admin.secondaryPassword || runtime.secondaryPassword || DEFAULT_ADMIN_SECONDARY_PASSWORD),
-      emailManagedByEnv: runtime.emailManagedByEnv,
-      passwordManagedByEnv: runtime.passwordManagedByEnv,
-      secondaryManagedByEnv: runtime.secondaryManagedByEnv,
-      managedByEnv: runtime.emailManagedByEnv || runtime.passwordManagedByEnv || runtime.secondaryManagedByEnv
-    };
-  }
-
-  function isPrimaryVerificationActive(session, email) {
-    return Boolean(
-      session?.adminPrimaryEmail &&
-      session.adminPrimaryEmail.toLowerCase() === String(email || "").toLowerCase() &&
-      Number(session.adminPrimaryVerifiedUntil || 0) > Date.now()
-    );
-  }
-
-  function isRecoveryVerificationActive(session) {
-    return Number(session?.adminRecoveryVerifiedUntil || 0) > Date.now();
-  }
-
-  function resolveBaseUrl(req) {
-    const envBaseUrl = String(process.env.BASE_URL || "").trim();
-    if (envBaseUrl) return envBaseUrl.replace(/\/+$/, "");
-    return `${req.protocol}://${req.get("host")}`;
-  }
-
-  function sendSeoPage(req, res, fileName, seoPath) {
-    const filePath = path.join(publicDir, fileName);
-    if (!fs.existsSync(filePath)) return res.sendStatus(404);
-    const html = fs.readFileSync(filePath, "utf8");
-    const store = readStore();
-    const seo = getSeoForPath(seoPath, store);
-    return res.type("html").send(injectSeo(html, seo, resolveBaseUrl(req), store));
-  }
-
-  function sendProtectedSeoPage(req, res, fileName, seoPath) {
-    const session = getSession(req);
-    if (!session?.isAdmin) {
-      return res.redirect(`/login.html?redirect=${encodeURIComponent(seoPath)}`);
-    }
-    return sendSeoPage(req, res, fileName, seoPath);
-  }
-
+  app.disable("x-powered-by");
   app.use(compression());
-  app.use(express.json({ limit: "25mb" }));
+  app.use(express.json({ limit: "5mb" }));
+  app.use(express.urlencoded({ extended: true }));
   app.use((req, res, next) => {
     attachSession(req, res);
     next();
@@ -212,1385 +36,699 @@ function createApp(io) {
     res.setHeader("Referrer-Policy", "strict-origin-when-cross-origin");
     res.setHeader("X-Content-Type-Options", "nosniff");
     res.setHeader("X-Frame-Options", "SAMEORIGIN");
+    res.setHeader("Cross-Origin-Resource-Policy", "same-origin");
     res.setHeader("Permissions-Policy", "camera=(), microphone=(), geolocation=()");
     next();
   });
-  app.use((req, res, next) => {
-    if (!req.path.startsWith("/auth/")) return next();
-    const key = normalizeRateLimitKey(req);
-    const now = Date.now();
-    const current = authAttempts.get(key);
-    if (!current || now > current.expiresAt) {
-      authAttempts.set(key, { count: 1, expiresAt: now + AUTH_WINDOW_MS });
-      return next();
-    }
-    if (current.count >= AUTH_ATTEMPT_LIMIT) {
-      return res.status(429).json({ error: "Too many authentication attempts. Please wait before trying again." });
-    }
-    current.count += 1;
-    authAttempts.set(key, current);
-    next();
-  });
-  app.get("/robots.txt", (req, res) => {
-    res.type("text/plain").send(buildRobotsTxt(resolveBaseUrl(req)));
-  });
-  app.get("/sitemap.xml", (req, res) => {
-    res.type("application/xml").send(buildSitemapXml(resolveBaseUrl(req), readStore()));
-  });
-  app.get("/llms.txt", (req, res) => {
-    res.type("text/plain").send(buildLlmsTxt(resolveBaseUrl(req), readStore()));
-  });
-  app.use((req, res, next) => {
-    if (!["GET", "HEAD"].includes(req.method)) return next();
-    const pagePath = req.path === "/" ? "/index.html" : req.path;
-    if (!pagePath.endsWith(".html")) return next();
-    if (["/admin.html", "/editor.html"].includes(pagePath)) {
-      const session = getSession(req);
-      if (!session?.isAdmin) {
-        return res.redirect(`/login.html?redirect=${encodeURIComponent(pagePath)}`);
-      }
-    }
-    const fileName = pagePath === "/index.html" ? "index.html" : pagePath.slice(1);
-    const filePath = path.join(publicDir, fileName);
-    if (!fs.existsSync(filePath)) return next();
-    return sendSeoPage(req, res, fileName, pagePath);
-  });
+
+  if (GOOGLE_CLIENT_ID && GOOGLE_CLIENT_SECRET) {
+    passport.use(new GoogleStrategy({
+      clientID: GOOGLE_CLIENT_ID,
+      clientSecret: GOOGLE_CLIENT_SECRET,
+      callbackURL: `${BASE_URL}/auth/google/callback`
+    }, (_accessToken, _refreshToken, profile, done) => {
+      const email = profile.emails?.[0]?.value || "";
+      if (!email) return done(new Error("Google account did not provide an email address."));
+      const user = upsertGoogleUser({
+        email,
+        googleId: profile.id,
+        name: profile.displayName || email.split("@")[0]
+      });
+      return done(null, user);
+    }));
+  }
+
+  app.use(passport.initialize());
+
+  app.use("/vendor", express.static(nodeModulesDir, { maxAge: "1d", etag: true }));
+  app.use("/assets", express.static(path.join(publicDir, "assets"), { maxAge: "1d", etag: true }));
   app.use(express.static(publicDir, {
     etag: true,
-    maxAge: "1h"
+    maxAge: "1h",
+    index: false,
+    extensions: false
   }));
 
-  function requireAuth(req, res, next) {
+  function getSettings() {
+    return readStore().settings;
+  }
+
+  function getAdminState() {
+    const store = readStore();
+    return {
+      username: ADMIN_USERNAME || "admin",
+      passwordHash: store.admin?.passwordHash || "",
+      hasEnvPassword: Boolean(ADMIN_PASSWORD),
+      recoveryConfigured: Boolean(RECOVERY_CODE_1 && RECOVERY_CODE_2)
+    };
+  }
+
+  function getBaseUrl(req) {
+    const envBase = String(process.env.BASE_URL || "").trim();
+    if (envBase) return envBase.replace(/\/+$/, "");
+    return `${req.protocol}://${req.get("host")}`;
+  }
+
+  function getTelegramPaymentUrl(req, user) {
+    const settings = getSettings();
+    const baseMessage = `Hi, I have paid ₹${settings.accessPriceInr}. Please verify.`;
+    const text = [
+      baseMessage,
+      `Email: ${user.email}`,
+      `Amount: ₹${settings.accessPriceInr}`
+    ].join("\n");
+    return `${settings.telegramUrl}?text=${encodeURIComponent(text)}`;
+  }
+
+  function getUserBySession(req) {
     const session = getSession(req);
-    if (!session?.userId) return res.status(401).json({ error: "Login required." });
-    req.session = session;
+    if (!session?.userId || session.isAdmin) return null;
+    return readStore().users.find((item) => item.id === session.userId) || null;
+  }
+
+  function getAccessState(user) {
+    if (!user) return "guest";
+    if (user.verified) return "verified";
+    if (user.paymentStatus === "pending" || user.paymentStatus === "approved") return "awaiting-key";
+    return "needs-payment";
+  }
+
+  function getSessionPayload(user, extra = {}) {
+    return {
+      ownerKey: user.id,
+      userId: user.id,
+      name: user.name,
+      contact: user.email,
+      isAdmin: false,
+      ...extra
+    };
+  }
+
+  function publicUser(user) {
+    if (!user) return null;
+    return {
+      id: user.id,
+      email: user.email,
+      name: user.name,
+      paymentStatus: user.paymentStatus,
+      verified: user.verified
+    };
+  }
+
+  function adminPayload() {
+    const store = readStore();
+    return {
+      users: store.users.map((user) => ({
+        id: user.id,
+        email: user.email,
+        name: user.name,
+        paymentStatus: user.paymentStatus,
+        verified: user.verified,
+        keyAssignedAt: user.keyAssignedAt,
+        keyUsedAt: user.keyUsedAt,
+        createdAt: user.createdAt
+      })),
+      stats: {
+        users: store.users.length,
+        verifiedUsers: store.users.filter((item) => item.verified).length,
+        pendingPayments: store.users.filter((item) => item.paymentStatus === "pending").length,
+        pcGames: store.games.filter((item) => item.platform === "PC").length,
+        ps4Games: store.games.filter((item) => item.platform === "PS4").length,
+        ps5Games: store.games.filter((item) => item.platform === "PS5").length
+      },
+      games: store.games.map((game) => ({
+        id: game.id,
+        slug: game.slug,
+        platform: game.platform,
+        name: game.name,
+        image: game.image,
+        description: game.description,
+        hasCredentials: Boolean(game.credentialIdCipher && game.credentialPasswordCipher),
+        createdAt: game.createdAt,
+        updatedAt: game.updatedAt
+      })),
+      settings: store.settings
+    };
+  }
+
+  function requireLogin(req, res, next) {
+    const user = getUserBySession(req);
+    if (!user) return res.status(401).json({ error: "Login required." });
+    req.userRecord = user;
+    next();
+  }
+
+  function requireVerified(req, res, next) {
+    const user = getUserBySession(req);
+    if (!user) return res.status(401).json({ error: "Login required." });
+    if (!user.verified) return res.status(403).json({ error: "Verified access required." });
+    req.userRecord = user;
     next();
   }
 
   function requireAdmin(req, res, next) {
     const session = getSession(req);
     if (!session?.isAdmin) return res.status(403).json({ error: "Admin access required." });
-    req.session = session;
     next();
   }
 
-  app.use("/api/content", createContentRoutes(contentController, requireAdmin));
+  function redirectForAccess(req, res, next) {
+    if (!["GET", "HEAD"].includes(req.method)) return next();
+    const pagePath = normalizePagePath(req.path);
+    if (!pagePath) return next();
 
-  function validateContact(contact) {
-    const value = String(contact || "").trim();
-    const emailOk = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
-    const mobileOk = /^\d{10}$/.test(value.replace(/\D/g, ""));
-    return emailOk || mobileOk;
-  }
+    if (pagePath === "/login.html") return next();
 
-  function getOwnerKey(session) {
-    return session?.userId || session?.ownerKey;
-  }
-
-  function findUserByContact(store, contact) {
-    return (store.users || []).find((item) => String(item.contact || "").toLowerCase() === String(contact || "").toLowerCase());
-  }
-
-  function findUserByRecovery(store, name, contact) {
-    return (store.users || []).find((item) => (
-      String(item.contact || "").toLowerCase() === String(contact || "").toLowerCase() &&
-      String(item.name || "").trim().toLowerCase() === String(name || "").trim().toLowerCase()
-    ));
-  }
-
-  function buildCartItems(store, ownerKey) {
-    const bundles = getBundles(store);
-    return (store.carts[ownerKey] || []).map((item) => {
-      if (item.bundleId) {
-        const bundle = bundles.find((entry) => entry.id === item.bundleId || entry.slug === item.bundleSlug);
-        return {
-          id: item.id,
-          bundleId: item.bundleId,
-          bundleSlug: bundle?.slug || item.bundleSlug,
-          type: "bundle",
-          name: bundle?.name || item.name,
-          price: bundle?.price ?? item.price,
-          itemCount: bundle?.itemCount ?? item.itemCount ?? 0
-        };
-      }
-
-      const game = store.games.find((entry) => entry.id === item.gameId);
-      return {
-        id: item.id,
-        gameId: item.gameId,
-        type: "game",
-        name: game?.name || item.name,
-        price: game?.price ?? item.price
-      };
-    });
-  }
-
-  app.get("/api/session", (req, res) => {
     const session = getSession(req);
-    const store = readStore();
-    const settings = store.settings || {};
-    const admin = getAdminCredentials(store);
-    const includeQr = String(req.query?.includeQr || "") === "1";
+    if (pagePath === "/admin.html") {
+      if (!session?.isAdmin) return res.redirect("/login.html?mode=admin");
+      return next();
+    }
+
+    if (session?.isAdmin) return next();
+
+    const user = getUserBySession(req);
+    if (!user) return res.redirect(`/login.html?redirect=${encodeURIComponent(req.originalUrl)}`);
+    const state = getAccessState(user);
+    if (pagePath === "/payment.html") return next();
+    if (state !== "verified") return res.redirect("/payment.html");
+    return next();
+  }
+
+  app.use(redirectForAccess);
+
+  app.get("/health", (_req, res) => {
+    res.json({ ok: true, app: "Gamers Arena Platform" });
+  });
+
+  app.get("/auth/config", (req, res) => {
+    const user = getUserBySession(req);
+    const adminState = getAdminState();
     res.json({
-      user: session?.userId ? {
-        id: session.userId,
-        name: session.name,
-        contact: session.contact,
-        isAdmin: Boolean(session.isAdmin)
-      } : session?.isAdmin ? {
-        id: "admin",
+      googleEnabled: Boolean(GOOGLE_CLIENT_ID && GOOGLE_CLIENT_SECRET),
+      googleMessage: GOOGLE_CLIENT_ID && GOOGLE_CLIENT_SECRET
+        ? ""
+        : "Google sign-in will be available here once it is connected.",
+      adminRecoveryEnabled: adminState.recoveryConfigured,
+      accessPriceInr: getSettings().accessPriceInr,
+      telegramUrl: getSettings().telegramUrl,
+      session: publicUser(user),
+      accessState: getAccessState(user)
+    });
+  });
+
+  app.get("/auth/google", (req, res, next) => {
+    if (!(GOOGLE_CLIENT_ID && GOOGLE_CLIENT_SECRET)) {
+      return res.redirect("/login.html?google=disabled");
+    }
+    passport.authenticate("google", {
+      scope: ["profile", "email"],
+      prompt: "select_account"
+    })(req, res, next);
+  });
+
+  app.get("/auth/google/callback", (req, res, next) => {
+    if (!(GOOGLE_CLIENT_ID && GOOGLE_CLIENT_SECRET)) {
+      return res.redirect("/login.html?google=disabled");
+    }
+    passport.authenticate("google", { session: false }, (error, user) => {
+      if (error || !user) return res.redirect("/login.html?error=google");
+      setSession(req, res, getSessionPayload(user));
+      return res.redirect(user.verified ? "/" : "/payment.html");
+    })(req, res, next);
+  });
+
+  app.post("/auth/email-login", async (req, res, next) => {
+    try {
+      const email = String(req.body?.email || "").trim().toLowerCase();
+      const password = String(req.body?.password || "");
+      if (!email || !password) return res.status(400).json({ error: "Email and password are required." });
+      const user = readStore().users.find((item) => item.email === email);
+      if (!user || !user.passwordHash) return res.status(401).json({ error: "Invalid credentials." });
+      const valid = await verifyPassword(password, user.passwordHash);
+      if (!valid) return res.status(401).json({ error: "Invalid credentials." });
+      setSession(req, res, getSessionPayload(user));
+      res.json({ user: publicUser(user), accessState: getAccessState(user) });
+    } catch (error) {
+      next(error);
+    }
+  });
+
+  app.post("/auth/admin-login", async (req, res, next) => {
+    try {
+      const username = String(req.body?.username || "").trim();
+      const password = String(req.body?.password || "");
+      const adminState = getAdminState();
+      if (!adminState.hasEnvPassword && !adminState.passwordHash) {
+        return res.status(503).json({ error: "Admin access is not ready yet." });
+      }
+      const usernameOk = username.toLowerCase() === adminState.username.toLowerCase();
+      const passwordOk = adminState.passwordHash
+        ? await verifyPassword(password, adminState.passwordHash)
+        : await verifyPasswordAgainstSecret(password, ADMIN_PASSWORD);
+      if (!usernameOk || !passwordOk) {
+        return res.status(401).json({ error: "Invalid admin login." });
+      }
+      setSession(req, res, {
+        ownerKey: "admin",
+        userId: "admin",
         name: "Admin",
-        contact: admin.email,
+        contact: adminState.username,
         isAdmin: true
-      } : null,
-      settings: {
-        siteTitle: settings.siteTitle || "Gamers Arena",
-        siteTagline: settings.siteTagline || "PC Games Accounts Store",
-        siteDescription: settings.siteDescription || "Premium gaming storefront",
-        logoUrl: settings.logoUrl || defaultLogo,
-        faviconUrl: settings.faviconUrl || settings.logoUrl || defaultLogo,
-        qrImage: includeQr ? (settings.qrImage || defaultQr) : "",
-        homeLayout: Array.isArray(settings.homeLayout) ? settings.homeLayout : [],
-        bundles: getBundles(store).map((bundle) => sanitizeBundle(bundle, { includeImages: false })),
-        socialLinks: settings.socialLinks || {},
-        business: settings.business || {},
-        analytics: settings.analytics || {},
-        emailAuthentication: settings.emailAuthentication || {},
-        adminEmail: admin.email,
-        adminEmailManagedByEnv: admin.emailManagedByEnv,
-        adminPasswordManagedByEnv: admin.passwordManagedByEnv,
-        adminSecondaryManagedByEnv: admin.secondaryManagedByEnv,
-        credentialsManagedByEnv: admin.managedByEnv
-      }
-    });
+      });
+      res.json({ ok: true });
+    } catch (error) {
+      next(error);
+    }
   });
 
-  app.post("/auth/signup", (req, res) => {
-    const name = String(req.body?.name || "").trim();
-    const contact = String(req.body?.contact || "").trim();
-    const password = String(req.body?.password || "").trim();
-    if (!name || !validateContact(contact) || password.length < 4) {
-      return res.status(400).json({ error: "Enter a valid name, email or mobile, and password." });
-    }
-
-    const store = updateStore((draft) => {
-      const exists = draft.users.some((user) => user.contact.toLowerCase() === contact.toLowerCase());
-      if (exists) throw new Error("User already exists.");
-      draft.users.push({
-        id: createId("user"),
-        name,
-        contact,
-        password,
-        createdAt: new Date().toISOString()
-      });
-      return draft;
-    });
-
-    const user = findUserByContact(store, contact);
-    const guestOwner = getSession(req)?.ownerKey;
-    setSession(req, res, {
-      ownerKey: user.id,
-      userId: user.id,
-      name: user.name,
-      contact: user.contact,
-      isAdmin: false
-    });
-    if (guestOwner && store.carts[guestOwner]?.length) {
+  app.post("/auth/admin/recovery", async (req, res, next) => {
+    try {
+      const code1 = String(req.body?.code1 || "").trim();
+      const code2 = String(req.body?.code2 || "").trim();
+      const nextPassword = String(req.body?.nextPassword || "");
+      const adminState = getAdminState();
+      if (!adminState.recoveryConfigured) {
+        return res.status(503).json({ error: "Recovery is not available right now." });
+      }
+      const code1Ok = await compareSecret(code1, RECOVERY_CODE_1);
+      const code2Ok = await compareSecret(code2, RECOVERY_CODE_2);
+      if (!code1Ok || !code2Ok) {
+        return res.status(401).json({ error: "Recovery codes did not match." });
+      }
+      if (!nextPassword || nextPassword.length < 8) {
+        return res.status(400).json({ error: "Choose a stronger password with at least 8 characters." });
+      }
+      const passwordHash = await hashPassword(nextPassword);
       updateStore((draft) => {
-        draft.carts[user.id] = [...(draft.carts[user.id] || []), ...draft.carts[guestOwner]];
-        delete draft.carts[guestOwner];
+        draft.admin.passwordHash = passwordHash;
+        draft.admin.passwordUpdatedAt = new Date().toISOString();
         return draft;
       });
+      res.json({ ok: true, message: "Admin password updated." });
+    } catch (error) {
+      next(error);
     }
-    return res.status(201).json({ user: { id: user.id, name: user.name, contact: user.contact, isAdmin: false } });
-  });
-
-  app.post("/auth/login", (req, res) => {
-    const contact = String(req.body?.contact || "").trim();
-    const password = String(req.body?.password || "").trim();
-    const adminPasscode = String(req.body?.adminPasscode || "").trim();
-    const role = String(req.body?.role || "user");
-    const store = readStore();
-    const admin = getAdminCredentials(store);
-
-    if (role === "admin") {
-      if (
-        contact.toLowerCase() === admin.email.toLowerCase() &&
-        password === admin.password &&
-        adminPasscode === admin.secondaryPassword
-      ) {
-        setSession(req, res, {
-          ownerKey: "admin",
-          userId: "admin",
-          name: "Admin",
-          contact: admin.email,
-          isAdmin: true,
-          adminPrimaryEmail: "",
-          adminPrimaryVerifiedUntil: 0,
-          adminRecoveryVerifiedUntil: 0
-        });
-        return res.json({ user: { id: "admin", name: "Admin", contact: admin.email, isAdmin: true } });
-      }
-      return res.status(401).json({ error: "Invalid admin credentials." });
-    }
-
-    const user = findUserByContact(store, contact);
-    if (!user || user.password !== password) return res.status(401).json({ error: "Invalid user credentials." });
-    const guestOwner = getSession(req)?.ownerKey;
-    setSession(req, res, {
-      ownerKey: user.id,
-      userId: user.id,
-      name: user.name,
-      contact: user.contact,
-      isAdmin: false
-    });
-    if (guestOwner && guestOwner !== user.id && store.carts[guestOwner]?.length) {
-      updateStore((draft) => {
-        draft.carts[user.id] = [...(draft.carts[user.id] || []), ...draft.carts[guestOwner]];
-        delete draft.carts[guestOwner];
-        return draft;
-      });
-    }
-    return res.json({ user: { id: user.id, name: user.name, contact: user.contact, isAdmin: false } });
-  });
-
-  app.post("/auth/admin/primary", (req, res) => {
-    const contact = String(req.body?.contact || "").trim();
-    const password = String(req.body?.password || "").trim();
-    const store = readStore();
-    const admin = getAdminCredentials(store);
-    if (contact.toLowerCase() !== admin.email.toLowerCase() || password !== admin.password) {
-      return res.status(401).json({ error: "First admin password is incorrect." });
-    }
-
-    const current = getSession(req);
-    setSession(req, res, {
-      ownerKey: current?.ownerKey || "admin-check",
-      userId: null,
-      name: current?.name || "Guest",
-      contact: current?.contact || "",
-      isAdmin: false,
-      adminPrimaryEmail: admin.email,
-      adminPrimaryVerifiedUntil: Date.now() + ADMIN_PRIMARY_WINDOW_MS,
-      adminRecoveryVerifiedUntil: 0
-    });
-    return res.json({ ok: true, message: "First password verified." });
-  });
-
-  app.post("/auth/admin/secondary", (req, res) => {
-    const contact = String(req.body?.contact || "").trim();
-    const adminPasscode = String(req.body?.adminPasscode || "").trim();
-    const session = getSession(req);
-    const store = readStore();
-    const admin = getAdminCredentials(store);
-    if (!isPrimaryVerificationActive(session, contact)) {
-      return res.status(401).json({ error: "Please verify the first admin password again." });
-    }
-    if (adminPasscode !== admin.secondaryPassword) {
-      return res.status(401).json({ error: "Second admin password is incorrect." });
-    }
-
-    setSession(req, res, {
-      ownerKey: "admin",
-      userId: "admin",
-      name: "Admin",
-      contact: admin.email,
-      isAdmin: true,
-      adminPrimaryEmail: "",
-      adminPrimaryVerifiedUntil: 0,
-      adminRecoveryVerifiedUntil: 0
-    });
-    return res.json({ user: { id: "admin", name: "Admin", contact: admin.email, isAdmin: true } });
-  });
-
-  app.post("/auth/admin/recovery", (req, res) => {
-    const dob1 = normalizeDobValue(req.body?.dob1 || "");
-    const dob2 = normalizeDobValue(req.body?.dob2 || "");
-    const runtime = getRuntimeAdminEnv();
-    const expectedDob1 = normalizeDobValue(runtime.recoveryDob1);
-    const expectedDob2 = normalizeDobValue(runtime.recoveryDob2);
-    if (!dob1 || !dob2 || dob1 !== expectedDob1 || dob2 !== expectedDob2) {
-      return res.status(401).json({ error: "Security answers did not match." });
-    }
-
-    const current = getSession(req);
-    setSession(req, res, {
-      ownerKey: current?.ownerKey || "admin-recovery",
-      userId: null,
-      name: current?.name || "Guest",
-      contact: current?.contact || "",
-      isAdmin: false,
-      adminPrimaryEmail: "",
-      adminPrimaryVerifiedUntil: 0,
-      adminRecoveryVerifiedUntil: Date.now() + ADMIN_RECOVERY_WINDOW_MS
-    });
-    return res.json({ ok: true, message: "Recovery verified. Set new admin passwords now." });
-  });
-
-  app.post("/auth/admin/reset", (req, res) => {
-    const session = getSession(req);
-    if (!isRecoveryVerificationActive(session)) {
-      return res.status(401).json({ error: "Please complete birthday verification again." });
-    }
-
-    const password = String(req.body?.password || "").trim();
-    const adminPasscode = String(req.body?.adminPasscode || "").trim();
-    if (password.length < 4 || adminPasscode.length < 4) {
-      return res.status(400).json({ error: "Enter a new first and second admin password." });
-    }
-
-    upsertEnvValues({
-      ADMIN_PASSWORD: password,
-      ADMIN_SECONDARY_PASSWORD: adminPasscode
-    });
-
-    const store = updateStore((draft) => {
-      draft.admin = draft.admin || {};
-      draft.admin.email = draft.admin.email || getRuntimeAdminEnv().email;
-      draft.admin.updatedAt = new Date().toISOString();
-      return draft;
-    });
-    const admin = getAdminCredentials(store);
-    setSession(req, res, {
-      ownerKey: "admin",
-      userId: "admin",
-      name: "Admin",
-      contact: admin.email,
-      isAdmin: true,
-      adminPrimaryEmail: "",
-      adminPrimaryVerifiedUntil: 0,
-      adminRecoveryVerifiedUntil: 0
-    });
-    return res.json({
-      ok: true,
-      message: "Admin password reset completed.",
-      user: { id: "admin", name: "Admin", contact: admin.email, isAdmin: true }
-    });
-  });
-
-  app.post("/auth/reset-password", (req, res) => {
-    const name = String(req.body?.name || "").trim();
-    const contact = String(req.body?.contact || "").trim();
-    const password = String(req.body?.password || "").trim();
-    if (!name || !validateContact(contact) || password.length < 4) {
-      return res.status(400).json({ error: "Enter the same name, valid email or mobile, and a new password." });
-    }
-
-    const session = getSession(req);
-    const guestOwner = session?.isAdmin ? null : session?.ownerKey;
-    const recoveryUser = findUserByRecovery(readStore(), name, contact);
-    if (!recoveryUser) {
-      return res.status(404).json({ error: "No account matched that name and contact." });
-    }
-
-    const store = updateStore((draft) => {
-      const target = findUserByRecovery(draft, name, contact);
-      if (!target) throw new Error("No account matched that name and contact.");
-      target.password = password;
-      target.updatedAt = new Date().toISOString();
-      if (guestOwner && guestOwner !== target.id && draft.carts[guestOwner]?.length) {
-        draft.carts[target.id] = [...(draft.carts[target.id] || []), ...draft.carts[guestOwner]];
-        delete draft.carts[guestOwner];
-      }
-      return draft;
-    });
-
-    const user = findUserByContact(store, contact);
-    setSession(req, res, {
-      ownerKey: user.id,
-      userId: user.id,
-      name: user.name,
-      contact: user.contact,
-      isAdmin: false
-    });
-    return res.json({
-      ok: true,
-      message: "Password updated.",
-      user: { id: user.id, name: user.name, contact: user.contact, isAdmin: false }
-    });
   });
 
   app.post("/auth/logout", (req, res) => {
     clearSession(req, res);
-    attachSession(req, res);
     res.json({ ok: true });
   });
 
-  app.get("/games", (req, res) => {
-    const session = getSession(req);
-    const store = readStore();
-    const categories = [...new Set(store.games.map((game) => String(game.category || "Action")))].sort();
-    const query = normalizeSearchValue(req.query?.q || "");
-    const category = String(req.query?.category || "").trim();
-    const all = String(req.query?.all || "") === "1";
-    const offset = Math.max(0, Number(req.query?.offset || 0));
-    const limit = Math.min(Math.max(1, Number(req.query?.limit || 24)), 120);
-    let items = Array.isArray(store.games) ? store.games : [];
-
-    if (category) {
-      items = items.filter((game) => String(game.category || "Action") === category);
-    }
-
-    if (query) {
-      items = items
-        .filter((game) => normalizeSearchValue(game.name).includes(query))
-        .sort((left, right) => {
-          const leftName = normalizeSearchValue(left.name);
-          const rightName = normalizeSearchValue(right.name);
-          const leftRank = leftName === query ? 0 : leftName.startsWith(query) ? 1 : leftName.includes(query) ? 2 : 3;
-          const rightRank = rightName === query ? 0 : rightName.startsWith(query) ? 1 : rightName.includes(query) ? 2 : 3;
-          if (leftRank !== rightRank) return leftRank - rightRank;
-
-          const leftVariant = /edition|collection|bundle|pack/i.test(left.name) ? 1 : 0;
-          const rightVariant = /edition|collection|bundle|pack/i.test(right.name) ? 1 : 0;
-          if (leftVariant !== rightVariant) return leftVariant - rightVariant;
-
-          return left.name.localeCompare(right.name);
-        });
-    }
-
-    const total = items.length;
-    const pagedItems = (all ? items : items.slice(offset, offset + limit)).map(sanitizeGame);
-      res.json({
-        items: pagedItems,
-        total,
-        offset,
-        limit: all ? total : limit,
-        hasMore: all ? false : offset + pagedItems.length < total,
-        canEdit: Boolean(session?.isAdmin),
-        categories,
-        bundles: getBundles(store).map((bundle) => sanitizeBundle(bundle, { includeImages: false }))
-      });
-    });
-
-  app.get("/search-suggestions", (req, res) => {
-    const store = readStore();
-    const query = normalizeSearchValue(req.query?.q || "");
-    if (!query || query.length < 2) {
-      return res.json({ items: [] });
-    }
-
-    const gameMatches = (Array.isArray(store.games) ? store.games : [])
-      .filter((game) => normalizeSearchValue(game.name).includes(query))
-      .sort((left, right) => {
-        const leftName = normalizeSearchValue(left.name);
-        const rightName = normalizeSearchValue(right.name);
-        const leftRank = leftName === query ? 0 : leftName.startsWith(query) ? 1 : 2;
-        const rightRank = rightName === query ? 0 : rightName.startsWith(query) ? 1 : 2;
-        if (leftRank !== rightRank) return leftRank - rightRank;
-        return left.name.localeCompare(right.name);
-      })
-      .slice(0, 6)
-      .map((game) => ({
-        type: "game",
-        id: game.id,
-        name: String(game.name || "").trim(),
-        category: String(game.category || "Action").trim()
-      }));
-
-    const bundleMatches = getBundles(store)
-      .filter((bundle) => normalizeSearchValue(bundle.name).includes(query))
-      .slice(0, 4)
-      .map((bundle) => ({
-        type: "bundle",
-        id: bundle.id,
-        slug: bundle.slug,
-        name: bundle.name,
-        category: "Bundle",
-        itemCount: bundle.itemCount
-      }));
-
-    const consoleMatches = (Array.isArray(store.consoleGames) ? store.consoleGames : [])
-      .filter((item) => normalizeSearchValue(item.name).includes(query))
-      .sort((left, right) => {
-        const leftName = normalizeSearchValue(left.name);
-        const rightName = normalizeSearchValue(right.name);
-        const leftRank = leftName === query ? 0 : leftName.startsWith(query) ? 1 : 2;
-        const rightRank = rightName === query ? 0 : rightName.startsWith(query) ? 1 : 2;
-        if (leftRank !== rightRank) return leftRank - rightRank;
-        return left.name.localeCompare(right.name);
-      })
-      .slice(0, 4)
-      .map((item) => ({
-        type: "console",
-        id: item.id,
-        name: String(item.name || "").trim(),
-        category: String(item.platform || "Console").trim(),
-        platform: String(item.platform || "PS5").trim()
-      }));
-
+  app.get("/api/session", (req, res) => {
+    const user = getUserBySession(req);
     res.json({
-      items: [...gameMatches, ...consoleMatches, ...bundleMatches].slice(0, 8)
+      user: publicUser(user),
+      accessState: getAccessState(user),
+      settings: {
+        siteTitle: getSettings().siteTitle,
+        siteTagline: getSettings().siteTagline,
+        siteDescription: getSettings().siteDescription,
+        logoUrl: getSettings().logoUrl || defaultLogo,
+        paymentQrUrl: getSettings().paymentQrUrl || defaultQr,
+        telegramUrl: getSettings().telegramUrl,
+        accessPriceInr: getSettings().accessPriceInr
+      }
     });
   });
 
-  app.post("/games", requireAdmin, (req, res) => {
+  app.post("/api/payment/request", requireLogin, (req, res) => {
+    const current = req.userRecord;
+    const store = updateStore((draft) => {
+      const user = draft.users.find((item) => item.id === current.id);
+      if (!user) throw new Error("User not found.");
+      if (user.paymentStatus === "unpaid") user.paymentStatus = "pending";
+      user.updatedAt = new Date().toISOString();
+      return draft;
+    });
+    const user = store.users.find((item) => item.id === current.id);
+    res.json({
+      ok: true,
+      paymentStatus: user.paymentStatus,
+      telegramUrl: getTelegramPaymentUrl(req, user)
+    });
+  });
+
+  app.post("/api/access/activate", requireLogin, (req, res) => {
+    const rawKey = String(req.body?.key || "").trim().toUpperCase();
+    if (!rawKey) return res.status(400).json({ error: "Enter the access key." });
+    const current = req.userRecord;
+    const keyHash = hashKey(rawKey);
+    const store = updateStore((draft) => {
+      const user = draft.users.find((item) => item.id === current.id);
+      if (!user) throw new Error("User not found.");
+      const key = draft.keys.find((item) => item.keyHash === keyHash && item.userId === user.id);
+      if (!key) throw new Error("Invalid access key.");
+      if (key.used) throw new Error("This access key has already been used.");
+      key.used = true;
+      key.usedAt = new Date().toISOString();
+      user.verified = true;
+      user.paymentStatus = "approved";
+      user.keyUsedAt = key.usedAt;
+      user.updatedAt = key.usedAt;
+      return draft;
+    });
+    const user = store.users.find((item) => item.id === current.id);
+    setSession(req, res, getSessionPayload(user));
+    res.json({ ok: true, user: publicUser(user), redirect: "/" });
+  });
+
+  app.get("/api/games", requireVerified, (_req, res) => {
+    const store = readStore();
+    res.json({
+      items: store.games
+        .filter((game) => game.platform === "PC")
+        .map((game) => ({
+          id: game.id,
+          slug: game.slug,
+          name: game.name,
+          image: game.image,
+          description: game.description,
+          platform: game.platform
+        }))
+    });
+  });
+
+  app.get("/api/games/:slug", requireVerified, (req, res) => {
+    const game = readStore().games.find((item) => item.slug === req.params.slug && item.platform === "PC");
+    if (!game) return res.status(404).json({ error: "Game not found." });
+    res.json({
+      id: game.id,
+      slug: game.slug,
+      name: game.name,
+      image: game.image,
+      description: game.description,
+      platform: game.platform
+    });
+  });
+
+  app.get("/api/games/:slug/credentials", requireVerified, (req, res) => {
+    const game = readStore().games.find((item) => item.slug === req.params.slug && item.platform === "PC");
+    if (!game) return res.status(404).json({ error: "Game not found." });
+    if (!game.credentialIdCipher || !game.credentialPasswordCipher) {
+      return res.status(404).json({ error: "Credentials have not been uploaded for this game yet." });
+    }
+    res.json({
+      accountId: decryptSecret(game.credentialIdCipher),
+      accountPassword: decryptSecret(game.credentialPasswordCipher)
+    });
+  });
+
+  app.get("/api/console/:platform", requireVerified, (req, res) => {
+    const platform = String(req.params.platform || "").toUpperCase();
+    if (!["PS4", "PS5"].includes(platform)) return res.status(400).json({ error: "Invalid platform." });
+    res.json({
+      items: readStore().games
+        .filter((game) => game.platform === platform)
+        .map((game) => ({
+          id: game.id,
+          slug: game.slug,
+          name: game.name,
+          image: game.image,
+          description: game.description,
+          telegramUrl: getSettings().telegramUrl
+        }))
+    });
+  });
+
+  app.get("/api/admin/overview", requireAdmin, (_req, res) => {
+    res.json(adminPayload());
+  });
+
+  app.post("/api/admin/games", requireAdmin, (req, res) => {
+    const platform = String(req.body?.platform || "PC").trim().toUpperCase();
     const name = String(req.body?.name || "").trim();
-    const price = Number(req.body?.price || 45);
-    const category = String(req.body?.category || "Action").trim() || "Action";
-    const description = String(req.body?.description || "").trim();
     const image = String(req.body?.image || "").trim();
-    if (!name) return res.status(400).json({ error: "Game name is required." });
+    const description = String(req.body?.description || "").trim();
+    const accountId = String(req.body?.accountId || "").trim();
+    const accountPassword = String(req.body?.accountPassword || "").trim();
+    if (!["PC", "PS4", "PS5"].includes(platform)) return res.status(400).json({ error: "Invalid platform." });
+    if (!name || !description) return res.status(400).json({ error: "Name and description are required." });
+    if (platform === "PC" && (!accountId || !accountPassword)) {
+      return res.status(400).json({ error: "PC games require an ID and password." });
+    }
+
     const store = updateStore((draft) => {
       draft.games.unshift({
         id: createId("game"),
-        slug: slugify(name),
+        slug: slugify(`${platform}-${name}`),
+        platform,
         name,
-        price: Number.isFinite(price) ? price : 45,
-        category,
-        description,
         image,
+        description,
+        credentialIdCipher: platform === "PC" ? encryptSecret(accountId) : "",
+        credentialPasswordCipher: platform === "PC" ? encryptSecret(accountPassword) : "",
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString()
       });
       return draft;
     });
-    res.status(201).json(sanitizeGame(store.games[0]));
+
+    res.status(201).json(store.games[0]);
   });
 
-  app.put("/games/:id", requireAdmin, (req, res) => {
-    const name = String(req.body?.name || "").trim();
-    const price = Number(req.body?.price || 45);
-    const category = String(req.body?.category || "Action").trim() || "Action";
-    const description = String(req.body?.description || "").trim();
-    const image = String(req.body?.image || "").trim();
+  app.put("/api/admin/games/:id", requireAdmin, (req, res) => {
     const store = updateStore((draft) => {
-      const target = draft.games.find((game) => game.id === req.params.id);
-      if (!target) throw new Error("Game not found.");
-      if (!name) throw new Error("Game name is required.");
-      target.name = name;
-      target.slug = slugify(name);
-      target.price = Number.isFinite(price) ? price : 45;
-      target.category = category;
-      target.description = description;
-      target.image = image;
-      target.updatedAt = new Date().toISOString();
+      const game = draft.games.find((item) => item.id === req.params.id);
+      if (!game) throw new Error("Game not found.");
+      const name = String(req.body?.name || game.name).trim();
+      const image = String(req.body?.image || game.image).trim();
+      const description = String(req.body?.description || game.description).trim();
+      const platform = String(req.body?.platform || game.platform).trim().toUpperCase();
+      if (!["PC", "PS4", "PS5"].includes(platform)) throw new Error("Invalid platform.");
+      game.name = name;
+      game.slug = slugify(`${platform}-${name}`);
+      game.platform = platform;
+      game.image = image;
+      game.description = description;
+      if (platform === "PC") {
+        const accountId = String(req.body?.accountId || "").trim();
+        const accountPassword = String(req.body?.accountPassword || "").trim();
+        if (accountId) game.credentialIdCipher = encryptSecret(accountId);
+        if (accountPassword) game.credentialPasswordCipher = encryptSecret(accountPassword);
+      } else {
+        game.credentialIdCipher = "";
+        game.credentialPasswordCipher = "";
+      }
+      game.updatedAt = new Date().toISOString();
       return draft;
     });
-    const updated = store.games.find((game) => game.id === req.params.id);
-    res.json(sanitizeGame(updated));
+    res.json(store.games.find((item) => item.id === req.params.id));
   });
 
-  app.delete("/games/:id", requireAdmin, (req, res) => {
+  app.delete("/api/admin/games/:id", requireAdmin, (req, res) => {
     updateStore((draft) => {
-      draft.games = draft.games.filter((game) => game.id !== req.params.id);
-      Object.keys(draft.carts).forEach((key) => {
-        draft.carts[key] = (draft.carts[key] || []).filter((item) => item.gameId !== req.params.id);
+      draft.games = draft.games.filter((item) => item.id !== req.params.id);
+      return draft;
+    });
+    res.json({ ok: true });
+  });
+
+  app.post("/api/admin/users/:id/approve", requireAdmin, (req, res) => {
+    const store = updateStore((draft) => {
+      const user = draft.users.find((item) => item.id === req.params.id);
+      if (!user) throw new Error("User not found.");
+      user.paymentStatus = "approved";
+      user.keyAssignedAt = new Date().toISOString();
+      user.updatedAt = user.keyAssignedAt;
+      return draft;
+    });
+    const user = store.users.find((item) => item.id === req.params.id);
+    const keyValue = makeAccessKey();
+    updateStore((draft) => {
+      draft.keys = draft.keys.filter((item) => !(item.userId === user.id && item.used === false));
+      draft.keys.unshift({
+        id: createId("key"),
+        userId: user.id,
+        email: user.email,
+        keyHash: hashKey(keyValue),
+        keyPreview: `${keyValue.slice(0, 4)}-${keyValue.slice(-4)}`,
+        used: false,
+        createdAt: new Date().toISOString(),
+        createdBy: "admin",
+        usedAt: ""
       });
       return draft;
     });
-    res.json({ ok: true });
-  });
-
-  app.get("/console-games", (req, res) => {
-    const store = readStore();
-    const platform = String(req.query?.platform || "").trim().toUpperCase();
-    const query = normalizeSearchValue(req.query?.q || "");
-    let items = Array.isArray(store.consoleGames) ? store.consoleGames : [];
-    if (platform) {
-      items = items.filter((item) => String(item.platform || "").toUpperCase() === platform);
-    }
-    if (query) {
-      items = items
-        .filter((item) => normalizeSearchValue(item.name).includes(query))
-        .sort((left, right) => {
-          const leftName = normalizeSearchValue(left.name);
-          const rightName = normalizeSearchValue(right.name);
-          const leftRank = leftName === query ? 0 : leftName.startsWith(query) ? 1 : 2;
-          const rightRank = rightName === query ? 0 : rightName.startsWith(query) ? 1 : 2;
-          if (leftRank !== rightRank) return leftRank - rightRank;
-          return left.name.localeCompare(right.name);
-        });
-    }
     res.json({
-      items: items.map(sanitizeConsoleGame),
-      total: items.length
+      ok: true,
+      user: publicUser(user),
+      generatedKey: keyValue
     });
   });
 
-  app.post("/console-games", requireAdmin, (req, res) => {
-    const name = String(req.body?.name || "").trim();
-    const image = String(req.body?.image || "").trim();
-    const platform = String(req.body?.platform || "PS5").trim().toUpperCase() || "PS5";
-    if (!name) return res.status(400).json({ error: "Console game name is required." });
+  app.post("/api/admin/settings", requireAdmin, (req, res) => {
     const store = updateStore((draft) => {
-      draft.consoleGames = Array.isArray(draft.consoleGames) ? draft.consoleGames : [];
-      draft.consoleGames.unshift(normalizeConsoleGame({
-        id: createId("console"),
-        name,
-        platform,
-        image
-      }));
+      draft.settings.siteTitle = String(req.body?.siteTitle || draft.settings.siteTitle).trim() || draft.settings.siteTitle;
+      draft.settings.siteTagline = String(req.body?.siteTagline || draft.settings.siteTagline).trim() || draft.settings.siteTagline;
+      draft.settings.siteDescription = String(req.body?.siteDescription || draft.settings.siteDescription).trim() || draft.settings.siteDescription;
+      draft.settings.paymentQrUrl = String(req.body?.paymentQrUrl || draft.settings.paymentQrUrl).trim() || draft.settings.paymentQrUrl;
+      draft.settings.telegramUrl = String(req.body?.telegramUrl || draft.settings.telegramUrl).trim() || draft.settings.telegramUrl;
+      draft.settings.accessPriceInr = Number(req.body?.accessPriceInr || draft.settings.accessPriceInr) || draft.settings.accessPriceInr;
+      draft.settings.logoUrl = String(req.body?.logoUrl || draft.settings.logoUrl).trim() || draft.settings.logoUrl;
+      draft.settings.adminNotice = String(req.body?.adminNotice || draft.settings.adminNotice).trim() || draft.settings.adminNotice;
       return draft;
     });
-    res.status(201).json(sanitizeConsoleGame(store.consoleGames[0]));
+    res.json(store.settings);
   });
 
-  app.put("/console-games/:id", requireAdmin, (req, res) => {
-    const name = String(req.body?.name || "").trim();
-    const image = String(req.body?.image || "").trim();
-    const platform = String(req.body?.platform || "PS5").trim().toUpperCase() || "PS5";
-    const store = updateStore((draft) => {
-      draft.consoleGames = Array.isArray(draft.consoleGames) ? draft.consoleGames : [];
-      const target = draft.consoleGames.find((item) => item.id === req.params.id);
-      if (!target) throw new Error("Console game not found.");
-      if (!name) throw new Error("Console game name is required.");
-      target.name = name;
-      target.platform = ["PS4", "PS5"].includes(platform) ? platform : "PS5";
-      target.slug = slugify(`${target.platform}-${name}`);
-      target.image = image;
-      target.updatedAt = new Date().toISOString();
-      return draft;
-    });
-    const updated = store.consoleGames.find((item) => item.id === req.params.id);
-    res.json(sanitizeConsoleGame(updated));
-  });
+  const pages = [
+    { route: "/", file: "index.html" },
+    { route: "/login", file: "login.html" },
+    { route: "/login.html", file: "login.html" },
+    { route: "/payment", file: "payment.html" },
+    { route: "/payment.html", file: "payment.html" },
+    { route: "/pc-games", file: "pc-games.html" },
+    { route: "/pc-games.html", file: "pc-games.html" },
+    { route: "/ps4-games", file: "ps4-games.html" },
+    { route: "/ps4-games.html", file: "ps4-games.html" },
+    { route: "/ps5-games", file: "ps5-games.html" },
+    { route: "/ps5-games.html", file: "ps5-games.html" },
+    { route: "/admin", file: "admin.html" },
+    { route: "/admin.html", file: "admin.html" }
+  ];
 
-  app.delete("/console-games/:id", requireAdmin, (req, res) => {
-    updateStore((draft) => {
-      draft.consoleGames = (draft.consoleGames || []).filter((item) => item.id !== req.params.id);
-      return draft;
-    });
-    res.json({ ok: true });
-  });
-
-  app.get("/api/cart", (req, res) => {
-    const store = readStore();
-    const ownerKey = getOwnerKey(getSession(req));
-    const cartItems = buildCartItems(store, ownerKey);
-    res.json({
-      items: cartItems,
-      total: cartItems.reduce((sum, item) => sum + Number(item.price || 0), 0)
+  pages.forEach((page) => {
+    app.get(page.route, (_req, res) => {
+      res.sendFile(path.join(publicDir, page.file));
     });
   });
 
-  app.post("/api/cart/items", (req, res) => {
-    const gameId = String(req.body?.gameId || "").trim();
-    const store = readStore();
-    const game = store.games.find((item) => item.id === gameId);
-    if (!game) return res.status(404).json({ error: "Game not found." });
-    const ownerKey = getOwnerKey(getSession(req));
-    const next = updateStore((draft) => {
-      const items = draft.carts[ownerKey] || [];
-      if (!items.some((item) => item.gameId === gameId)) {
-        items.push({
-          id: createId("cart"),
-          gameId: game.id,
-          name: game.name,
-          price: game.price
-        });
-      }
-      draft.carts[ownerKey] = items;
-      return draft;
-    });
-    const items = next.carts[ownerKey] || [];
-    res.status(201).json({ items });
+  app.get("/game/:slug", (_req, res) => {
+    res.sendFile(path.join(publicDir, "game.html"));
   });
-
-  app.post("/api/cart/bundles", (req, res) => {
-    const bundleId = String(req.body?.bundleId || "").trim();
-    const store = readStore();
-    const bundle = getBundles(store).find((item) => item.id === bundleId || item.slug === bundleId);
-    if (!bundle) return res.status(404).json({ error: "Bundle not found." });
-    const ownerKey = getOwnerKey(getSession(req));
-    const next = updateStore((draft) => {
-      const items = draft.carts[ownerKey] || [];
-      if (!items.some((item) => item.bundleId === bundle.id)) {
-        items.push({
-          id: createId("cart"),
-          bundleId: bundle.id,
-          bundleSlug: bundle.slug,
-          name: bundle.name,
-          price: bundle.price,
-          itemCount: bundle.itemCount
-        });
-      }
-      draft.carts[ownerKey] = items;
-      return draft;
-    });
-    res.status(201).json({ items: next.carts[ownerKey] || [] });
-  });
-
-  app.delete("/api/cart/items/:id", (req, res) => {
-    const ownerKey = getOwnerKey(getSession(req));
-    updateStore((draft) => {
-      draft.carts[ownerKey] = (draft.carts[ownerKey] || []).filter((item) => item.id !== req.params.id);
-      return draft;
-    });
-    res.json({ ok: true });
-  });
-
-  app.delete("/api/cart/clear", (req, res) => {
-    const ownerKey = getOwnerKey(getSession(req));
-    updateStore((draft) => {
-      draft.carts[ownerKey] = [];
-      return draft;
-    });
-    res.json({ ok: true });
-  });
-
-  app.post("/api/orders", (req, res) => {
-    const session = getSession(req);
-    const store = readStore();
-    const ownerKey = getOwnerKey(session);
-    const cartItems = buildCartItems(store, ownerKey);
-    if (!cartItems.length) return res.status(400).json({ error: "Cart is empty." });
-
-    const customerName = String(req.body?.customerName || session?.name || "Customer").trim();
-    const customerContact = String(req.body?.customerContact || session?.contact || "").trim();
-    const paymentNote = String(req.body?.paymentNote || "").trim();
-    const screenshot = String(req.body?.screenshot || "").trim();
-    const orderId = `GA-${Date.now().toString().slice(-8)}`;
-    const order = {
-      id: createId("order"),
-      orderId,
-      customerName,
-      customerContact,
-      paymentNote,
-      screenshot,
-      items: cartItems,
-      total: cartItems.reduce((sum, item) => sum + Number(item.price || 0), 0),
-      createdAt: new Date().toISOString()
-    };
-
-    updateStore((draft) => {
-      draft.orders = Array.isArray(draft.orders) ? draft.orders : [];
-      draft.orders.unshift(order);
-      draft.carts[ownerKey] = [];
-      return draft;
-    });
-
-    res.status(201).json({
-      ...order,
-      telegramMessage: `Hello, I paid for order ${orderId}. Amount: Rs ${order.total}. Please help me continue the delivery.`
-    });
-  });
-
-  app.get("/admin/orders", requireAdmin, (_req, res) => {
-    const store = readStore();
-    res.json(Array.isArray(store.orders) ? store.orders : []);
-  });
-
-  app.get("/blogs", (_req, res) => {
-    const store = readStore();
-    res.json(
-      getMergedBlogs(store.blogs)
-        .sort((left, right) => new Date(right.updatedAt || right.createdAt || 0).getTime() - new Date(left.updatedAt || left.createdAt || 0).getTime())
-        .map(sanitizeBlog)
-    );
-  });
-
-  app.get("/blogs/:slug", (req, res) => {
-    const store = readStore();
-    const blog = getBlogBySlug(store.blogs, req.params.slug);
-    if (!blog) return res.status(404).json({ error: "Blog not found." });
-    res.json(sanitizeBlog(blog));
-  });
-
-  app.post("/blogs", requireAdmin, (req, res) => {
-    const title = String(req.body?.title || "").trim();
-    const summary = String(req.body?.summary || "").trim();
-    const content = String(req.body?.content || "").trim();
-    const image = String(req.body?.image || "").trim();
-    const category = String(req.body?.category || "Manual").trim() || "Manual";
-    const metaTitle = String(req.body?.metaTitle || "").trim();
-    const metaDescription = String(req.body?.metaDescription || "").trim();
-    const keywords = String(req.body?.keywords || "")
-      .split(",")
-      .map((item) => item.trim())
-      .filter(Boolean);
-    const wordCount = String(content).split(/\s+/).filter(Boolean).length;
-    if (!title || !content) return res.status(400).json({ error: "Title and content are required." });
-    const now = new Date().toISOString();
-    const store = updateStore((draft) => {
-      draft.blogs.unshift({
-        id: createId("blog"),
-        slug: `${slugify(title)}-${Date.now().toString().slice(-5)}`,
-        title,
-        summary,
-        content,
-        image,
-        category,
-        metaTitle: metaTitle || `${title} | Gamers Arena`,
-        metaDescription: metaDescription || summary,
-        keywords,
-        wordCount,
-        readTime: Math.max(1, Math.ceil(wordCount / 220)),
-        createdAt: now,
-        updatedAt: now
-      });
-      return draft;
-    });
-    res.status(201).json(sanitizeBlog(store.blogs[0]));
-  });
-
-  app.put("/blogs/:id", requireAdmin, (req, res) => {
-    const title = String(req.body?.title || "").trim();
-    const summary = String(req.body?.summary || "").trim();
-    const content = String(req.body?.content || "").trim();
-    const image = String(req.body?.image || "").trim();
-    const category = String(req.body?.category || "Manual").trim() || "Manual";
-    const metaTitle = String(req.body?.metaTitle || "").trim();
-    const metaDescription = String(req.body?.metaDescription || "").trim();
-    const keywords = String(req.body?.keywords || "")
-      .split(",")
-      .map((item) => item.trim())
-      .filter(Boolean);
-    const wordCount = String(content).split(/\s+/).filter(Boolean).length;
-    const store = updateStore((draft) => {
-      const blog = draft.blogs.find((item) => item.id === req.params.id);
-      if (!blog) throw new Error("Blog not found.");
-      if (!title || !content) throw new Error("Title and content are required.");
-      blog.title = title;
-      blog.summary = summary;
-      blog.content = content;
-      blog.image = image;
-      blog.category = category;
-      blog.metaTitle = metaTitle || `${title} | Gamers Arena`;
-      blog.metaDescription = metaDescription || summary;
-      blog.keywords = keywords;
-      blog.wordCount = wordCount;
-      blog.readTime = Math.max(1, Math.ceil(wordCount / 220));
-      blog.slug = `${slugify(title)}-${blog.id.slice(-5)}`;
-      blog.updatedAt = new Date().toISOString();
-      return draft;
-    });
-    const updated = store.blogs.find((item) => item.id === req.params.id);
-    res.json(sanitizeBlog(updated));
-  });
-
-  app.delete("/blogs/:id", requireAdmin, (req, res) => {
-    updateStore((draft) => {
-      draft.blogs = draft.blogs.filter((item) => item.id !== req.params.id);
-      return draft;
-    });
-    res.json({ ok: true });
-  });
-
-  app.get("/api/ai-tools", (req, res) => {
-    const store = readStore();
-    const query = normalizeSearchValue(req.query?.q || "");
-    const category = String(req.query?.category || "").trim().toLowerCase();
-    const featuredOnly = String(req.query?.featured || "") === "1";
-    const limit = Math.max(0, Number(req.query?.limit || 0));
-    let items = (store.aiTools || []).map(sanitizeAiTool);
-
-    if (query) {
-      items = items.filter((tool) => normalizeSearchValue(`${tool.name} ${tool.description} ${tool.category}`).includes(query));
-    }
-    if (category) {
-      items = items.filter((tool) => String(tool.category || "").trim().toLowerCase() === category);
-    }
-    if (featuredOnly) {
-      items = items.filter((tool) => tool.featured);
-    }
-    if (limit) {
-      items = items.slice(0, limit);
-    }
-
-    const categories = [...new Set((store.aiTools || []).map((tool) => String(tool.category || "").trim()).filter(Boolean))].sort();
-    res.json({
-      items,
-      total: items.length,
-      categories
-    });
-  });
-
-  app.post("/api/ai-tools", requireAdmin, (req, res) => {
-    const store = updateStore((draft) => {
-      draft.aiTools = Array.isArray(draft.aiTools) ? draft.aiTools : [];
-      const normalized = normalizeAiTool({
-        id: createId("tool"),
-        ...req.body
-      });
-      if (!normalized.name || !normalized.description || !normalized.url) {
-        throw new Error("Tool name, description, and URL are required.");
-      }
-      if (draft.aiTools.some((tool) => tool.slug === normalized.slug)) {
-        normalized.slug = `${normalized.slug}-${Date.now().toString().slice(-4)}`;
-      }
-      draft.aiTools.unshift(normalized);
-      return draft;
-    });
-    res.status(201).json(sanitizeAiTool(store.aiTools[0]));
-  });
-
-  app.put("/api/ai-tools/:id", requireAdmin, (req, res) => {
-    const store = updateStore((draft) => {
-      draft.aiTools = Array.isArray(draft.aiTools) ? draft.aiTools : [];
-      const tool = draft.aiTools.find((item) => item.id === req.params.id);
-      if (!tool) throw new Error("AI tool not found.");
-      const normalized = normalizeAiTool({
-        ...tool,
-        ...req.body,
-        id: tool.id,
-        createdAt: tool.createdAt,
-        updatedAt: new Date().toISOString()
-      });
-      if (!normalized.name || !normalized.description || !normalized.url) {
-        throw new Error("Tool name, description, and URL are required.");
-      }
-      Object.assign(tool, normalized);
-      return draft;
-    });
-    res.json(sanitizeAiTool(store.aiTools.find((item) => item.id === req.params.id)));
-  });
-
-  app.delete("/api/ai-tools/:id", requireAdmin, (req, res) => {
-    updateStore((draft) => {
-      draft.aiTools = (draft.aiTools || []).filter((item) => item.id !== req.params.id);
-      return draft;
-    });
-    res.json({ ok: true });
-  });
-
-  app.get("/settings", (_req, res) => {
-    const store = readStore();
-    const admin = getAdminCredentials(store);
-    res.json({
-        siteTitle: store.settings.siteTitle || "Gamers Arena",
-        siteTagline: store.settings.siteTagline || "PC Games Accounts Store",
-        siteDescription: store.settings.siteDescription || "",
-        logoUrl: store.settings.logoUrl || defaultLogo,
-        faviconUrl: store.settings.faviconUrl || store.settings.logoUrl || defaultLogo,
-        qrImage: store.settings.qrImage || defaultQr,
-        homeLayout: Array.isArray(store.settings.homeLayout) ? store.settings.homeLayout : [],
-        bundles: getBundles(store).map((bundle) => sanitizeBundle(bundle, { includeImages: false })),
-        socialLinks: store.settings.socialLinks || {},
-        business: store.settings.business || {},
-        analytics: store.settings.analytics || {},
-        emailAuthentication: store.settings.emailAuthentication || {},
-        aiToolsCount: Array.isArray(store.aiTools) ? store.aiTools.length : 0,
-        adminEmail: admin.email,
-      adminEmailManagedByEnv: admin.emailManagedByEnv,
-      adminPasswordManagedByEnv: admin.passwordManagedByEnv,
-      adminSecondaryManagedByEnv: admin.secondaryManagedByEnv,
-      credentialsManagedByEnv: admin.managedByEnv
-    });
-  });
-
-  app.put("/settings", requireAdmin, (req, res) => {
-    const currentStore = readStore();
-    const admin = getAdminCredentials(currentStore);
-    const siteTitle = String(req.body?.siteTitle || "").trim() || "Gamers Arena";
-    const siteTagline = String(req.body?.siteTagline || "").trim() || "PC Games Accounts Store";
-    const siteDescription = String(req.body?.siteDescription || "").trim() || "Premium gaming storefront";
-    const logoUrl = String(req.body?.logoUrl || "").trim() || currentStore.settings.logoUrl || defaultLogo;
-    const faviconUrl = String(req.body?.faviconUrl || "").trim() || logoUrl || defaultLogo;
-    const qrImage = String(req.body?.qrImage || "").trim() || defaultQr;
-    const homeLayout = Array.isArray(req.body?.homeLayout) ? req.body.homeLayout : [];
-    const bundles = Array.isArray(req.body?.bundles) ? req.body.bundles : null;
-    const socialLinks = req.body?.socialLinks && typeof req.body.socialLinks === "object" ? req.body.socialLinks : {};
-    const business = req.body?.business && typeof req.body.business === "object" ? req.body.business : {};
-    const analytics = req.body?.analytics && typeof req.body.analytics === "object" ? req.body.analytics : {};
-    const emailAuthentication = req.body?.emailAuthentication && typeof req.body.emailAuthentication === "object" ? req.body.emailAuthentication : {};
-    const adminEmail = String(req.body?.adminEmail || "").trim();
-    const adminPassword = String(req.body?.adminPassword || "").trim();
-    const adminSecondaryPassword = String(req.body?.adminSecondaryPassword || "").trim();
-    const store = updateStore((draft) => {
-      draft.settings.siteTitle = siteTitle;
-      draft.settings.siteTagline = siteTagline;
-      draft.settings.siteDescription = siteDescription;
-      draft.settings.logoUrl = logoUrl;
-      draft.settings.faviconUrl = faviconUrl;
-      draft.settings.qrImage = qrImage;
-      draft.settings.socialLinks = {
-        ...(draft.settings.socialLinks || {}),
-        ...Object.fromEntries(Object.entries(socialLinks).map(([key, value]) => [key, String(value || "").trim()]))
-      };
-      draft.settings.business = {
-        ...(draft.settings.business || {}),
-        ...Object.fromEntries(Object.entries(business).map(([key, value]) => [key, String(value || "").trim()]))
-      };
-      draft.settings.analytics = {
-        ...(draft.settings.analytics || {}),
-        googleAnalyticsId: Object.prototype.hasOwnProperty.call(analytics, "googleAnalyticsId")
-          ? String(analytics.googleAnalyticsId || "").trim()
-          : String(draft.settings.analytics?.googleAnalyticsId || "").trim(),
-        facebookPixelId: Object.prototype.hasOwnProperty.call(analytics, "facebookPixelId")
-          ? String(analytics.facebookPixelId || "").trim()
-          : String(draft.settings.analytics?.facebookPixelId || "").trim()
-      };
-      draft.settings.emailAuthentication = {
-        ...(draft.settings.emailAuthentication || {}),
-        spfRecord: Object.prototype.hasOwnProperty.call(emailAuthentication, "spfRecord")
-          ? String(emailAuthentication.spfRecord || "").trim()
-          : String(draft.settings.emailAuthentication?.spfRecord || "").trim(),
-        dmarcRecord: Object.prototype.hasOwnProperty.call(emailAuthentication, "dmarcRecord")
-          ? String(emailAuthentication.dmarcRecord || "").trim()
-          : String(draft.settings.emailAuthentication?.dmarcRecord || "").trim()
-      };
-      draft.settings.homeLayout = homeLayout
-        .filter((block) => block && ["text", "image", "video"].includes(block.type))
-        .map((block, index) => ({
-          id: block.id || `block-${index + 1}`,
-          type: block.type,
-          content: String(block.content || "").trim()
-        }));
-      if (bundles) {
-        draft.settings.bundles = bundles
-          .map((bundle, index) => normalizeBundle(bundle, index))
-          .filter((bundle) => bundle.name);
-      }
-      if (adminEmail && !admin.emailManagedByEnv) draft.admin.email = adminEmail;
-      if (adminPassword && !admin.passwordManagedByEnv) draft.admin.password = adminPassword;
-      if (adminSecondaryPassword && !admin.secondaryManagedByEnv) draft.admin.secondaryPassword = adminSecondaryPassword;
-      return draft;
-    });
-    const activeAdmin = getAdminCredentials(store);
-    res.json({
-        siteTitle: store.settings.siteTitle,
-        siteTagline: store.settings.siteTagline,
-        siteDescription: store.settings.siteDescription,
-        logoUrl: store.settings.logoUrl,
-        faviconUrl: store.settings.faviconUrl,
-        qrImage: store.settings.qrImage,
-        homeLayout: store.settings.homeLayout,
-        bundles: getBundles(store).map((bundle) => sanitizeBundle(bundle, { includeImages: false })),
-        socialLinks: store.settings.socialLinks || {},
-        business: store.settings.business || {},
-        analytics: store.settings.analytics || {},
-        emailAuthentication: store.settings.emailAuthentication || {},
-        aiToolsCount: Array.isArray(store.aiTools) ? store.aiTools.length : 0,
-        adminEmail: activeAdmin.email,
-      adminEmailManagedByEnv: activeAdmin.emailManagedByEnv,
-      adminPasswordManagedByEnv: activeAdmin.passwordManagedByEnv,
-      adminSecondaryManagedByEnv: activeAdmin.secondaryManagedByEnv,
-      credentialsManagedByEnv: activeAdmin.managedByEnv
-    });
-  });
-
-  app.get("/bundles", (_req, res) => {
-    const store = readStore();
-    res.json(getBundles(store).map((bundle) => sanitizeBundle(bundle, { includeImages: false })));
-  });
-
-  app.get("/bundles/:slug", (req, res) => {
-    const store = readStore();
-    const bundle = getBundleBySlug(store, req.params.slug);
-    if (!bundle) return res.status(404).json({ error: "Bundle not found." });
-    res.json(sanitizeBundle(bundle));
-  });
-
-  app.post("/bundles", requireAdmin, (req, res) => {
-    const name = String(req.body?.name || "").trim();
-    const price = Number(req.body?.price || 45);
-    const gameIds = Array.isArray(req.body?.gameIds) ? req.body.gameIds : [];
-    const description = String(req.body?.description || "").trim();
-    const itemCount = Number(req.body?.itemCount || 0);
-    const images = Array.isArray(req.body?.images) ? req.body.images : [];
-    if (!name) return res.status(400).json({ error: "Bundle name is required." });
-    const store = updateStore((draft) => {
-      const bundlesDraft = ensureBundleDrafts(draft);
-      bundlesDraft.unshift(normalizeBundle({
-        id: createId("bundle"),
-        slug: slugify(name),
-        name,
-        price: Number.isFinite(price) ? price : 45,
-        itemCount,
-        gameIds,
-        description,
-        images
-      }, 0));
-      return draft;
-    });
-    res.status(201).json(sanitizeBundle(store.settings.bundles[0]));
-  });
-
-  app.put("/bundles/:id", requireAdmin, (req, res) => {
-    const name = String(req.body?.name || "").trim();
-    const price = Number(req.body?.price || 45);
-    const gameIds = Array.isArray(req.body?.gameIds) ? req.body.gameIds : [];
-    const description = String(req.body?.description || "").trim();
-    const itemCount = Number(req.body?.itemCount || 0);
-    const images = Array.isArray(req.body?.images) ? req.body.images : [];
-    const store = updateStore((draft) => {
-      const bundlesDraft = ensureBundleDrafts(draft);
-      const bundle = bundlesDraft.find((item) => item.id === req.params.id);
-      if (!bundle) throw new Error("Bundle not found.");
-      if (!name) throw new Error("Bundle name is required.");
-      bundle.name = name;
-      bundle.slug = slugify(name);
-      bundle.price = Number.isFinite(price) ? price : 45;
-      bundle.itemCount = Number.isFinite(itemCount) ? itemCount : Number(bundle.itemCount || 0);
-      bundle.gameIds = gameIds;
-      bundle.description = description;
-      if (images.length) bundle.images = images.slice(0, 2);
-      return draft;
-    });
-    res.json(sanitizeBundle(store.settings.bundles.find((item) => item.id === req.params.id)));
-  });
-
-  app.delete("/bundles/:id", requireAdmin, (req, res) => {
-    updateStore((draft) => {
-      ensureBundleDrafts(draft);
-      draft.settings.bundles = (draft.settings.bundles || []).filter((item) => item.id !== req.params.id);
-      return draft;
-    });
-    res.json({ ok: true });
-  });
-
-  app.get("/editor-layout", requireAdmin, (_req, res) => {
-    const store = readStore();
-    res.json(store.settings.homeLayout || []);
-  });
-
-  app.put("/editor-layout", requireAdmin, (req, res) => {
-    const homeLayout = Array.isArray(req.body?.homeLayout) ? req.body.homeLayout : [];
-    const store = updateStore((draft) => {
-      draft.settings.homeLayout = homeLayout
-        .filter((block) => block && ["text", "image", "video"].includes(block.type))
-        .map((block, index) => ({
-          id: block.id || `block-${index + 1}`,
-          type: block.type,
-          content: String(block.content || "").trim()
-        }));
-      return draft;
-    });
-    res.json(store.settings.homeLayout);
-  });
-
-  app.get("/admin/overview", requireAdmin, (_req, res) => {
-    const store = readStore();
-    const mergedBlogs = getMergedBlogs(store.blogs);
-    res.json({
-      stats: {
-        games: store.games.length,
-        consoleGames: Array.isArray(store.consoleGames) ? store.consoleGames.length : 0,
-        users: store.users.length,
-        chats: store.chats.length,
-        blogs: mergedBlogs.length,
-        aiTools: Array.isArray(store.aiTools) ? store.aiTools.length : 0,
-        orders: Array.isArray(store.orders) ? store.orders.length : 0
-      },
-      users: store.users.map((user) => ({
-        id: user.id,
-        name: user.name,
-        contact: user.contact
-      })),
-      chats: store.chats.map((chat) => ({
-        id: chat.id,
-        userId: chat.userId,
-        userName: chat.userName,
-        userContact: chat.userContact,
-        gameName: chat.gameName,
-        updatedAt: chat.updatedAt,
-        unreadForAdmin: chat.messages.filter((message) => message.sender === "user" && !message.readByAdmin).length
-      }))
-    });
-  });
-
-  app.get("/admin/chats/:id", requireAdmin, (req, res) => {
-    const store = updateStore((draft) => {
-      const chat = draft.chats.find((item) => item.id === req.params.id);
-      if (!chat) throw new Error("Chat not found.");
-      chat.messages.forEach((message) => {
-        if (message.sender === "user") message.readByAdmin = true;
-      });
-      return draft;
-    });
-    const chat = store.chats.find((item) => item.id === req.params.id);
-    res.json(chat);
-  });
-
-  app.get("/my-chat", requireAuth, (req, res) => {
-    const store = readStore();
-    const user = store.users.find((item) => item.id === req.session.userId);
-    const gameName = String(req.query?.game || "").trim();
-    let chat = store.chats.find((item) => item.userId === req.session.userId);
-    if (!chat && gameName) {
-      const updated = updateStore((draft) => {
-        draft.chats.unshift({
-          id: createId("chat"),
-          userId: req.session.userId,
-          userName: req.session.name,
-          userContact: req.session.contact,
-          gameName,
-          updatedAt: new Date().toISOString(),
-          messages: [
-            {
-              id: createId("msg"),
-              sender: "system",
-              text: `Order conversation started for ${gameName}.`,
-              file: "",
-              fileType: "",
-              createdAt: new Date().toISOString(),
-              readByAdmin: true
-            }
-          ]
-        });
-        return draft;
-      });
-      chat = updated.chats[0];
-    }
-    res.json({
-      user: {
-        id: user?.id || req.session.userId,
-        name: user?.name || req.session.name,
-        contact: user?.contact || req.session.contact
-      },
-      chat: chat || null
-    });
-  });
-
-  app.get("/pages/:slug", (req, res) => {
-    return sendSeoPage(req, res, "page.html", req.path);
-  });
-
-  app.get("/health", (_req, res) => {
-    res.json({ ok: true, app: "Gamers Arena" });
-  });
-
-  app.get("/", (req, res) => sendSeoPage(req, res, "index.html", "/index.html"));
-  app.get("/pc-games", (req, res) => sendSeoPage(req, res, "pc-games.html", "/pc-games"));
-  app.get("/ps4-games", (req, res) => sendSeoPage(req, res, "ps4-games.html", "/ps4-games"));
-  app.get("/ps5-games", (req, res) => sendSeoPage(req, res, "ps5-games.html", "/ps5-games"));
-  app.get("/deals", (req, res) => sendSeoPage(req, res, "deals.html", "/deals"));
-  app.get("/blog", (req, res) => sendSeoPage(req, res, "blog.html", "/blog"));
-  app.get("/blog/:slug", (req, res) => sendSeoPage(req, res, "post.html", req.path));
-  app.get("/ai-tools", (req, res) => sendSeoPage(req, res, "ai-tools.html", "/ai-tools"));
-  app.get("/cart", (req, res) => sendSeoPage(req, res, "cart.html", "/cart"));
-  app.get("/checkout", (req, res) => sendSeoPage(req, res, "checkout.html", "/checkout"));
-  app.get("/login", (req, res) => sendSeoPage(req, res, "login.html", "/login"));
-  app.get("/admin", (req, res) => sendProtectedSeoPage(req, res, "admin.html", "/admin"));
-  app.get("/cart.html", (req, res) => sendSeoPage(req, res, "cart.html", "/cart.html"));
-  app.get("/checkout.html", (req, res) => sendSeoPage(req, res, "checkout.html", "/checkout.html"));
-  app.get("/chat.html", (req, res) => sendSeoPage(req, res, "chat.html", "/chat.html"));
-  app.get("/games.html", (req, res) => sendSeoPage(req, res, "pc-games.html", "/pc-games"));
-  app.get("/login.html", (req, res) => sendSeoPage(req, res, "login.html", "/login.html"));
-  app.get("/admin.html", (req, res) => sendProtectedSeoPage(req, res, "admin.html", "/admin.html"));
-  app.get("/blog.html", (req, res) => sendSeoPage(req, res, "blog.html", "/blog.html"));
-  app.get("/deals.html", (req, res) => sendSeoPage(req, res, "deals.html", "/deals"));
-  app.get("/ai-tools.html", (req, res) => sendSeoPage(req, res, "ai-tools.html", "/ai-tools"));
-  app.get("/pc-games.html", (req, res) => sendSeoPage(req, res, "pc-games.html", "/pc-games"));
-  app.get("/ps4-games.html", (req, res) => sendSeoPage(req, res, "ps4-games.html", "/ps4-games"));
-  app.get("/ps5-games.html", (req, res) => sendSeoPage(req, res, "ps5-games.html", "/ps5-games"));
-  app.get("/post.html", (req, res) => sendSeoPage(req, res, "post.html", "/post.html"));
-  app.get("/bundle.html", (req, res) => sendSeoPage(req, res, "bundle.html", "/bundle.html"));
-  app.get("/bundle/:slug", (req, res) => sendSeoPage(req, res, "bundle.html", req.path));
-  app.get("/editor.html", (req, res) => sendProtectedSeoPage(req, res, "editor.html", "/editor.html"));
-  app.get("/page.html", (req, res) => sendSeoPage(req, res, "page.html", "/page.html"));
 
   app.use((error, _req, res, _next) => {
-    res.status(500).json({ error: error.message || "Internal server error" });
-  });
-
-  io.on("connection", (socket) => {
-    const session = socket.request.session;
-    if (!session) return;
-
-    if (session.isAdmin) {
-      socket.join("admins");
-    }
-    if (session.userId) {
-      socket.join(`user:${session.userId}`);
-    }
-
-    socket.on("chat:user-send", (payload = {}) => {
-      if (!session.userId || session.isAdmin) return;
-      const text = String(payload.text || "").trim();
-      const file = String(payload.file || "").trim();
-      const fileType = String(payload.fileType || "").trim();
-      const gameName = String(payload.gameName || "").trim() || "General Order";
-      if (!text && !file) return;
-
-      const now = new Date().toISOString();
-      const store = updateStore((draft) => {
-        let chat = draft.chats.find((item) => item.userId === session.userId);
-        if (!chat) {
-          chat = {
-            id: createId("chat"),
-            userId: session.userId,
-            userName: session.name,
-            userContact: session.contact,
-            gameName,
-            updatedAt: now,
-            messages: []
-          };
-          draft.chats.unshift(chat);
-        }
-        if (gameName && !chat.gameName) chat.gameName = gameName;
-        chat.updatedAt = now;
-        chat.messages.push({
-          id: createId("msg"),
-          sender: "user",
-          text: text || "Sent a file.",
-          file,
-          fileType,
-          createdAt: now,
-          readByAdmin: false
-        });
-        return draft;
-      });
-
-      const chat = store.chats.find((item) => item.userId === session.userId);
-      io.to(`user:${session.userId}`).emit("chat:update", chat);
-      io.to("admins").emit("admin:chat-list", store.chats.map((item) => ({
-        id: item.id,
-        userId: item.userId,
-        userName: item.userName,
-        userContact: item.userContact,
-        gameName: item.gameName,
-        updatedAt: item.updatedAt,
-        unreadForAdmin: item.messages.filter((message) => message.sender === "user" && !message.readByAdmin).length
-      })));
-    });
-
-    socket.on("chat:admin-send", (payload = {}) => {
-      if (!session.isAdmin) return;
-      const chatId = String(payload.chatId || "").trim();
-      const text = String(payload.text || "").trim();
-      const file = String(payload.file || "").trim();
-      const fileType = String(payload.fileType || "").trim();
-      if (!chatId || (!text && !file)) return;
-
-      const now = new Date().toISOString();
-      const store = updateStore((draft) => {
-        const chat = draft.chats.find((item) => item.id === chatId);
-        if (!chat) return draft;
-        chat.updatedAt = now;
-        chat.messages.push({
-          id: createId("msg"),
-          sender: "admin",
-          text: text || "Admin sent a file.",
-          file,
-          fileType,
-          createdAt: now,
-          readByAdmin: true
-        });
-        return draft;
-      });
-      const chat = store.chats.find((item) => item.id === chatId);
-      if (!chat) return;
-      io.to(`user:${chat.userId}`).emit("chat:update", chat);
-      io.to("admins").emit("chat:update-admin", chat);
-      io.to("admins").emit("admin:chat-list", store.chats.map((item) => ({
-        id: item.id,
-        userId: item.userId,
-        userName: item.userName,
-        userContact: item.userContact,
-        gameName: item.gameName,
-        updatedAt: item.updatedAt,
-        unreadForAdmin: item.messages.filter((message) => message.sender === "user" && !message.readByAdmin).length
-      })));
-    });
-
-    socket.on("admin:join-chat", (chatId) => {
-      if (!session.isAdmin) return;
-      const store = updateStore((draft) => {
-        const chat = draft.chats.find((item) => item.id === chatId);
-        if (!chat) return draft;
-        chat.messages.forEach((message) => {
-          if (message.sender === "user") message.readByAdmin = true;
-        });
-        return draft;
-      });
-      const chat = store.chats.find((item) => item.id === chatId);
-      if (chat) socket.emit("chat:update-admin", chat);
-    });
+    res.status(500).json({ error: error.message || "Internal server error." });
   });
 
   return app;
+
+  function ensureStoreSeedState() {
+    updateStore((draft) => {
+      if (!draft.meta) draft.meta = {};
+      if (draft.meta.platformResetApplied) return draft;
+      draft.games = [];
+      draft.keys = [];
+      draft.meta.platformResetApplied = true;
+      return draft;
+    });
+  }
+}
+
+function normalizePagePath(pathname) {
+  const value = String(pathname || "").trim();
+  if (!value) return "";
+  if (value === "/") return "/index.html";
+  if (value === "/health") return "";
+  if (value.startsWith("/game/")) return "/game.html";
+  if (value.startsWith("/auth/") || value.startsWith("/api/") || value.startsWith("/vendor/") || value.startsWith("/assets/")) return "";
+  if (value.includes(".") && !value.endsWith(".html")) return "";
+  return value.endsWith(".html") ? value : `${value}.html`;
+}
+
+function upsertGoogleUser({ email, googleId, name }) {
+  const now = new Date().toISOString();
+  const store = updateStore((draft) => {
+    let user = draft.users.find((item) => item.email === email.toLowerCase());
+    if (!user) {
+      user = {
+        id: createId("user"),
+        email: email.toLowerCase(),
+        name,
+        googleId,
+        passwordHash: "",
+        paymentStatus: "unpaid",
+        verified: false,
+        keyAssignedAt: "",
+        keyUsedAt: "",
+        createdAt: now,
+        updatedAt: now
+      };
+      draft.users.unshift(user);
+      return draft;
+    }
+    user.googleId = googleId;
+    user.name = name || user.name;
+    user.updatedAt = now;
+    return draft;
+  });
+  return store.users.find((item) => item.email === email.toLowerCase());
+}
+
+function makeAccessKey() {
+  const alphabet = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+  let key = "";
+  for (let index = 0; index < ACCESS_KEY_LENGTH; index += 1) {
+    key += alphabet[Math.floor(Math.random() * alphabet.length)];
+  }
+  return `${key.slice(0, 4)}-${key.slice(4, 8)}-${key.slice(8, 12)}`;
+}
+
+function hashKey(value) {
+  return crypto.createHash("sha256").update(String(value || "").trim().toUpperCase()).digest("hex");
+}
+
+function passwordKey() {
+  return crypto.createHash("sha256").update(PASSWORD_SECRET).digest();
+}
+
+function encryptSecret(value) {
+  const iv = crypto.randomBytes(12);
+  const cipher = crypto.createCipheriv("aes-256-gcm", passwordKey(), iv);
+  const encrypted = Buffer.concat([cipher.update(String(value || ""), "utf8"), cipher.final()]);
+  const tag = cipher.getAuthTag();
+  return `${iv.toString("base64url")}.${tag.toString("base64url")}.${encrypted.toString("base64url")}`;
+}
+
+function decryptSecret(value) {
+  const [ivPart, tagPart, encryptedPart] = String(value || "").split(".");
+  if (!ivPart || !tagPart || !encryptedPart) return "";
+  const decipher = crypto.createDecipheriv(
+    "aes-256-gcm",
+    passwordKey(),
+    Buffer.from(ivPart, "base64url")
+  );
+  decipher.setAuthTag(Buffer.from(tagPart, "base64url"));
+  const decrypted = Buffer.concat([
+    decipher.update(Buffer.from(encryptedPart, "base64url")),
+    decipher.final()
+  ]);
+  return decrypted.toString("utf8");
+}
+
+function hashPassword(password) {
+  return new Promise((resolve, reject) => {
+    crypto.scrypt(String(password || ""), PASSWORD_SECRET, 64, (error, derivedKey) => {
+      if (error) return reject(error);
+      resolve(derivedKey.toString("hex"));
+    });
+  });
+}
+
+function verifyPassword(password, expectedHash) {
+  if (!/^[a-f0-9]{128}$/i.test(String(expectedHash || ""))) {
+    return Promise.resolve(false);
+  }
+  return hashPassword(password).then((hash) => crypto.timingSafeEqual(Buffer.from(hash, "hex"), Buffer.from(expectedHash, "hex")));
+}
+
+function compareSecret(input, expected) {
+  const left = Buffer.from(String(input || ""), "utf8");
+  const right = Buffer.from(String(expected || ""), "utf8");
+  if (!right.length || left.length !== right.length) {
+    return Promise.resolve(false);
+  }
+  return Promise.resolve(crypto.timingSafeEqual(left, right));
+}
+
+function verifyPasswordAgainstSecret(password, secret) {
+  if (!secret) return Promise.resolve(false);
+  return Promise.all([hashPassword(password), hashPassword(secret)]).then(([left, right]) => {
+    return crypto.timingSafeEqual(Buffer.from(left, "hex"), Buffer.from(right, "hex"));
+  });
 }
 
 module.exports = createApp;
+module.exports.hashPassword = hashPassword;
