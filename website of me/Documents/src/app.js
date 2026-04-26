@@ -13,7 +13,7 @@ const PASSWORD_SECRET = String(process.env.PASSWORD_SECRET || process.env.SESSIO
 const GOOGLE_CLIENT_ID = String(process.env.GOOGLE_CLIENT_ID || "").trim();
 const GOOGLE_CLIENT_SECRET = String(process.env.GOOGLE_CLIENT_SECRET || "").trim();
 const BASE_URL = String(process.env.BASE_URL || "http://127.0.0.1:3000").trim().replace(/\/+$/, "");
-const ADMIN_USERNAME = String(process.env.ADMIN_USERNAME || "admin").trim();
+const ADMIN_USERNAME = String(process.env.ADMIN_USERNAME || process.env.ADMIN_EMAIL || "admin").trim();
 const ADMIN_PASSWORD = String(process.env.ADMIN_PASSWORD || "").trim();
 const RECOVERY_CODE_1 = String(process.env.RECOVERY_CODE_1 || "").trim();
 const RECOVERY_CODE_2 = String(process.env.RECOVERY_CODE_2 || "").trim();
@@ -73,9 +73,14 @@ function createApp() {
 
   const publicStatic = express.static(publicDir, {
     etag: true,
-    maxAge: "1h",
+    maxAge: 0,
     index: false,
-    extensions: false
+    extensions: false,
+    setHeaders: (res, filePath) => {
+      if (/\.(html|js|css)$/i.test(filePath)) {
+        res.setHeader("Cache-Control", "no-store, must-revalidate");
+      }
+    }
   });
   app.use((req, res, next) => {
     if (req.path === "/" || req.path.endsWith(".html")) return next();
@@ -436,7 +441,6 @@ function createApp() {
     }
     if (pagePath === "/enter-key.html") {
       if (state === "verified") return res.redirect("/");
-      if (user.paymentStatus === "unpaid") return res.redirect("/payment.html");
       return next();
     }
     if (state !== "verified") return res.redirect(accessRedirectPath(user));

@@ -363,14 +363,15 @@ async function initEnterKeyPage() {
     window.location.href = "/";
     return;
   }
-  if (session.user?.paymentStatus === "unpaid") {
-    window.location.href = "/payment.html";
-    return;
-  }
 
   const params = new URLSearchParams(window.location.search);
   if (params.get("login") === "success") showToast("Logged in successfully", "success");
-  setText("enterKeyNotice", "Your access unlocks permanently after a valid one-time key.");
+  setText(
+    "enterKeyNotice",
+    session.user?.paymentStatus === "unpaid"
+      ? "Complete payment first, then use your one-time key here."
+      : "Your access unlocks permanently after a valid one-time key."
+  );
 
   qs("activationForm")?.addEventListener("submit", async (event) => {
     event.preventDefault();
