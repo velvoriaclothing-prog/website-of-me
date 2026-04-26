@@ -126,6 +126,13 @@ function createApp() {
     return "needs-payment";
   }
 
+  function accessRedirectPath(user) {
+    if (!user) return "/login.html";
+    if (user.verified) return "/";
+    if (user.paymentStatus === "approved") return "/enter-key.html";
+    return "/payment.html";
+  }
+
   function getSessionPayload(user, extra = {}) {
     return {
       ownerKey: user.id,
@@ -157,6 +164,7 @@ function createApp() {
       id: key.id,
       userId: key.userId,
       email: key.email,
+      linkedEmail: key.email,
       keyPreview: key.keyPreview,
       used: key.used === true,
       createdAt: key.createdAt,
@@ -270,21 +278,21 @@ function createApp() {
 
   function generateAccessKeyForUser(userId) {
     const normalizedUserId = String(userId || "").trim();
-    if (!normalizedUserId) throw createHttpError(400, "Select a user first.");
-
     let generatedKey = "";
     let createdKeyId = "";
 
     const store = updateStore((draft) => {
-      const user = draft.users.find((item) => item.id === normalizedUserId);
-      if (!user) throw createHttpError(404, "User not found.");
-      if (user.verified) throw createHttpError(400, "This user already unlocked full access.");
-      if (user.paymentStatus !== "approved") {
-        throw createHttpError(400, "Approve this user before generating a key.");
-      }
-
       const now = new Date().toISOString();
-      draft.keys = draft.keys.filter((item) => !(item.userId === user.id && item.used === false));
+      let user = null;
+      if (normalizedUserId) {
+        user = draft.users.find((item) => item.id === normalizedUserId);
+        if (!user) throw createHttpError(404, "User not found.");
+        if (user.verified) throw createHttpError(400, "This user already unlocked full access.");
+        if (user.paymentStatus !== "approved") {
+          throw createHttpError(400, "Approve this user before generating a key.");
+        }
+        draft.keys = draft.keys.filter((item) => !(item.userId === user.id && item.used === false));
+      }
 
       do {
         generatedKey = makeAccessKey();
@@ -293,8 +301,8 @@ function createApp() {
       createdKeyId = createId("key");
       draft.keys.unshift({
         id: createdKeyId,
-        userId: user.id,
-        email: user.email,
+        userId: user?.id || "",
+        email: user?.email || "",
         keyHash: hashKey(generatedKey),
         keyPreview: `${generatedKey.slice(0, 4)}-${generatedKey.slice(-4)}`,
         used: false,
@@ -303,12 +311,14 @@ function createApp() {
         usedAt: ""
       });
 
-      user.keyAssignedAt = now;
-      user.updatedAt = now;
+      if (user) {
+        user.keyAssignedAt = now;
+        user.updatedAt = now;
+      }
       return draft;
     });
 
-    const user = getAdminUsers().find((item) => item.id === normalizedUserId);
+    const user = normalizedUserId ? getAdminUsers().find((item) => item.id === normalizedUserId) : null;
     const key = adminKeyRecord(store.keys.find((item) => item.id === createdKeyId));
 
     return {
@@ -317,6 +327,35 @@ function createApp() {
       key,
       generatedKey
     };
+  }
+
+  function assignAccessKeyToUser(keyId, userId) {
+    const normalizedKeyId = String(keyId || "").trim();
+    const normalizedUserId = String(userId || "").trim();
+    if (!normalizedKeyId || !normalizedUserId) throw createHttpError(400, "Choose both a key and a user.");
+
+    const store = updateStore((draft) => {
+      const user = draft.users.find((item) => item.id === normalizedUserId);
+      if (!user) throw createHttpError(404, "User not found.");
+      if (user.verified) throw createHttpError(400, "This user already has full access.");
+      if (user.paymentStatus !== "approved") throw createHttpError(400, "Approve this user before assigning a key.");
+
+      const key = draft.keys.find((item) => item.id === normalizedKeyId);
+      if (!key) throw createHttpError(404, "Key not found.");
+      if (key.used) throw createHttpError(400, "This key has already been used.");
+      if (key.userId && key.userId !== user.id) throw createHttpError(400, "This key is already linked to another user.");
+
+      const now = new Date().toISOString();
+      key.userId = user.id;
+      key.email = user.email;
+      user.keyAssignedAt = now;
+      user.updatedAt = now;
+      return draft;
+    });
+
+    const user = getAdminUsers().find((item) => item.id === normalizedUserId);
+    const key = adminKeyRecord(store.keys.find((item) => item.id === normalizedKeyId));
+    return { ok: true, user, key };
   }
 
   function createAdminGame(input) {
@@ -391,8 +430,16 @@ function createApp() {
     const user = getUserBySession(req);
     if (!user) return res.redirect(`/login.html?redirect=${encodeURIComponent(req.originalUrl)}`);
     const state = getAccessState(user);
-    if (pagePath === "/payment.html") return next();
-    if (state !== "verified") return res.redirect("/payment.html");
+    if (pagePath === "/payment.html") {
+      if (user.paymentStatus === "approved") return res.redirect("/enter-key.html");
+      return next();
+    }
+    if (pagePath === "/enter-key.html") {
+      if (state === "verified") return res.redirect("/");
+      if (user.paymentStatus === "unpaid") return res.redirect("/payment.html");
+      return next();
+    }
+    if (state !== "verified") return res.redirect(accessRedirectPath(user));
     return next();
   }
 
@@ -435,7 +482,7 @@ function createApp() {
     passport.authenticate("google", { session: false }, (error, user) => {
       if (error || !user) return res.redirect("/login.html?error=google");
       setSession(req, res, getSessionPayload(user));
-      return res.redirect(user.verified ? "/" : "/payment.html");
+      return res.redirect(`${accessRedirectPath(user)}?login=success`);
     })(req, res, next);
   });
 
@@ -547,7 +594,8 @@ function createApp() {
     res.json({
       ok: true,
       paymentStatus: user.paymentStatus,
-      telegramUrl: getTelegramPaymentUrl(req, user)
+      telegramUrl: getTelegramPaymentUrl(req, user),
+      redirect: user.paymentStatus === "approved" ? "/enter-key.html" : "/payment.html"
     });
   });
 
@@ -559,14 +607,20 @@ function createApp() {
     const store = updateStore((draft) => {
       const user = draft.users.find((item) => item.id === current.id);
       if (!user) throw new Error("User not found.");
-      const key = draft.keys.find((item) => item.keyHash === keyHash && item.userId === user.id);
-      if (!key) throw new Error("Invalid access key.");
-      if (key.used) throw new Error("This access key has already been used.");
+      if (user.paymentStatus === "unpaid") throw createHttpError(400, "Complete payment first.");
+      const key = draft.keys.find((item) => item.keyHash === keyHash);
+      if (!key || key.used) throw createHttpError(400, "Invalid or already used key");
+      if (key.userId && key.userId !== user.id) throw createHttpError(400, "Invalid or already used key");
+      if (key.email && key.email !== user.email) throw createHttpError(400, "Invalid or already used key");
+      const usedAt = new Date().toISOString();
+      key.userId = user.id;
+      key.email = user.email;
       key.used = true;
-      key.usedAt = new Date().toISOString();
+      key.usedAt = usedAt;
       user.verified = true;
       user.paymentStatus = "approved";
       user.keyUsedAt = key.usedAt;
+      if (!user.keyAssignedAt) user.keyAssignedAt = usedAt;
       user.updatedAt = key.usedAt;
       return draft;
     });
@@ -669,6 +723,29 @@ function createApp() {
   app.post("/api/admin/generate-key", requireAdmin, (req, res, next) => {
     try {
       res.json(generateAccessKeyForUser(req.body?.userId));
+    } catch (error) {
+      next(error);
+    }
+  });
+
+  app.post("/api/admin/assign-key", requireAdmin, (req, res, next) => {
+    try {
+      res.json(assignAccessKeyToUser(req.body?.keyId, req.body?.userId));
+    } catch (error) {
+      next(error);
+    }
+  });
+
+  app.post("/api/admin/approve-and-generate-key", requireAdmin, (req, res, next) => {
+    try {
+      const user = approveUserAccess(req.body?.userId);
+      const generated = generateAccessKeyForUser(req.body?.userId);
+      res.json({
+        ok: true,
+        user,
+        key: generated.key,
+        generatedKey: generated.generatedKey
+      });
     } catch (error) {
       next(error);
     }
@@ -777,6 +854,8 @@ function createApp() {
     { route: "/login.html", file: "login.html" },
     { route: "/payment", file: "payment.html" },
     { route: "/payment.html", file: "payment.html" },
+    { route: "/enter-key", file: "enter-key.html" },
+    { route: "/enter-key.html", file: "enter-key.html" },
     { route: "/pc-games", file: "pc-games.html" },
     { route: "/pc-games.html", file: "pc-games.html" },
     { route: "/ps4-games", file: "ps4-games.html" },

@@ -2595,6 +2595,10 @@ body.header-scroll-enabled .topbar.hidden-header {
     min-height: 62px;
     font-size: 1.02rem;
   }
+
+  .nav-admin-button {
+    min-height: 44px;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -2622,6 +2626,23 @@ body.header-scroll-enabled .topbar.hidden-header {
   min-height: 100vh;
   display: grid;
   place-items: center;
+}
+
+.auth-topbar {
+  position: relative;
+  top: auto;
+  z-index: 14;
+}
+
+.nav-admin-button {
+  min-height: 40px;
+  padding: 10px 14px;
+}
+
+.nav-admin-button-active {
+  border-color: rgba(34, 211, 238, 0.28);
+  background: rgba(34, 211, 238, 0.1);
+  color: #c7f9ff;
 }
 
 .auth-hero {
@@ -2875,30 +2896,8 @@ body.header-scroll-enabled .topbar.hidden-header {
 body[data-page="login"] .shell {
   width: min(100%, 1440px);
   margin-bottom: 0;
-}
-
-.hidden-admin-button {
-  position: absolute;
-  top: 14px;
-  right: 14px;
-  width: 18px;
-  height: 18px;
-  opacity: 0.02;
-  border: 0;
-  background: transparent;
-  cursor: pointer;
-}
-
-.fixed-admin-trigger {
-  position: fixed;
-  top: auto;
-  right: auto;
-  left: 8px;
-  bottom: 8px;
-  width: 28px;
-  height: 28px;
-  z-index: 45;
-  opacity: 0.01;
+  display: grid;
+  gap: 14px;
 }
 
 .admin-access-modal {
@@ -2919,4 +2918,65 @@ body[data-page="login"] .shell {
   border: 1px solid rgba(34, 211, 238, 0.16);
   background: linear-gradient(180deg, rgba(10, 18, 34, 0.96), rgba(8, 16, 30, 0.98));
   box-shadow: var(--shadow);
+}
+
+.toast-root {
+  position: fixed;
+  top: 18px;
+  right: 18px;
+  z-index: 70;
+  display: grid;
+  gap: 10px;
+  width: min(360px, calc(100vw - 24px));
+}
+
+.toast {
+  padding: 14px 16px;
+  border-radius: 16px;
+  border: 1px solid rgba(34, 211, 238, 0.18);
+  background: rgba(8, 16, 30, 0.94);
+  box-shadow: 0 18px 40px rgba(0, 0, 0, 0.28);
+  color: var(--text);
+  transform: translateY(-8px);
+  opacity: 0;
+  transition: transform 180ms ease, opacity 180ms ease;
+}
+
+.toast-visible {
+  transform: translateY(0);
+  opacity: 1;
+}
+
+.toast-success {
+  border-color: rgba(52, 211, 153, 0.34);
+}
+
+.toast-warning {
+  border-color: rgba(251, 191, 36, 0.34);
+}
+
+.is-loading {
+  opacity: 0.75;
+  cursor: wait;
+}
+
+.credentials-box {
+  overflow: hidden;
+  transition: opacity 220ms ease, transform 220ms ease, border-color 220ms ease;
+}
+
+.credentials-box-hidden {
+  opacity: 0.82;
+}
+
+.credentials-box-revealed {
+  opacity: 1;
+  transform: translateY(0);
+  border-color: rgba(52, 211, 153, 0.28);
+  animation: fadeUp 260ms ease;
+}
+
+.masked-secret {
+  letter-spacing: 0.14em;
+  color: var(--muted);
 }

@@ -4,6 +4,48 @@ const adminDashboardState = {
   lastGeneratedEmail: ""
 };
 
+function currentPath() {
+  return window.location.pathname === "/" ? "/index.html" : window.location.pathname;
+}
+
+function ensureToastRoot() {
+  let root = qs("toastRoot");
+  if (root) return root;
+  root = document.createElement("div");
+  root.id = "toastRoot";
+  root.className = "toast-root";
+  document.body.appendChild(root);
+  return root;
+}
+
+function showToast(message, tone = "info") {
+  if (!message) return;
+  const root = ensureToastRoot();
+  const toast = document.createElement("div");
+  toast.className = `toast toast-${tone}`;
+  toast.textContent = message;
+  root.appendChild(toast);
+  window.setTimeout(() => toast.classList.add("toast-visible"), 20);
+  window.setTimeout(() => {
+    toast.classList.remove("toast-visible");
+    window.setTimeout(() => toast.remove(), 220);
+  }, 2600);
+}
+
+function setButtonLoading(button, loadingText) {
+  if (!button) return () => {};
+  const original = button.dataset.originalText || button.textContent;
+  button.dataset.originalText = original;
+  button.disabled = true;
+  button.classList.add("is-loading");
+  if (loadingText) button.textContent = loadingText;
+  return () => {
+    button.disabled = false;
+    button.classList.remove("is-loading");
+    button.textContent = button.dataset.originalText || original;
+  };
+}
+
 async function api(path, options = {}) {
   const response = await fetch(path, {
     headers: {
@@ -26,6 +68,32 @@ function qs(id) {
 function setText(id, value) {
   const element = typeof id === "string" ? qs(id) : id;
   if (element) element.textContent = value;
+}
+
+function accessPageForSession(session) {
+  if (!session) return "/login.html";
+  if (session.accessState === "verified") return "/";
+  if (session.user?.paymentStatus === "approved") return "/enter-key.html";
+  return "/payment.html";
+}
+
+function enforceFrontendAccess(session) {
+  if (page === "login" || page === "admin") return true;
+  const path = currentPath();
+  const allowedBeforeVerified = new Set(["/payment.html", "/enter-key.html"]);
+  if (session?.accessState !== "verified") {
+    document.querySelectorAll('.nav-links a[href], .nav-actions a[href]').forEach((link) => {
+      const href = link.getAttribute("href") || "";
+      if (href.startsWith("/") && !["/payment.html", "/enter-key.html", "/admin", "/login.html"].includes(href)) {
+        link.classList.add("hidden");
+      }
+    });
+    if (!allowedBeforeVerified.has(path)) {
+      window.location.href = accessPageForSession(session);
+      return false;
+    }
+  }
+  return true;
 }
 
 function formatDateTime(value) {
@@ -86,6 +154,18 @@ function bindLogout() {
   });
 }
 
+function ensureAdminHeaderLink() {
+  document.querySelectorAll(".nav-actions").forEach((actions) => {
+    if (actions.querySelector("[data-admin-link]")) return;
+    const link = document.createElement("a");
+    link.href = "/admin";
+    link.className = "btn btn-secondary nav-admin-button";
+    link.dataset.adminLink = "1";
+    link.textContent = "Admin";
+    actions.insertBefore(link, actions.firstChild || null);
+  });
+}
+
 function getSlugFromPath() {
   const parts = window.location.pathname.split("/").filter(Boolean);
   return parts[1] || "";
@@ -127,22 +207,6 @@ function ensureAdminAccessMarkup() {
   return Boolean(qs("adminAccessModal"));
 }
 
-function ensureHiddenAdminTrigger() {
-  if (page === "admin") return null;
-  let trigger = qs("hiddenAdminAccess");
-  if (trigger) {
-    trigger.classList.add("fixed-admin-trigger");
-    return trigger;
-  }
-  trigger = document.createElement("button");
-  trigger.id = "hiddenAdminAccess";
-  trigger.type = "button";
-  trigger.className = "hidden-admin-button fixed-admin-trigger";
-  trigger.setAttribute("aria-label", "Open admin access");
-  document.body.appendChild(trigger);
-  return trigger;
-}
-
 function bindAdminAccessUi(config = {}) {
   if (page === "admin") return;
   if (document.body.dataset.adminAccessBound === "1") return;
@@ -150,10 +214,7 @@ function bindAdminAccessUi(config = {}) {
 
   const params = new URLSearchParams(window.location.search);
   const modalReady = ensureAdminAccessMarkup();
-  const trigger = ensureHiddenAdminTrigger();
   const adminModal = qs("adminAccessModal");
-  let logoClicks = 0;
-  let logoTimer = 0;
 
   const openAdminAccess = () => {
     if (!modalReady || !adminModal) {
@@ -168,23 +229,6 @@ function bindAdminAccessUi(config = {}) {
     adminModal?.classList.add("hidden");
     setText("adminAccessStatus", "");
   };
-
-  trigger?.addEventListener("click", openAdminAccess);
-
-  document.querySelectorAll(".brand").forEach((brand) => {
-    brand.addEventListener("click", (event) => {
-      logoClicks += 1;
-      window.clearTimeout(logoTimer);
-      logoTimer = window.setTimeout(() => {
-        logoClicks = 0;
-      }, 1600);
-      if (logoClicks >= 5) {
-        event.preventDefault();
-        logoClicks = 0;
-        openAdminAccess();
-      }
-    });
-  });
 
   if (params.get("mode") === "admin") {
     openAdminAccess();
@@ -252,7 +296,7 @@ async function initLoginPage() {
     return;
   }
   if (config.accessState !== "guest") {
-    window.location.href = "/payment.html";
+    window.location.href = config.session?.paymentStatus === "approved" ? "/enter-key.html" : "/payment.html";
     return;
   }
 
@@ -271,53 +315,88 @@ async function initLoginPage() {
   }
   if (params.get("error") === "google") {
     setText("loginStatus", "We could not complete Google sign-in. Please try again.");
+    showToast("We could not complete Google sign-in", "warning");
   }
   bindAdminAccessUi(config);
 }
 
 async function initPaymentPage() {
   const session = await loadSession();
+  if (!enforceFrontendAccess(session)) return;
   bindAdminAccessUi(session?.settings || {});
   if (session.accessState === "verified") {
     window.location.href = "/";
     return;
   }
+  if (session.user?.paymentStatus === "approved") {
+    window.location.href = "/enter-key.html";
+    return;
+  }
 
+  const params = new URLSearchParams(window.location.search);
+  if (params.get("login") === "success") showToast("Logged in successfully", "success");
   setText("paymentIntroCopy", `Pay ₹${session.settings.accessPriceInr}, then message us on Telegram so we can approve your access key.`);
   setText("accessPrice", String(session.settings.accessPriceInr));
   if (qs("paymentQrImage")) qs("paymentQrImage").src = session.settings.paymentQrUrl;
 
   qs("paymentNotifyButton")?.addEventListener("click", async () => {
+    const restoreButton = setButtonLoading(qs("paymentNotifyButton"), "Opening Telegram...");
     try {
       const result = await api("/api/payment/request", { method: "POST" });
       setText("paymentStatus", "Telegram is opening with your payment verification message.");
+      showToast("Payment message is ready on Telegram", "success");
       window.location.href = result.telegramUrl;
     } catch (error) {
       setText("paymentStatus", error.message);
+      showToast(error.message, "warning");
+    } finally {
+      restoreButton();
     }
   });
+}
+
+async function initEnterKeyPage() {
+  const session = await loadSession();
+  if (!enforceFrontendAccess(session)) return;
+  bindAdminAccessUi(session?.settings || {});
+  if (session.accessState === "verified") {
+    window.location.href = "/";
+    return;
+  }
+  if (session.user?.paymentStatus === "unpaid") {
+    window.location.href = "/payment.html";
+    return;
+  }
+
+  const params = new URLSearchParams(window.location.search);
+  if (params.get("login") === "success") showToast("Logged in successfully", "success");
+  setText("enterKeyNotice", "Your access unlocks permanently after a valid one-time key.");
 
   qs("activationForm")?.addEventListener("submit", async (event) => {
     event.preventDefault();
+    const restoreButton = setButtonLoading(qs("activateAccessButton"), "Unlocking...");
     try {
       const result = await api("/api/access/activate", {
         method: "POST",
         body: JSON.stringify({ key: qs("activationKey")?.value || "" })
       });
-      setText("activationStatus", "Access unlocked. Redirecting...");
-      window.location.href = result.redirect || "/";
+      setText("activationStatus", "Access unlocked");
+      showToast("Access unlocked", "success");
+      window.setTimeout(() => {
+        window.location.href = result.redirect || "/";
+      }, 450);
     } catch (error) {
       setText("activationStatus", error.message);
+      showToast(error.message, "warning");
+    } finally {
+      restoreButton();
     }
   });
-
-  if (session.accessState === "awaiting-key") {
-    setText("paymentStatus", "Payment recorded. Enter your access key as soon as it reaches you.");
-  }
 }
 
 async function initHomePage() {
   const session = await loadSession();
+  if (!enforceFrontendAccess(session)) return;
   bindAdminAccessUi(session?.settings || {});
 }
 
@@ -336,6 +415,7 @@ function renderPcGameCard(game) {
 
 async function initPcGamesPage() {
   const session = await loadSession();
+  if (!enforceFrontendAccess(session)) return;
   bindAdminAccessUi(session?.settings || {});
   const result = await api("/api/games");
   const grid = qs("gamesGrid");
@@ -349,6 +429,7 @@ async function initPcGamesPage() {
 
 async function initGamePage() {
   const session = await loadSession();
+  if (!enforceFrontendAccess(session)) return;
   bindAdminAccessUi(session?.settings || {});
   const slug = getSlugFromPath();
   const game = await api(`/api/games/${encodeURIComponent(slug)}`);
@@ -366,26 +447,42 @@ async function initGamePage() {
     <aside class="panel">
       <h2 class="section-title">Game Access</h2>
       <p class="hero-copy">Your game login details appear only after your verified access is confirmed.</p>
-      <button id="unlockCredentialsButton" class="btn btn-primary btn-block" type="button">Unlock Game Access</button>
-      <div id="credentialsBox" class="stack" style="margin-top:16px;"></div>
+      <div id="credentialsBox" class="card compact-card credentials-box credentials-box-hidden" style="margin-top:16px;">
+        <p><strong>ID</strong></p>
+        <p class="masked-secret">********</p>
+        <p><strong>Password</strong></p>
+        <p class="masked-secret">********</p>
+      </div>
+      <button id="unlockCredentialsButton" class="btn btn-primary btn-block" type="button">Unlock Credentials</button>
       <p id="gameStatus" class="status"></p>
     </aside>
   `;
 
   qs("unlockCredentialsButton")?.addEventListener("click", async () => {
+    if (session.accessState !== "verified") {
+      setText("gameStatus", "Complete payment first");
+      showToast("Complete payment first", "warning");
+      return;
+    }
+    const restoreButton = setButtonLoading(qs("unlockCredentialsButton"), "Unlocking...");
     try {
       const credentials = await api(`/api/games/${encodeURIComponent(slug)}/credentials`);
-      qs("credentialsBox").innerHTML = `
-        <div class="card compact-card">
-          <p><strong>ID</strong></p>
-          <p>${escapeHtml(credentials.accountId)}</p>
-          <p><strong>Password</strong></p>
-          <p>${escapeHtml(credentials.accountPassword)}</p>
-        </div>
+      const box = qs("credentialsBox");
+      box.innerHTML = `
+        <p><strong>ID</strong></p>
+        <p>${escapeHtml(credentials.accountId)}</p>
+        <p><strong>Password</strong></p>
+        <p>${escapeHtml(credentials.accountPassword)}</p>
       `;
-      setText("gameStatus", "Game access unlocked successfully.");
+      box.classList.remove("credentials-box-hidden");
+      box.classList.add("credentials-box-revealed");
+      setText("gameStatus", "Credentials unlocked");
+      showToast("Credentials unlocked", "success");
     } catch (error) {
       setText("gameStatus", error.message);
+      showToast(error.message, "warning");
+    } finally {
+      restoreButton();
     }
   });
 }
@@ -406,6 +503,7 @@ function renderConsoleCard(game, telegramUrl) {
 
 async function initConsolePage(platform) {
   const session = await loadSession();
+  if (!enforceFrontendAccess(session)) return;
   bindAdminAccessUi(session?.settings || {});
   const result = await api(`/api/console/${platform}`);
   const grid = qs("consoleCatalogGrid");
@@ -420,6 +518,7 @@ async function initConsolePage(platform) {
 function renderUserCard(user) {
   const approveDisabled = user.verified || user.paymentStatus === "approved";
   const generateDisabled = user.verified || user.paymentStatus !== "approved";
+  const comboDisabled = user.verified;
   const statusClass = user.verified
     ? "admin-pill admin-pill-success"
     : user.paymentStatus === "approved"
@@ -450,13 +549,17 @@ function renderUserCard(user) {
       </div>
       <div class="inline-actions">
         <button class="btn btn-secondary admin-approve-user-btn" type="button" data-user-id="${escapeHtml(user.id)}" ${approveDisabled ? "disabled" : ""}>Approve User</button>
-        <button class="btn btn-primary admin-generate-key-btn" type="button" data-user-id="${escapeHtml(user.id)}" data-user-email="${escapeHtml(user.email)}" ${generateDisabled ? "disabled" : ""}>Generate Key</button>
+        <button class="btn btn-primary admin-generate-key-btn" type="button" data-user-id="${escapeHtml(user.id)}" data-user-email="${escapeHtml(user.email)}" ${generateDisabled ? "disabled" : ""}>Generate Linked Key</button>
+        <button class="btn btn-secondary admin-approve-generate-key-btn" type="button" data-user-id="${escapeHtml(user.id)}" data-user-email="${escapeHtml(user.email)}" ${comboDisabled ? "disabled" : ""}>Approve + Generate Key</button>
       </div>
     </article>
   `;
 }
 
-function renderKeyCard(key) {
+function renderKeyCard(key, users = []) {
+  const assignableUsers = users.filter((user) => !user.verified && user.paymentStatus === "approved");
+  const canAssign = !key.used && !key.userId && assignableUsers.length > 0;
+  const options = assignableUsers.map((user) => `<option value="${escapeHtml(user.id)}">${escapeHtml(user.email)}</option>`).join("");
   return `
     <article class="card compact-card admin-key-card">
       <div class="admin-card-head">
@@ -464,10 +567,19 @@ function renderKeyCard(key) {
         <span class="${key.used ? "admin-pill" : "admin-pill admin-pill-success"}">${key.used ? "Used" : "Unused"}</span>
       </div>
       <div class="stack admin-card-meta">
-        <p>Linked email: ${escapeHtml(key.email || "Not linked")}</p>
+        <p>Linked email: ${escapeHtml(key.linkedEmail || key.email || "Not linked")}</p>
         <p>Created: ${escapeHtml(formatDateTime(key.createdAt))}</p>
         <p>${key.used ? `Used: ${escapeHtml(formatDateTime(key.usedAt))}` : "Ready to activate"}</p>
       </div>
+      ${canAssign ? `
+      <div class="inline-actions admin-key-assign-row">
+        <select class="select admin-key-user-select" data-key-id="${escapeHtml(key.id)}">
+          <option value="">Assign to approved user</option>
+          ${options}
+        </select>
+        <button class="btn btn-secondary admin-assign-key-btn" type="button" data-key-id="${escapeHtml(key.id)}">Assign Key</button>
+      </div>
+      ` : ""}
     </article>
   `;
 }
@@ -509,7 +621,7 @@ function renderGeneratedKey(result) {
     "generatedKeyMeta",
     adminDashboardState.lastGeneratedEmail
       ? `Linked to ${adminDashboardState.lastGeneratedEmail}`
-      : "Create a key from the Users section to show it here."
+      : "Unassigned key ready to copy or assign."
   );
 }
 
@@ -538,7 +650,7 @@ async function loadAdmin() {
 
   const keysWrap = qs("adminKeysGrid");
   if (keysWrap) {
-    keysWrap.innerHTML = keys.length ? keys.map(renderKeyCard).join("") : `<div class="empty">No access keys created yet.</div>`;
+    keysWrap.innerHTML = keys.length ? keys.map((key) => renderKeyCard(key, users)).join("") : `<div class="empty">No access keys created yet.</div>`;
   }
 
   const gamesWrap = qs("adminGamesGrid");
@@ -571,15 +683,47 @@ async function initAdminPage() {
   qs("adminUsersGrid")?.addEventListener("click", async (event) => {
     const approveButton = event.target.closest(".admin-approve-user-btn");
     if (approveButton) {
+      const restoreButton = setButtonLoading(approveButton, "Approving...");
       try {
         const result = await api("/api/admin/approve-user", {
           method: "POST",
           body: JSON.stringify({ userId: approveButton.dataset.userId })
         });
         setText("adminUsersStatus", `${result.user.email} is approved and ready for key delivery.`);
+        showToast("User approved", "success");
         await loadAdmin();
       } catch (error) {
         setText("adminUsersStatus", error.message);
+        showToast(error.message, "warning");
+      } finally {
+        restoreButton();
+      }
+      return;
+    }
+
+    const comboButton = event.target.closest(".admin-approve-generate-key-btn");
+    if (comboButton) {
+      const restoreButton = setButtonLoading(comboButton, "Processing...");
+      try {
+        const result = await api("/api/admin/approve-and-generate-key", {
+          method: "POST",
+          body: JSON.stringify({ userId: comboButton.dataset.userId })
+        });
+        renderGeneratedKey(result);
+        try {
+          await copyText(result.generatedKey);
+          setText("adminKeyStatus", `Key generated for ${result.user.email} and copied automatically.`);
+        } catch (_copyError) {
+          setText("adminKeyStatus", `Key generated for ${result.user.email}. Copy it from the card above.`);
+        }
+        setText("adminUsersStatus", `${result.user.email} is approved and now has an unused one-time key.`);
+        showToast("Approved and key copied", "success");
+        await loadAdmin();
+      } catch (error) {
+        setText("adminKeyStatus", error.message);
+        showToast(error.message, "warning");
+      } finally {
+        restoreButton();
       }
       return;
     }
@@ -587,17 +731,79 @@ async function initAdminPage() {
     const generateButton = event.target.closest(".admin-generate-key-btn");
     if (!generateButton) return;
 
+    const restoreButton = setButtonLoading(generateButton, "Generating...");
     try {
       const result = await api("/api/admin/generate-key", {
         method: "POST",
         body: JSON.stringify({ userId: generateButton.dataset.userId })
       });
       renderGeneratedKey(result);
-      setText("adminKeyStatus", `Key generated for ${result.user.email}. Copy it from the card above.`);
+      try {
+        await copyText(result.generatedKey);
+        setText("adminKeyStatus", `Key generated for ${result.user.email} and copied automatically.`);
+      } catch (_copyError) {
+        setText("adminKeyStatus", `Key generated for ${result.user.email}. Copy it from the card above.`);
+      }
       setText("adminUsersStatus", `${result.user.email} now has an unused one-time key.`);
+      showToast("Key generated", "success");
       await loadAdmin();
     } catch (error) {
       setText("adminKeyStatus", error.message);
+      showToast(error.message, "warning");
+    } finally {
+      restoreButton();
+    }
+  });
+
+  qs("adminKeysGrid")?.addEventListener("click", async (event) => {
+    const assignButton = event.target.closest(".admin-assign-key-btn");
+    if (!assignButton) return;
+
+    const keyId = assignButton.dataset.keyId;
+    const select = document.querySelector(`.admin-key-user-select[data-key-id="${CSS.escape(keyId)}"]`);
+    const userId = select?.value || "";
+    if (!userId) {
+      setText("adminKeyStatus", "Choose an approved user before assigning this key.");
+      showToast("Choose an approved user before assigning this key.", "warning");
+      return;
+    }
+
+    try {
+      const result = await api("/api/admin/assign-key", {
+        method: "POST",
+        body: JSON.stringify({ keyId, userId })
+      });
+      setText("adminKeyStatus", `Key assigned to ${result.user.email}.`);
+      setText("adminUsersStatus", `${result.user.email} now has a linked access key.`);
+      showToast("Key assigned", "success");
+      await loadAdmin();
+    } catch (error) {
+      setText("adminKeyStatus", error.message);
+      showToast(error.message, "warning");
+    }
+  });
+
+  qs("generateStandaloneKeyButton")?.addEventListener("click", async () => {
+    const restoreButton = setButtonLoading(qs("generateStandaloneKeyButton"), "Generating...");
+    try {
+      const result = await api("/api/admin/generate-key", {
+        method: "POST",
+        body: JSON.stringify({})
+      });
+      renderGeneratedKey(result);
+      try {
+        await copyText(result.generatedKey);
+        setText("adminKeyStatus", "New unused key generated and copied automatically.");
+      } catch (_copyError) {
+        setText("adminKeyStatus", "New unused key generated. Copy it or assign it to an approved user.");
+      }
+      showToast("New key generated", "success");
+      await loadAdmin();
+    } catch (error) {
+      setText("adminKeyStatus", error.message);
+      showToast(error.message, "warning");
+    } finally {
+      restoreButton();
     }
   });
 
@@ -614,8 +820,10 @@ async function initAdminPage() {
     try {
       await copyText(adminDashboardState.lastGeneratedKey);
       setText("adminKeyStatus", "Key copied to clipboard.");
+      showToast("Key copied", "success");
     } catch (error) {
       setText("adminKeyStatus", error.message);
+      showToast(error.message, "warning");
     }
   });
 
@@ -710,8 +918,10 @@ async function initAdminPage() {
 }
 
 async function init() {
+  ensureAdminHeaderLink();
   if (page === "login") return initLoginPage();
   if (page === "payment") return initPaymentPage();
+  if (page === "enter-key") return initEnterKeyPage();
   if (page === "home") return initHomePage();
   if (page === "pc-games") return initPcGamesPage();
   if (page === "game") return initGamePage();

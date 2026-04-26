@@ -11,6 +11,12 @@
 </head>
 <body data-page="login">
   <div class="shell">
+    <nav class="topbar auth-topbar">
+      <a class="brand" href="/login.html"><span class="brand-mark">GA</span><span><strong>Gamers Arena</strong><br><small class="muted">premium access</small></span></a>
+      <div class="nav-actions">
+        <a class="btn btn-secondary nav-admin-button" href="/admin" data-admin-link>Admin</a>
+      </div>
+    </nav>
     <main class="auth-layout">
       <section class="hero hero-3d auth-hero" data-home-hero>
         <div class="hero-scene-shell" aria-hidden="true">
@@ -25,7 +31,7 @@
         <div class="hero-grid">
           <div class="hero-main">
             <p class="eyebrow">premium access</p>
-            <h1>Unlock Premium Game Accounts for Just ₹20</h1>
+            <h1>Unlock Premium Game Accounts for Just &#8377;20</h1>
             <p class="hero-copy auth-lead">Pay a small maintenance fee and get access to all available game accounts and bundles.</p>
             <div class="chip-row hero-chip-row">
               <span class="chip">Secure login</span>
@@ -41,7 +47,7 @@
             </div>
             <div class="route-steps login-steps">
               <div class="route-step"><span>01</span> Login with Google</div>
-              <div class="route-step"><span>02</span> Pay ₹20</div>
+              <div class="route-step"><span>02</span> Pay &#8377;20</div>
               <div class="route-step"><span>03</span> Enter Access Key</div>
               <div class="route-step"><span>04</span> Unlock All Games</div>
             </div>
@@ -51,12 +57,10 @@
             <h2 class="hero-side-title">Login to Get Instant Access</h2>
             <p id="loginStatus" class="status"></p>
             <a id="googleLoginLink" class="btn btn-primary btn-block login-cta-button" href="/auth/google">Get Access Now</a>
-            <p class="auth-helper-note">One-time ₹20 payment required after login</p>
+            <p class="auth-helper-note">One-time &#8377;20 payment required after login</p>
             <p class="hero-copy">Use secure Google login first, then follow the payment and access key steps to unlock the full library.</p>
           </aside>
         </div>
-        <button id="hiddenAdminAccess" class="hidden-admin-button fixed-admin-trigger" type="button" aria-label="Open admin access"></button>
-        <a class="admin-hint" href="/admin" aria-label="Admin access">Admin?</a>
       </section>
     </main>
   </div>

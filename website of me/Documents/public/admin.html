@@ -18,7 +18,7 @@
         <a class="nav-link" href="/pc-games">PC Games</a>
       </div>
       <div class="nav-actions">
-        <span class="muted">Admin</span>
+        <a class="btn btn-secondary nav-admin-button nav-admin-button-active" href="/admin" data-admin-link>Admin</a>
         <button class="btn btn-secondary" type="button" data-logout-button>Logout</button>
       </div>
     </nav>
@@ -81,7 +81,10 @@
             <p class="eyebrow">keys</p>
             <h2 class="section-title">Key System</h2>
           </div>
-          <button id="refreshAdminKeysButton" class="btn btn-secondary" type="button">Refresh Keys</button>
+          <div class="inline-actions">
+            <button id="generateStandaloneKeyButton" class="btn btn-primary" type="button">Generate Key</button>
+            <button id="refreshAdminKeysButton" class="btn btn-secondary" type="button">Refresh Keys</button>
+          </div>
         </div>
         <p id="adminKeyStatus" class="status"></p>
         <article id="generatedKeyCard" class="card compact-card admin-generated-key hidden">
@@ -93,7 +96,7 @@
             <button id="copyGeneratedKeyButton" class="btn btn-primary" type="button">Copy Key</button>
           </div>
           <p class="admin-key-value" id="generatedKeyValue">----</p>
-          <p class="muted" id="generatedKeyMeta">Create a key from the Users section to show it here.</p>
+          <p class="muted" id="generatedKeyMeta">Create a key to show it here, then copy it or assign it to a player.</p>
         </article>
         <div id="adminKeysGrid" class="admin-list-grid"></div>
       </section>
