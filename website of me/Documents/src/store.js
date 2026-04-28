@@ -102,6 +102,22 @@ function normalizeKey(key = {}) {
   };
 }
 
+function normalizePost(post = {}) {
+  return {
+    id: normalizeText(post.id, createId("post")),
+    gameId: normalizeText(post.gameId),
+    slug: normalizeText(post.slug),
+    title: normalizeText(post.title),
+    excerpt: normalizeText(post.excerpt),
+    image: normalizeUrl(post.image),
+    contentHtml: normalizeText(post.contentHtml),
+    seoTitle: normalizeText(post.seoTitle || post.title),
+    seoDescription: normalizeText(post.seoDescription || post.excerpt),
+    publishedAt: normalizeText(post.publishedAt, new Date().toISOString()),
+    updatedAt: normalizeText(post.updatedAt, new Date().toISOString())
+  };
+}
+
 function createBaseStore(seed = {}) {
   const meta = seed.meta && typeof seed.meta === "object" ? seed.meta : {};
   return {
@@ -116,7 +132,8 @@ function createBaseStore(seed = {}) {
     settings: normalizeSettings(seed.settings),
     users: Array.isArray(seed.users) ? seed.users.map(normalizeUser).filter((user) => user.email) : [],
     keys: Array.isArray(seed.keys) ? seed.keys.map(normalizeKey) : [],
-    games: Array.isArray(seed.games) ? seed.games.map(normalizeGame).filter((game) => game.name) : []
+    games: Array.isArray(seed.games) ? seed.games.map(normalizeGame).filter((game) => game.name) : [],
+    posts: Array.isArray(seed.posts) ? seed.posts.map(normalizePost).filter((post) => post.slug && post.title) : []
   };
 }
 
@@ -168,6 +185,10 @@ function migrateLegacyStore(store = {}) {
 
   if (Array.isArray(store.keys)) {
     base.keys = store.keys.map(normalizeKey);
+  }
+
+  if (Array.isArray(store.posts)) {
+    base.posts = store.posts.map(normalizePost).filter((post) => post.slug && post.title);
   }
 
   return base;

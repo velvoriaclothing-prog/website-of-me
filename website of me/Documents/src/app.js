@@ -22,6 +22,7 @@ function createApp() {
   const uploadDir = path.join(publicDir, "assets", "uploads");
   const nodeModulesDir = path.join(__dirname, "..", "node_modules");
   ensureDir(uploadDir);
+  ensureBlogPostsSynced();
   app.disable("x-powered-by");
   app.use(compression());
   app.use(express.json({ limit: "5mb" }));
@@ -83,6 +84,10 @@ function createApp() {
 
   function getSettings() {
     return readStore().settings;
+  }
+
+  function getPosts() {
+    return sortByNewest(readStore().posts || [], "publishedAt");
   }
 
   function getAdminState() {
@@ -383,6 +388,7 @@ function createApp() {
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString()
       });
+      syncAutoBlogPosts(draft);
       return draft;
     });
 
@@ -412,10 +418,11 @@ function createApp() {
 
   function redirectForAccess(req, res, next) {
     if (!["GET", "HEAD"].includes(req.method)) return next();
+    if (req.path === "/blog" || req.path === "/blog.html" || req.path.startsWith("/blog/")) return next();
     const pagePath = normalizePagePath(req.path);
     if (!pagePath) return next();
 
-    if (pagePath === "/login.html") return next();
+    if (pagePath === "/login.html" || pagePath === "/blog.html" || pagePath === "/post.html") return next();
 
     const session = getSession(req);
     if (pagePath === "/admin.html") return next();
@@ -634,6 +641,23 @@ function createApp() {
     });
   });
 
+  app.get("/api/blog", (_req, res) => {
+    const posts = getPosts().map((post) => ({
+      slug: post.slug,
+      title: post.title,
+      excerpt: post.excerpt,
+      image: post.image,
+      publishedAt: post.publishedAt
+    }));
+    res.json({ items: posts });
+  });
+
+  app.get("/api/blog/:slug", (req, res) => {
+    const post = getPosts().find((item) => item.slug === req.params.slug);
+    if (!post) return res.status(404).json({ error: "Post not found." });
+    res.json(post);
+  });
+
   app.get("/api/console/:platform", requireVerified, (req, res) => {
     const platform = String(req.params.platform || "").toUpperCase();
     if (!["PS4", "PS5"].includes(platform)) return res.status(400).json({ error: "Invalid platform." });
@@ -784,6 +808,7 @@ function createApp() {
         }
 
         game.updatedAt = new Date().toISOString();
+        syncAutoBlogPosts(draft);
         return draft;
       });
 
@@ -801,6 +826,7 @@ function createApp() {
         const before = draft.games.length;
         draft.games = draft.games.filter((item) => item.id !== req.params.id);
         removed = draft.games.length !== before;
+        syncAutoBlogPosts(draft);
         return draft;
       });
       if (!removed) throw createHttpError(404, "Game not found.");
@@ -823,6 +849,59 @@ function createApp() {
       return draft;
     });
     res.json(store.settings);
+  });
+
+  app.get("/robots.txt", (req, res) => {
+    const baseUrl = getBaseUrl(req);
+    res.type("text/plain").send([
+      "User-agent: *",
+      "Allow: /",
+      "Disallow: /admin",
+      "Disallow: /api/admin",
+      `Sitemap: ${baseUrl}/sitemap.xml`
+    ].join("\n"));
+  });
+
+  app.get("/sitemap.xml", (req, res) => {
+    const baseUrl = getBaseUrl(req);
+    const staticPages = [
+      "/login.html",
+      "/blog",
+      "/payment.html",
+      "/enter-key.html",
+      "/pc-games"
+    ];
+    const postUrls = getPosts().map((post) => `/blog/${post.slug}`);
+    const items = [...staticPages, ...postUrls].map((url) => {
+      return `<url><loc>${escapeXml(`${baseUrl}${url}`)}</loc></url>`;
+    }).join("");
+    res.type("application/xml").send(`<?xml version="1.0" encoding="UTF-8"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">${items}</urlset>`);
+  });
+
+  app.get("/blog", (req, res) => {
+    res.type("html").send(renderBlogIndexHtml({
+      baseUrl: getBaseUrl(req),
+      settings: getSettings(),
+      posts: getPosts()
+    }));
+  });
+
+  app.get("/blog.html", (req, res) => {
+    res.type("html").send(renderBlogIndexHtml({
+      baseUrl: getBaseUrl(req),
+      settings: getSettings(),
+      posts: getPosts()
+    }));
+  });
+
+  app.get("/blog/:slug", (req, res) => {
+    const post = getPosts().find((item) => item.slug === req.params.slug);
+    if (!post) return res.status(404).send("Post not found.");
+    res.type("html").send(renderBlogPostHtml({
+      baseUrl: getBaseUrl(req),
+      settings: getSettings(),
+      post
+    }));
   });
 
   const pages = [
@@ -1034,6 +1113,234 @@ function verifyPasswordAgainstSecret(password, secret) {
   return Promise.all([hashPassword(password), hashPassword(secret)]).then(([left, right]) => {
     return crypto.timingSafeEqual(Buffer.from(left, "hex"), Buffer.from(right, "hex"));
   });
+}
+
+function ensureBlogPostsSynced() {
+  updateStore((draft) => {
+    syncAutoBlogPosts(draft);
+    return draft;
+  });
+}
+
+function syncAutoBlogPosts(draft) {
+  const manualPosts = Array.isArray(draft.posts)
+    ? draft.posts.filter((post) => !post.gameId)
+    : [];
+  const existingAutoPosts = new Map(
+    (Array.isArray(draft.posts) ? draft.posts : [])
+      .filter((post) => post.gameId)
+      .map((post) => [post.gameId, post])
+  );
+
+  const generated = (draft.games || []).map((game) => {
+    const existing = existingAutoPosts.get(game.id);
+    return buildAutoPost(game, existing);
+  });
+
+  draft.posts = [...manualPosts, ...generated].sort((left, right) => {
+    return String(right.publishedAt || "").localeCompare(String(left.publishedAt || ""));
+  });
+}
+
+function buildAutoPost(game, existing = null) {
+  const publishedAt = existing?.publishedAt || game.createdAt || new Date().toISOString();
+  const updatedAt = game.updatedAt || publishedAt;
+  const slug = `${game.slug}-account-guide`;
+  const cleanDescription = String(game.description || `${game.name} is now available through Gamers Arena.`).trim();
+  const title = `${game.name} account guide: features, access tips, and what to expect`;
+  const excerpt = `Learn what ${game.name} offers, why players look for this account, and how Gamers Arena helps verified users unlock it quickly.`;
+  const seoTitle = `${game.name} account guide and access tips | Gamers Arena Blog`;
+  const seoDescription = `Read our SEO-friendly guide for ${game.name}, including gameplay highlights, account access tips, and why verified players are looking for this title.`;
+  const image = game.image || defaultLogo;
+  const contentHtml = [
+    `<p>${escapeHtmlServer(game.name)} is one of the titles players keep searching for when they want premium game access without wasting time hunting through unreliable sellers. At Gamers Arena, we keep the process simple for verified users: complete access payment, activate your key, and unlock the game credentials securely when you are ready.</p>`,
+    `<h2>Why players want ${escapeHtmlServer(game.name)}</h2>`,
+    `<p>${escapeHtmlServer(cleanDescription)}</p>`,
+    `<p>Players usually look for this title because they want a smoother way to get into the game library, revisit a favorite release, or access a premium game account without long setup friction. That is exactly where a verified gaming access platform becomes useful.</p>`,
+    `<h2>What verified users get</h2>`,
+    `<p>Once a user finishes the Gamers Arena flow, they can open the game page, review the details, and unlock the account ID and password directly from the secure backend. Sensitive credentials are not exposed publicly and only appear after the correct access checks pass.</p>`,
+    `<h2>How Gamers Arena keeps access simple</h2>`,
+    `<p>Our platform is built around a clear path: login, payment, key activation, and game access. That means fewer confusing steps for players and a faster way to manage premium game accounts from one place.</p>`,
+    `<p>If you are looking for reliable access to ${escapeHtmlServer(game.name)} and other premium PC games, keep an eye on the Gamers Arena catalog and blog. New games, updates, and account access guides are published here automatically as the catalog grows.</p>`
+  ].join("");
+
+  return {
+    id: existing?.id || createId("post"),
+    gameId: game.id,
+    slug,
+    title,
+    excerpt,
+    image,
+    contentHtml,
+    seoTitle,
+    seoDescription,
+    publishedAt,
+    updatedAt
+  };
+}
+
+function escapeHtmlServer(value) {
+  return String(value || "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
+function escapeXml(value) {
+  return escapeHtmlServer(value);
+}
+
+function stripHtml(value) {
+  return String(value || "").replace(/<[^>]*>/g, " ").replace(/\s+/g, " ").trim();
+}
+
+function renderSiteHead({ title, description, canonical, image, robots = "index,follow", jsonLd }) {
+  const safeTitle = escapeHtmlServer(title);
+  const safeDescription = escapeHtmlServer(description);
+  const safeCanonical = escapeHtmlServer(canonical);
+  const safeImage = escapeHtmlServer(image);
+  const jsonLdBlock = jsonLd ? `<script type="application/ld+json">${JSON.stringify(jsonLd)}</script>` : "";
+  return `
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>${safeTitle}</title>
+    <meta name="description" content="${safeDescription}">
+    <meta name="robots" content="${escapeHtmlServer(robots)}">
+    <link rel="canonical" href="${safeCanonical}">
+    <meta property="og:type" content="website">
+    <meta property="og:title" content="${safeTitle}">
+    <meta property="og:description" content="${safeDescription}">
+    <meta property="og:url" content="${safeCanonical}">
+    <meta property="og:image" content="${safeImage}">
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="${safeTitle}">
+    <meta name="twitter:description" content="${safeDescription}">
+    <meta name="twitter:image" content="${safeImage}">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/styles.css">
+    ${jsonLdBlock}
+  `;
+}
+
+function renderBlogIndexHtml({ baseUrl, settings, posts }) {
+  const title = `${settings.siteTitle} Blog | Game account guides and gaming access articles`;
+  const description = `Read SEO-friendly gaming blog posts from ${settings.siteTitle}. Discover PC game account guides, access tips, and updates from the Gamers Arena catalog.`;
+  const canonical = `${baseUrl}/blog`;
+  const jsonLd = {
+    "@context": "https://schema.org",
+    "@type": "Blog",
+    name: `${settings.siteTitle} Blog`,
+    description,
+    url: canonical
+  };
+
+  const cards = posts.length ? posts.map((post) => `
+    <article class="game-card blog-card">
+      ${post.image ? `<img class="game-thumb" src="${escapeHtmlServer(post.image)}" alt="${escapeHtmlServer(post.title)}" loading="lazy">` : ""}
+      <div class="game-card-body">
+        <p class="eyebrow">blog article</p>
+        <h3>${escapeHtmlServer(post.title)}</h3>
+        <p>${escapeHtmlServer(post.excerpt)}</p>
+      </div>
+      <a class="button button-primary button-block" href="/blog/${escapeHtmlServer(post.slug)}">Read Article</a>
+    </article>
+  `).join("") : `<div class="empty-state">Blog articles will appear here automatically as games are added to the platform.</div>`;
+
+  return `<!DOCTYPE html>
+<html lang="en">
+<head>${renderSiteHead({
+    title,
+    description,
+    canonical,
+    image: `${baseUrl}${settings.logoUrl || defaultLogo}`,
+    jsonLd
+  })}</head>
+<body>
+  <div class="shell">
+    <nav class="topbar">
+      <a class="brand" href="/login.html">
+        <span class="brand-mark">GA</span>
+        <span><strong>${escapeHtmlServer(settings.siteTitle)}</strong><br><small>gaming blog</small></span>
+      </a>
+      <div class="nav-actions">
+        <a class="button button-secondary" href="/login.html">Login</a>
+        <a class="button button-secondary" href="/pc-games">Games</a>
+      </div>
+    </nav>
+    <section class="hero">
+      <p class="eyebrow">seo blog</p>
+      <h1>Gaming guides, account tips, and platform updates</h1>
+      <p class="hero-copy">This blog is published automatically from the Gamers Arena catalog so your website keeps growing with fresh, search-friendly content.</p>
+    </section>
+    <section class="panel grid-section">
+      <div class="game-grid">${cards}</div>
+    </section>
+  </div>
+</body>
+</html>`;
+}
+
+function renderBlogPostHtml({ baseUrl, settings, post }) {
+  const canonical = `${baseUrl}/blog/${post.slug}`;
+  const image = post.image ? `${baseUrl}${post.image}` : `${baseUrl}${settings.logoUrl || defaultLogo}`;
+  const jsonLd = {
+    "@context": "https://schema.org",
+    "@type": "Article",
+    headline: post.seoTitle || post.title,
+    description: post.seoDescription || post.excerpt,
+    image,
+    datePublished: post.publishedAt,
+    dateModified: post.updatedAt || post.publishedAt,
+    author: {
+      "@type": "Organization",
+      name: settings.siteTitle
+    },
+    publisher: {
+      "@type": "Organization",
+      name: settings.siteTitle,
+      logo: {
+        "@type": "ImageObject",
+        url: `${baseUrl}${settings.logoUrl || defaultLogo}`
+      }
+    },
+    mainEntityOfPage: canonical
+  };
+
+  return `<!DOCTYPE html>
+<html lang="en">
+<head>${renderSiteHead({
+    title: post.seoTitle || post.title,
+    description: post.seoDescription || post.excerpt,
+    canonical,
+    image,
+    jsonLd
+  })}</head>
+<body>
+  <div class="shell">
+    <nav class="topbar">
+      <a class="brand" href="/blog">
+        <span class="brand-mark">GA</span>
+        <span><strong>${escapeHtmlServer(settings.siteTitle)}</strong><br><small>blog article</small></span>
+      </a>
+      <div class="nav-actions">
+        <a class="button button-secondary" href="/blog">Blog</a>
+        <a class="button button-secondary" href="/login.html">Login</a>
+      </div>
+    </nav>
+    <article class="panel blog-post-shell">
+      <p class="eyebrow">published ${escapeHtmlServer(new Date(post.publishedAt).toLocaleDateString("en-IN", { year: "numeric", month: "long", day: "numeric" }))}</p>
+      <h1>${escapeHtmlServer(post.title)}</h1>
+      <p class="hero-copy">${escapeHtmlServer(post.excerpt)}</p>
+      ${post.image ? `<img class="detail-image" src="${escapeHtmlServer(post.image)}" alt="${escapeHtmlServer(post.title)}" loading="lazy">` : ""}
+      <div class="blog-content">${post.contentHtml}</div>
+    </article>
+  </div>
+</body>
+</html>`;
 }
 
 module.exports = createApp;
