@@ -1,4 +1,5 @@
 const crypto = require("crypto");
+const fs = require("fs");
 const path = require("path");
 const compression = require("compression");
 const express = require("express");
@@ -12,15 +13,15 @@ const PASSWORD_SECRET = String(process.env.PASSWORD_SECRET || process.env.SESSIO
 const GOOGLE_CLIENT_ID = String(process.env.GOOGLE_CLIENT_ID || "").trim();
 const GOOGLE_CLIENT_SECRET = String(process.env.GOOGLE_CLIENT_SECRET || "").trim();
 const BASE_URL = String(process.env.BASE_URL || "http://127.0.0.1:3000").trim().replace(/\/+$/, "");
-const ADMIN_USERNAME = String(process.env.ADMIN_USERNAME || process.env.ADMIN_EMAIL || "admin").trim();
-const ADMIN_PASSWORD = String(process.env.ADMIN_PASSWORD || "").trim();
-const RECOVERY_CODE_1 = String(process.env.RECOVERY_CODE_1 || "").trim();
-const RECOVERY_CODE_2 = String(process.env.RECOVERY_CODE_2 || "").trim();
+const ADMIN_USERNAME = "admin";
+const ADMIN_PASSWORD = "aditi0110";
 
 function createApp() {
   const app = express();
   const publicDir = path.join(__dirname, "..", "public");
+  const uploadDir = path.join(publicDir, "assets", "uploads");
   const nodeModulesDir = path.join(__dirname, "..", "node_modules");
+  ensureDir(uploadDir);
   app.disable("x-powered-by");
   app.use(compression());
   app.use(express.json({ limit: "5mb" }));
@@ -61,10 +62,6 @@ function createApp() {
   app.use("/assets", express.static(path.join(publicDir, "assets"), { maxAge: "1d", etag: true }));
   app.use((req, res, next) => {
     if (req.path !== "/admin" && req.path !== "/admin.html") return next();
-    const session = getSession(req);
-    if (!session?.isAdmin) {
-      return res.redirect("/login.html?mode=admin");
-    }
     return res.sendFile(path.join(publicDir, "admin.html"));
   });
 
@@ -89,12 +86,11 @@ function createApp() {
   }
 
   function getAdminState() {
-    const store = readStore();
     return {
-      username: ADMIN_USERNAME || "admin",
-      passwordHash: store.admin?.passwordHash || "",
-      hasEnvPassword: Boolean(ADMIN_PASSWORD),
-      recoveryConfigured: Boolean(RECOVERY_CODE_1 && RECOVERY_CODE_2)
+      username: ADMIN_USERNAME,
+      passwordHash: "",
+      hasEnvPassword: true,
+      recoveryConfigured: false
     };
   }
 
@@ -130,7 +126,7 @@ function createApp() {
 
   function accessRedirectPath(user) {
     if (!user) return "/login.html";
-    if (user.verified) return "/";
+    if (user.verified) return "/pc-games";
     if (user.paymentStatus === "approved") return "/enter-key.html";
     return "/payment.html";
   }
@@ -422,10 +418,7 @@ function createApp() {
     if (pagePath === "/login.html") return next();
 
     const session = getSession(req);
-    if (pagePath === "/admin.html") {
-      if (!session?.isAdmin) return res.redirect("/login.html?mode=admin");
-      return next();
-    }
+    if (pagePath === "/admin.html") return next();
 
     if (session?.isAdmin) return next();
 
@@ -437,7 +430,7 @@ function createApp() {
       return next();
     }
     if (pagePath === "/enter-key.html") {
-      if (state === "verified") return res.redirect("/");
+      if (state === "verified") return res.redirect("/pc-games");
       return next();
     }
     if (state !== "verified") return res.redirect(accessRedirectPath(user));
@@ -508,13 +501,8 @@ function createApp() {
       const username = String(req.body?.username || "").trim();
       const password = String(req.body?.password || "");
       const adminState = getAdminState();
-      if (!adminState.hasEnvPassword && !adminState.passwordHash) {
-        return res.status(503).json({ error: "Admin access is not ready yet." });
-      }
       const usernameOk = username.toLowerCase() === adminState.username.toLowerCase();
-      const passwordOk = adminState.passwordHash
-        ? await verifyPassword(password, adminState.passwordHash)
-        : await verifyPasswordAgainstSecret(password, ADMIN_PASSWORD);
+      const passwordOk = await verifyPasswordAgainstSecret(password, ADMIN_PASSWORD);
       if (!usernameOk || !passwordOk) {
         return res.status(401).json({ error: "Invalid admin login." });
       }
@@ -531,33 +519,8 @@ function createApp() {
     }
   });
 
-  app.post("/auth/admin/recovery", async (req, res, next) => {
-    try {
-      const code1 = String(req.body?.code1 || "").trim();
-      const code2 = String(req.body?.code2 || "").trim();
-      const nextPassword = String(req.body?.nextPassword || "");
-      const adminState = getAdminState();
-      if (!adminState.recoveryConfigured) {
-        return res.status(503).json({ error: "Recovery is not available right now." });
-      }
-      const code1Ok = await compareSecret(code1, RECOVERY_CODE_1);
-      const code2Ok = await compareSecret(code2, RECOVERY_CODE_2);
-      if (!code1Ok || !code2Ok) {
-        return res.status(401).json({ error: "Recovery codes did not match." });
-      }
-      if (!nextPassword || nextPassword.length < 8) {
-        return res.status(400).json({ error: "Choose a stronger password with at least 8 characters." });
-      }
-      const passwordHash = await hashPassword(nextPassword);
-      updateStore((draft) => {
-        draft.admin.passwordHash = passwordHash;
-        draft.admin.passwordUpdatedAt = new Date().toISOString();
-        return draft;
-      });
-      res.json({ ok: true, message: "Admin password updated." });
-    } catch (error) {
-      next(error);
-    }
+  app.post("/auth/admin/recovery", (_req, res) => {
+    res.status(404).json({ error: "Recovery is not enabled." });
   });
 
   app.post("/auth/logout", (req, res) => {
@@ -729,6 +692,19 @@ function createApp() {
     }
   });
 
+  app.post("/api/admin/upload-image", requireAdmin, (req, res, next) => {
+    try {
+      const item = saveAdminImageUpload({
+        uploadDir,
+        fileName: req.body?.fileName,
+        dataUrl: req.body?.dataUrl
+      });
+      res.status(201).json(item);
+    } catch (error) {
+      next(error);
+    }
+  });
+
   app.post("/api/admin/assign-key", requireAdmin, (req, res, next) => {
     try {
       res.json(assignAccessKeyToUser(req.body?.keyId, req.body?.userId));
@@ -850,7 +826,6 @@ function createApp() {
   });
 
   const pages = [
-    { route: "/", file: "index.html" },
     { route: "/login", file: "login.html" },
     { route: "/login.html", file: "login.html" },
     { route: "/payment", file: "payment.html" },
@@ -859,13 +834,17 @@ function createApp() {
     { route: "/enter-key.html", file: "enter-key.html" },
     { route: "/pc-games", file: "pc-games.html" },
     { route: "/pc-games.html", file: "pc-games.html" },
-    { route: "/ps4-games", file: "ps4-games.html" },
-    { route: "/ps4-games.html", file: "ps4-games.html" },
-    { route: "/ps5-games", file: "ps5-games.html" },
-    { route: "/ps5-games.html", file: "ps5-games.html" },
     { route: "/admin", file: "admin.html" },
     { route: "/admin.html", file: "admin.html" }
   ];
+
+  app.get("/", (req, res) => {
+    const session = getSession(req);
+    if (session?.isAdmin) return res.redirect("/admin");
+    const user = getUserBySession(req);
+    if (!user) return res.redirect("/login.html");
+    return res.redirect(accessRedirectPath(user));
+  });
 
   pages.forEach((page) => {
     if (page.route === "/admin" || page.route === "/admin.html") return;
@@ -889,6 +868,54 @@ function createHttpError(status, message) {
   const error = new Error(message);
   error.status = status;
   return error;
+}
+
+function ensureDir(targetPath) {
+  if (!fs.existsSync(targetPath)) {
+    fs.mkdirSync(targetPath, { recursive: true });
+  }
+}
+
+function sanitizeUploadFileName(value) {
+  return String(value || "image")
+    .toLowerCase()
+    .replace(/[^a-z0-9._-]+/g, "-")
+    .replace(/^-+|-+$/g, "") || "image";
+}
+
+function parseImageDataUrl(dataUrl) {
+  const match = String(dataUrl || "").match(/^data:(image\/(?:png|jpeg|jpg|webp|gif));base64,([a-z0-9+/=]+)$/i);
+  if (!match) {
+    throw createHttpError(400, "Please choose a valid image file.");
+  }
+  return {
+    mimeType: match[1].toLowerCase(),
+    buffer: Buffer.from(match[2], "base64")
+  };
+}
+
+function extensionForMime(mimeType) {
+  if (mimeType === "image/png") return ".png";
+  if (mimeType === "image/webp") return ".webp";
+  if (mimeType === "image/gif") return ".gif";
+  return ".jpg";
+}
+
+function saveAdminImageUpload({ uploadDir, fileName, dataUrl }) {
+  const { mimeType, buffer } = parseImageDataUrl(dataUrl);
+  if (buffer.length > 5 * 1024 * 1024) {
+    throw createHttpError(400, "Image must be smaller than 5 MB.");
+  }
+
+  const cleanBase = sanitizeUploadFileName(fileName).replace(/\.[a-z0-9]+$/i, "");
+  const finalName = `${cleanBase || "game-image"}-${Date.now()}${extensionForMime(mimeType)}`;
+  const finalPath = path.join(uploadDir, finalName);
+  fs.writeFileSync(finalPath, buffer);
+
+  return {
+    ok: true,
+    imagePath: `/assets/uploads/${finalName}`
+  };
 }
 
 function normalizePagePath(pathname) {

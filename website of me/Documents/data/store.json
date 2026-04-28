@@ -20,6 +20,31 @@
     "adminNotice": "Approve payment, generate one-time keys, and manage all game inventory from one secure backend."
   },
   "users": [],
-  "keys": [],
-  "games": []
+  "keys": [
+    {
+      "id": "key-1777371643910-1uxay9",
+      "userId": "",
+      "email": "",
+      "keyHash": "d953801f53e53bc08890a8911baa2dc4d3409f1a3c37f421acf23b0353489663",
+      "keyPreview": "ECHO-AURORA-SUMMIT-SHADOW-NOVA-ECHO",
+      "used": false,
+      "createdAt": "2026-04-28T10:20:43.910Z",
+      "createdBy": "admin",
+      "usedAt": ""
+    }
+  ],
+  "games": [
+    {
+      "id": "game-1777371660398-cfg5f9",
+      "slug": "pc-jhnmh",
+      "platform": "PC",
+      "name": "JHNMH",
+      "image": "THTHDD",
+      "description": "FHDD",
+      "credentialIdCipher": "PvqW8D17zb8XlXCz.R_ys7beD7te33wpuHRtQpw.nA7hk-Q",
+      "credentialPasswordCipher": "0y-nG9CCfASTuIO1.E6YtrlJlu1zhlv1VQo_khQ.O05grg",
+      "createdAt": "2026-04-28T10:21:00.399Z",
+      "updatedAt": "2026-04-28T10:21:00.399Z"
+    }
+  ]
 }

@@ -3,56 +3,34 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>PC Games | Gamers Arena</title>
+  <title>Games | Gamers Arena</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Oxanium:wght@400;600;700&family=Manrope:wght@400;500;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/styles.css">
 </head>
 <body data-page="pc-games">
   <div class="shell">
     <nav class="topbar">
-      <a class="brand" href="/"><span class="brand-mark">GA</span><span><strong>Gamers Arena</strong><br><small class="muted">pc vault</small></span></a>
-      <div class="nav-links">
-        <a class="nav-link" href="/">Home</a>
-        <a class="nav-link" href="/ps4-games">PS4</a>
-        <a class="nav-link" href="/ps5-games">PS5</a>
-      </div>
+      <a class="brand" href="/pc-games">
+        <span class="brand-mark">GA</span>
+        <span><strong>Gamers Arena</strong><br><small>pc games</small></span>
+      </a>
       <div class="nav-actions">
-        <span class="muted" data-user-label>Verified User</span>
-        <button class="btn btn-secondary" type="button" data-logout-button>Logout</button>
+        <span class="muted" data-user-label>Player</span>
+        <button class="button button-secondary" type="button" data-logout-button>Logout</button>
       </div>
     </nav>
 
-    <header class="hero reveal" data-reveal>
-      <div class="hero-grid">
-        <div class="hero-main">
-          <p class="eyebrow">pc inventory</p>
-          <h1>Browse premium PC game accounts.</h1>
-          <p class="hero-copy">Open any card to view the game details, then unlock access only when you are ready to use that account.</p>
-        </div>
-        <aside class="hero-side">
-          <div class="route-steps">
-            <div class="route-step"><span>01</span> Open the game detail</div>
-            <div class="route-step"><span>02</span> Review the image and description</div>
-            <div class="route-step"><span>03</span> Unlock game access securely</div>
-          </div>
-        </aside>
-      </div>
-    </header>
+    <section class="hero">
+      <p class="eyebrow">approved access</p>
+      <h1>Available PC game accounts</h1>
+      <p class="hero-copy">Open any game card below to view its detail page and unlock credentials securely.</p>
+    </section>
 
-    <main>
-      <section class="panel reveal" data-reveal>
-        <div class="section-head">
-          <div>
-            <p class="eyebrow">catalog</p>
-            <h2 class="section-title">Available PC Games</h2>
-          </div>
-        </div>
-        <p id="gamesStatus" class="status"></p>
-        <div id="gamesGrid" class="game-grid"></div>
-      </section>
-    </main>
+    <section class="panel grid-section">
+      <div id="gamesGrid" class="game-grid"></div>
+    </section>
   </div>
   <script src="/app.js"></script>
 </body>

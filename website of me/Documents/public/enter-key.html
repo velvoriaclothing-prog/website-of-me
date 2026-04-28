@@ -3,61 +3,49 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Enter Access Key | Gamers Arena</title>
+  <title>Enter Key | Gamers Arena</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Oxanium:wght@400;600;700&family=Manrope:wght@400;500;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/styles.css">
 </head>
 <body data-page="enter-key">
   <div class="shell">
     <nav class="topbar">
-      <a class="brand" href="/enter-key.html"><span class="brand-mark">GA</span><span><strong>Gamers Arena</strong><br><small class="muted">key activation</small></span></a>
+      <a class="brand" href="/enter-key.html">
+        <span class="brand-mark">GA</span>
+        <span><strong>Gamers Arena</strong><br><small>key activation</small></span>
+      </a>
       <div class="nav-actions">
         <span class="muted" data-user-label>Player</span>
-        <button class="btn btn-secondary" type="button" data-logout-button>Logout</button>
+        <button class="button button-secondary" type="button" data-logout-button>Logout</button>
       </div>
     </nav>
 
-    <header class="hero reveal" data-reveal>
-      <div class="hero-grid">
-        <div class="hero-main">
-          <p class="eyebrow">final step</p>
-          <h1>Enter your access key to unlock the full library.</h1>
-          <p class="hero-copy">Once your payment is approved, enter the one-time key shared with your email to unlock every available game page instantly.</p>
-        </div>
-        <aside class="hero-side">
-          <div class="route-steps">
-            <div class="route-step"><span>01</span> Payment approved</div>
-            <div class="route-step"><span>02</span> Receive your key</div>
-            <div class="route-step"><span>03</span> Enter it here</div>
-            <div class="route-step"><span>04</span> Open all games</div>
-          </div>
-        </aside>
-      </div>
-    </header>
+    <section class="hero">
+      <p class="eyebrow">step 3</p>
+      <h1>Enter your access key</h1>
+      <p class="hero-copy">Use the one-time key shared by admin after your payment is approved.</p>
+    </section>
 
-    <main class="two-col payment-layout">
-      <section class="panel">
-        <p class="eyebrow">access key</p>
-        <h2 class="section-title">Enter Your Access Key</h2>
-        <p class="hero-copy">Your one-time key is linked to your payment and can only be used once.</p>
+    <main class="two-column">
+      <section class="panel stack">
         <form id="activationForm" class="stack">
-          <input id="activationKey" class="input" placeholder="XXXX-XXXX-XXXX">
-          <button id="activateAccessButton" class="btn btn-primary btn-block" type="submit">Unlock My Games</button>
+          <label class="field">
+            <span>Access Key</span>
+            <input id="activationKey" class="input" placeholder="EXAMPLE-KEY-HERE">
+          </label>
+          <button id="activateButton" class="button button-primary button-block" type="submit">Activate Key</button>
         </form>
-        <p id="activationStatus" class="status"></p>
+        <p id="activationStatus" class="status-text"></p>
       </section>
 
-      <section class="panel">
-        <p class="eyebrow">ready to unlock</p>
-        <h2 class="section-title">What Happens Next</h2>
-        <div class="route-steps">
-          <div class="route-step"><span>01</span> Key is verified securely</div>
-          <div class="route-step"><span>02</span> Your email is linked</div>
-          <div class="route-step"><span>03</span> Full access is unlocked</div>
+      <section class="panel stack">
+        <div>
+          <p class="eyebrow">final step</p>
+          <h2>After activation</h2>
         </div>
-        <p id="enterKeyNotice" class="status"></p>
+        <p class="hero-copy">A valid key unlocks your access permanently and sends you straight to the PC games page.</p>
       </section>
     </main>
   </div>
